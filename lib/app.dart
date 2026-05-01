@@ -12,7 +12,11 @@ class ChronyxApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
     return MaterialApp.router(
       title: AppStrings.appName,
+      debugShowCheckedModeBanner: false,
+      // Dark is the premium default; light is available for system preference
       theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.dark,
       routerConfig: router,
     );
   }

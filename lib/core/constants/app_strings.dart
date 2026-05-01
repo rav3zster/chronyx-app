@@ -2,6 +2,13 @@ class AppStrings {
   const AppStrings._();
 
   static const String appName = 'Chronyx';
+  static const String loginTitle = 'Welcome to Chronyx';
+  static const String loginSubtitle = 'Sign in with Google to continue.';
+  static const String continueWithGoogle = 'Continue with Google';
+  static const String dashboardTitle = 'Dashboard';
+  static const String dashboardGreeting = 'You are signed in.';
+  static const String goToTimeTracking = 'Open Time Tracking';
+  static const String signOut = 'Sign Out';
   static const String timeTrackingTitle = 'Time Tracking';
   static const String startSession = 'Start Session';
   static const String stopSession = 'Stop Session';
@@ -18,4 +25,5 @@ class AppStrings {
   static const String inProgress = 'In Progress';
   static const String activeSessionExists =
       'Please stop the active session before starting a new one.';
+  static const String authRequired = 'Please sign in to continue.';
 }

@@ -5,6 +5,7 @@ import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart'
 import 'package:chronyx/features/time_tracking/presentation/pages/time_tracking_page.dart';
 import 'package:chronyx/features/analytics/presentation/pages/analytics_page.dart';
 import 'package:chronyx/features/analytics/presentation/pages/wrapped_page.dart';
+import 'package:chronyx/features/ai_coach/presentation/pages/ai_coach_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -67,6 +68,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.wrapped,
         name: 'wrapped',
         builder: (context, state) => const WrappedPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.aiCoach,
+        name: 'aiCoach',
+        builder: (context, state) => const AICoachPage(),
       ),
     ],
   );

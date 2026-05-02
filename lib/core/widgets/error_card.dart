@@ -2,11 +2,7 @@ import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:flutter/material.dart';
 
 class ErrorCard extends StatelessWidget {
-  const ErrorCard({
-    required this.message,
-    this.onRetry,
-    super.key,
-  });
+  const ErrorCard({required this.message, this.onRetry, super.key});
 
   final String message;
   final VoidCallback? onRetry;
@@ -25,9 +21,19 @@ class ErrorCard extends StatelessWidget {
               children: <Widget>[
                 Row(
                   children: [
-                    Icon(Icons.error_outline, color: Theme.of(context).colorScheme.onErrorContainer),
+                    Icon(
+                      Icons.error_outline,
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                    ),
                     const SizedBox(width: AppSpacing.sm),
-                    Expanded(child: Text(message, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onErrorContainer))),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 if (onRetry != null) ...[

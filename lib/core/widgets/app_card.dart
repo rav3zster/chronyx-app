@@ -18,10 +18,7 @@ class AppCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
       ),
       elevation: 2,
-      child: Padding(
-        padding: padding,
-        child: child,
-      ),
+      child: Padding(padding: padding, child: child),
     );
   }
 }

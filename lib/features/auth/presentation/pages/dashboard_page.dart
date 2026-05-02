@@ -21,9 +21,7 @@ class DashboardPage extends ConsumerWidget {
     final timeState = ref.watch(timeEntriesProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppStrings.dashboardTitle),
-      ),
+      appBar: AppBar(title: const Text(AppStrings.dashboardTitle)),
       body: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: authState.when(
@@ -56,15 +54,28 @@ class DashboardPage extends ConsumerWidget {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Active session', style: Theme.of(context).textTheme.titleMedium),
+                          Text(
+                            'Active session',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
                           const SizedBox(height: AppSpacing.sm),
                           Card(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.06),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.06),
                             child: ListTile(
-                              title: Text(active.taskName.isEmpty ? 'Unknown' : active.taskName),
+                              title: Text(
+                                active.taskName.isEmpty
+                                    ? 'Unknown'
+                                    : active.taskName,
+                              ),
                               subtitle: Text('${active.startedAt.toLocal()}'),
                               trailing: OutlinedButton(
-                                onPressed: timeState.isLoading ? null : () => ref.read(timeEntriesProvider.notifier).stopSession(sessionId: activeId),
+                                onPressed: timeState.isLoading
+                                    ? null
+                                    : () => ref
+                                          .read(timeEntriesProvider.notifier)
+                                          .stopSession(sessionId: activeId),
                                 child: const Text('Stop'),
                               ),
                             ),
@@ -80,36 +91,48 @@ class DashboardPage extends ConsumerWidget {
                       title: 'No active session',
                       subtitle: 'Start tracking time to see insights',
                       ctaLabel: 'Open Time Tracking',
-                      onCta: timeState.isLoading ? null : () => context.go(AppRoutes.timeTracking),
+                      onCta: timeState.isLoading
+                          ? null
+                          : () => context.go(AppRoutes.timeTracking),
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
                   error: (err, _) => ErrorCard(
                     message: err.toString(),
-                    onRetry: () => ref.read(timeEntriesProvider.notifier).refreshEntries(),
+                    onRetry: () =>
+                        ref.read(timeEntriesProvider.notifier).refreshEntries(),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 PrimaryButton(
                   label: AppStrings.goToTimeTracking,
-                  onPressed: authState.isLoading ? null : () => context.go(AppRoutes.timeTracking),
+                  onPressed: authState.isLoading
+                      ? null
+                      : () => context.go(AppRoutes.timeTracking),
                   isLoading: authState.isLoading,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 PrimaryButton(
                   label: 'Analytics',
-                  onPressed: authState.isLoading ? null : () => context.push(AppRoutes.analytics),
+                  onPressed: authState.isLoading
+                      ? null
+                      : () => context.push(AppRoutes.analytics),
                   isLoading: authState.isLoading,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 PrimaryButton(
                   label: 'AI Coach',
-                  onPressed: authState.isLoading ? null : () => context.push(AppRoutes.aiCoach),
+                  onPressed: authState.isLoading
+                      ? null
+                      : () => context.push(AppRoutes.aiCoach),
                   isLoading: authState.isLoading,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 OutlinedButton(
-                  onPressed: authState.isLoading ? null : () => ref.read(authProvider.notifier).signOut(),
+                  onPressed: authState.isLoading
+                      ? null
+                      : () => ref.read(authProvider.notifier).signOut(),
                   child: const Text(AppStrings.signOut),
                 ),
               ],

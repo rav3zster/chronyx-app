@@ -20,18 +20,26 @@ class AICoachPage extends ConsumerWidget {
         padding: const EdgeInsets.all(AppSpacing.md),
         child: state.when(
           data: (insights) {
-            if (insights.isEmpty) return const EmptyState(title: 'No insights yet', subtitle: 'Check back after more activity');
+            if (insights.isEmpty)
+              return const EmptyState(
+                title: 'No insights yet',
+                subtitle: 'Check back after more activity',
+              );
             return AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
               child: ListView.separated(
                 key: ValueKey('ai_list_${insights.length}'),
                 itemCount: insights.length,
-                separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (context, index) {
                   final insight = insights[index];
                   return AppCard(
                     child: ListTile(
-                      title: Text(insight.message, style: Theme.of(context).textTheme.bodyLarge),
+                      title: Text(
+                        insight.message,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
                       subtitle: Text(insight.type.toString().split('.').last),
                     ),
                   );

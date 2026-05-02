@@ -14,8 +14,13 @@ class GoalCard extends StatelessWidget {
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: ListTile(
-        title: Text(progress.goal.title, style: Theme.of(context).textTheme.titleMedium),
-        subtitle: Text('${progress.percentCompleted.toStringAsFixed(0)}% • 🔥 ${progress.currentStreak}'),
+        title: Text(
+          progress.goal.title,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        subtitle: Text(
+          '${progress.percentCompleted.toStringAsFixed(0)}% • 🔥 ${progress.currentStreak}',
+        ),
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
         contentPadding: EdgeInsets.zero,

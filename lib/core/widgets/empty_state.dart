@@ -25,7 +25,11 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(icon ?? Icons.hourglass_empty, size: AppSpacing.iconXl, color: Theme.of(context).colorScheme.primary),
+            Icon(
+              icon ?? Icons.hourglass_empty,
+              size: AppSpacing.iconXl,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(height: AppSpacing.md),
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             if (subtitle != null) ...[

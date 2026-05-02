@@ -23,33 +23,33 @@ class TimeEntryCard extends StatelessWidget {
 
     return AppCard(
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              entry.taskName.isEmpty ? AppStrings.unknownTask : entry.taskName,
-              style: Theme.of(context).textTheme.titleMedium,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            entry.taskName.isEmpty ? AppStrings.unknownTask : entry.taskName,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text('$startedAt • $duration'),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            entry.isActive ? AppStrings.inProgress : duration,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: entry.isActive ? AppColors.success : null,
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Text('$startedAt • $duration'),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              entry.isActive ? AppStrings.inProgress : duration,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: entry.isActive ? AppColors.success : null,
-                  ),
-            ),
-            if (entry.isActive) ...<Widget>[
-              const SizedBox(height: AppSpacing.md),
-              Align(
-                alignment: Alignment.centerRight,
-                child: OutlinedButton(
-                  onPressed: onStopSession,
-                  child: const Text(AppStrings.stopSession),
-                ),
+          ),
+          if (entry.isActive) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton(
+                onPressed: onStopSession,
+                child: const Text(AppStrings.stopSession),
               ),
-            ],
+            ),
           ],
-        ),
+        ],
+      ),
     );
   }
 

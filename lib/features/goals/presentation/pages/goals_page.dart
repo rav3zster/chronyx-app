@@ -22,10 +22,12 @@ class GoalsPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Goals')),
       floatingActionButton: FloatingActionButton(
-        onPressed: state.isLoading ? null : () async {
-          await context.push(AppRoutes.goalsCreate);
-          ref.read(goalsProvider.notifier).refresh();
-        },
+        onPressed: state.isLoading
+            ? null
+            : () async {
+                await context.push(AppRoutes.goalsCreate);
+                ref.read(goalsProvider.notifier).refresh();
+              },
         child: const Icon(Icons.add),
       ),
       body: Padding(
@@ -49,7 +51,8 @@ class GoalsPage extends ConsumerWidget {
               child: ListView.separated(
                 key: ValueKey('goals_list_${items.length}'),
                 itemCount: items.length,
-                separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (context, index) {
                   final g = items[index];
                   return GoalCard(

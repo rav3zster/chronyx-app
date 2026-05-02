@@ -5,6 +5,8 @@ class AppRoutes {
   static const String login = '/login';
   static const String dashboard = '/dashboard';
   static const String timeTracking = '/time-tracking';
+  static const String analytics = '/analytics';
+  static const String wrapped = '/wrapped';
 
   /// Matches [GoRoute.name] for login (must equal `'login'`).
   static const String loginName = 'login';

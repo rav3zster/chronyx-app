@@ -6,6 +6,7 @@ import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:chronyx/features/analytics/presentation/pages/analytics_page.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -37,6 +38,11 @@ class DashboardPage extends ConsumerWidget {
             PrimaryButton(
               label: AppStrings.goToTimeTracking,
               onPressed: () => context.go(AppRoutes.timeTracking),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            PrimaryButton(
+              label: 'Analytics',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AnalyticsPage())),
             ),
             const SizedBox(height: AppSpacing.md),
             OutlinedButton(

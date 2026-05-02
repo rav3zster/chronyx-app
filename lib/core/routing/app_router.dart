@@ -3,6 +3,8 @@ import 'package:chronyx/features/auth/presentation/pages/dashboard_page.dart';
 import 'package:chronyx/features/auth/presentation/pages/login_page.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/time_tracking/presentation/pages/time_tracking_page.dart';
+import 'package:chronyx/features/analytics/presentation/pages/analytics_page.dart';
+import 'package:chronyx/features/analytics/presentation/pages/wrapped_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -55,6 +57,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.timeTracking,
         name: AppRoutes.timeTrackingName,
         builder: (context, state) => const TimeTrackingPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.analytics,
+        name: 'analytics',
+        builder: (context, state) => const AnalyticsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.wrapped,
+        name: 'wrapped',
+        builder: (context, state) => const WrappedPage(),
       ),
     ],
   );

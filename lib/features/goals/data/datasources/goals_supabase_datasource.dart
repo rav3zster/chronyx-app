@@ -1,3 +1,4 @@
+import 'package:chronyx/core/errors/app_exception.dart';
 import 'package:chronyx/features/goals/data/datasources/goals_remote_datasource.dart';
 import 'package:chronyx/features/goals/data/models/goal_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,7 +9,11 @@ class GoalsSupabaseDataSource implements GoalsRemoteDataSource {
   final SupabaseClient _supabaseClient;
   static const String _tableName = 'goals';
 
-  String get _currentUserId => _supabaseClient.auth.currentUser!.id;
+  String get _currentUserId {
+    final uid = _supabaseClient.auth.currentUser?.id;
+    if (uid == null) throw const UnknownException('Not authenticated');
+    return uid;
+  }
 
   @override
   Future<List<GoalModel>> fetchGoals() async {

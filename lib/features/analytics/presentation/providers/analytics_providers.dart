@@ -1,6 +1,7 @@
 import 'package:chronyx/features/analytics/data/repositories/analytics_repository_impl.dart';
 import 'package:chronyx/features/analytics/domain/entities/analytics_summary.dart';
 import 'package:chronyx/features/analytics/domain/repositories/analytics_repository.dart';
+import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/time_tracking/presentation/providers/time_tracking_providers.dart';
 import 'package:chronyx/features/goals/presentation/providers/goals_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +22,11 @@ class AnalyticsNotifier extends AsyncNotifier<AnalyticsSummary?> {
 
   @override
   Future<AnalyticsSummary?> build() async {
+    // Guard: wait for confirmed user before running analytics.
+    final authState = ref.watch(authProvider);
+    if (!authState.hasValue || authState.value == null) {
+      return null;
+    }
     return _repo.fetchSummary();
   }
 

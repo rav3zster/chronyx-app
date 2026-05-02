@@ -2,6 +2,7 @@ import 'dart:async';
 
 // errors handled at repository layer
 import 'package:chronyx/core/providers/supabase_provider.dart';
+import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/goals/data/datasources/goals_remote_datasource.dart';
 import 'package:chronyx/features/goals/data/datasources/goals_supabase_datasource.dart';
 import 'package:chronyx/features/goals/data/repositories/goals_repository_impl.dart';
@@ -30,6 +31,11 @@ class GoalsNotifier extends AsyncNotifier<List<GoalProgress>> {
 
   @override
   Future<List<GoalProgress>> build() async {
+    // Guard: wait for confirmed user before querying Supabase.
+    final authState = ref.watch(authProvider);
+    if (!authState.hasValue || authState.value == null) {
+      return <GoalProgress>[];
+    }
     return _repository.fetchGoalsWithProgress();
   }
 

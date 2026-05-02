@@ -4,6 +4,7 @@ import 'package:chronyx/core/constants/app_strings.dart';
 import 'package:chronyx/core/errors/app_exception.dart';
 import 'package:chronyx/core/providers/supabase_provider.dart';
 import 'package:chronyx/core/services/focus_tracker.dart';
+import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/time_tracking/data/datasources/time_tracking_remote_datasource.dart';
 import 'package:chronyx/features/time_tracking/data/datasources/time_tracking_supabase_datasource.dart';
 import 'package:chronyx/features/time_tracking/data/repositories/time_tracking_repository_impl.dart';
@@ -122,6 +123,13 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
 
   @override
   Future<List<TimeEntry>> build() async {
+    // Guard: wait for a confirmed authenticated user before querying Supabase.
+    // This prevents null-userId crashes during the OAuth redirect flow.
+    final authState = ref.watch(authProvider);
+    if (!authState.hasValue || authState.value == null) {
+      return <TimeEntry>[];
+    }
+
     final entries = await _repository.fetchTimeEntries();
     _startTickerIfNeeded(entries);
     return entries;

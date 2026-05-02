@@ -217,16 +217,20 @@ class DashboardPage extends ConsumerWidget {
                   Expanded(
                     child: GlassCard(
                       useBlur: false,
-                      padding: const EdgeInsets.all(AppSpacing.sm + 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.sm,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.today_rounded,
-                              color: scheme.primary, size: AppSpacing.iconMd),
-                          const SizedBox(height: AppSpacing.xs),
+                              color: scheme.primary, size: AppSpacing.iconSm),
+                          const SizedBox(height: 4),
                           Text(
-                            analyticsState.value != null
-                                ? '${(analyticsState.value!.totalMinutesDaily / 60).toStringAsFixed(1)}h'
+                            analyticsState.valueOrNull != null
+                                ? '${(analyticsState.valueOrNull!.totalMinutesDaily / 60).toStringAsFixed(1)}h'
                                 : '—',
                             style: textTheme.titleSmall?.copyWith(
                               color: scheme.onSurface,
@@ -245,24 +249,28 @@ class DashboardPage extends ConsumerWidget {
                   Expanded(
                     child: GlassCard(
                       useBlur: false,
-                      padding: const EdgeInsets.all(AppSpacing.sm + 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.sm,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.insights_rounded,
                               color: const Color(0xFF818CF8),
-                              size: AppSpacing.iconMd),
-                          const SizedBox(height: AppSpacing.xs),
+                              size: AppSpacing.iconSm),
+                          const SizedBox(height: 4),
                           Text(
-                            analyticsState.value != null
-                                ? '${analyticsState.value!.productivityScore.toStringAsFixed(0)}%'
+                            analyticsState.valueOrNull != null
+                                ? '${analyticsState.valueOrNull!.productivityScore.toStringAsFixed(0)}%'
                                 : '—',
                             style: textTheme.titleSmall?.copyWith(
                               color: scheme.onSurface,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          Text('Productivity',
+                          Text('Score',
                               style: textTheme.bodySmall?.copyWith(
                                   color: scheme.onSurfaceVariant,
                                   fontSize: 10)),
@@ -274,14 +282,18 @@ class DashboardPage extends ConsumerWidget {
                   Expanded(
                     child: GlassCard(
                       useBlur: false,
-                      padding: const EdgeInsets.all(AppSpacing.sm + 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.sm,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.center_focus_strong_rounded,
                               color: const Color(0xFF22D3A6),
-                              size: AppSpacing.iconMd),
-                          const SizedBox(height: AppSpacing.xs),
+                              size: AppSpacing.iconSm),
+                          const SizedBox(height: 4),
                           Text(
                             '${(focusStats.focusRatio * 100).toStringAsFixed(0)}%',
                             style: textTheme.titleSmall?.copyWith(
@@ -408,7 +420,7 @@ class _QuickActionGrid extends StatelessWidget {
         crossAxisCount: 2,
         mainAxisSpacing: AppSpacing.sm,
         crossAxisSpacing: AppSpacing.sm,
-        childAspectRatio: 1.6,
+        mainAxisExtent: 90,
       ),
       itemCount: actions.length,
       itemBuilder: (context, index) {
@@ -471,10 +483,11 @@ class _QuickActionCardState extends State<_QuickActionCard>
             borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
             border: Border.all(color: scheme.outlineVariant, width: 1),
           ),
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.all(AppSpacing.sm),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 padding: const EdgeInsets.all(AppSpacing.xs),
@@ -482,14 +495,17 @@ class _QuickActionCardState extends State<_QuickActionCard>
                   color: a.color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                 ),
-                child: Icon(a.icon, color: a.color, size: AppSpacing.iconLg),
+                child: Icon(a.icon, color: a.color, size: AppSpacing.iconMd),
               ),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 a.label,
-                style: textTheme.labelMedium?.copyWith(
+                style: textTheme.labelSmall?.copyWith(
                   color: scheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

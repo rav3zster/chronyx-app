@@ -4,6 +4,7 @@ import 'package:chronyx/core/errors/app_exception.dart';
 import 'package:chronyx/features/analytics/domain/entities/analytics_summary.dart';
 import 'package:chronyx/features/analytics/domain/repositories/analytics_repository.dart';
 import 'package:chronyx/features/time_tracking/domain/repositories/time_tracking_repository.dart';
+import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
 import 'package:chronyx/features/goals/domain/repositories/goals_repository.dart';
 
 class AnalyticsRepositoryImpl implements AnalyticsRepository {
@@ -29,24 +30,28 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       final Map<int, int> weekdayMinutes = {}; // 1-7
 
       for (final e in entries) {
-        final start = e.startedAt.toLocal();
-        final end = (e.endedAt ?? DateTime.now()).toLocal();
-        final minutes = end.difference(start).inMinutes;
+        final splits = _splitSessionByDay(e);
+        // accumulate per-day minutes into totals and weekday map
+        for (final entry in splits.entries) {
+          final DateTime day = entry.key; // local date at day start
+          final int mins = entry.value;
 
-        // accumulate for task
-        taskMinutes.update(e.taskName, (v) => v + minutes, ifAbsent: () => minutes);
+          // totals
+          if (_isSameDay(day, now)) totalDaily += mins;
+          if (_isSameWeek(day, now)) totalWeekly += mins;
+          if (_isSameMonth(day, now)) totalMonthly += mins;
 
-        // hours distribution (approx by start hour)
-        final int hour = start.hour;
-        hourMinutes.update(hour, (v) => v + minutes, ifAbsent: () => minutes);
+          final int weekday = day.weekday;
+          weekdayMinutes.update(weekday, (v) => v + mins, ifAbsent: () => mins);
+        }
 
-        final int weekday = start.weekday;
-        weekdayMinutes.update(weekday, (v) => v + minutes, ifAbsent: () => minutes);
+        // accumulate for task (sum of splits equals total)
+        final int totalMins = splits.values.fold(0, (a, b) => a + b);
+        taskMinutes.update(e.taskName, (v) => v + totalMins, ifAbsent: () => totalMins);
 
-        // totals
-        if (_isSameDay(start, now)) totalDaily += minutes;
-        if (_isSameWeek(start, now)) totalWeekly += minutes;
-        if (_isSameMonth(start, now)) totalMonthly += minutes;
+        // hours distribution (approx by start hour for now)
+        final int hour = e.startedAt.toLocal().hour;
+        hourMinutes.update(hour, (v) => v + totalMins, ifAbsent: () => totalMins);
       }
 
       // top tasks
@@ -104,5 +109,28 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     final firstDayOfYear = DateTime(date.year, 1, 1);
     final days = date.difference(firstDayOfYear).inDays;
     return ((days + firstDayOfYear.weekday) / 7).ceil();
+  }
+
+  Map<DateTime, int> _splitSessionByDay(TimeEntry entry) {
+    final Map<DateTime, int> result = {};
+    DateTime start = entry.startedAt.toLocal();
+    DateTime end = (entry.endedAt ?? DateTime.now()).toLocal();
+
+    if (!end.isAfter(start)) return result;
+
+    DateTime cursor = start;
+    while (cursor.isBefore(end)) {
+      final DateTime dayStart = DateTime(cursor.year, cursor.month, cursor.day);
+      final DateTime nextMidnight = dayStart.add(const Duration(days: 1));
+      final DateTime chunkEnd = nextMidnight.isBefore(end) ? nextMidnight : end;
+      final int mins = chunkEnd.difference(cursor).inMinutes;
+      final DateTime key = DateTime(cursor.year, cursor.month, cursor.day);
+      if (mins > 0) {
+        result.update(key, (v) => v + mins, ifAbsent: () => mins);
+      }
+      cursor = chunkEnd;
+    }
+
+    return result;
   }
 }

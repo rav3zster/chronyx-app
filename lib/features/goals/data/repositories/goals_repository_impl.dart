@@ -6,6 +6,7 @@ import 'package:chronyx/features/goals/domain/entities/goal.dart';
 import 'package:chronyx/features/goals/domain/entities/goal_progress.dart';
 import 'package:chronyx/features/goals/domain/repositories/goals_repository.dart';
 import 'package:chronyx/features/time_tracking/domain/repositories/time_tracking_repository.dart';
+import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
 
 class GoalsRepositoryImpl implements GoalsRepository {
   GoalsRepositoryImpl(this._remoteDataSource, this._timeRepo);
@@ -25,6 +26,29 @@ class GoalsRepositoryImpl implements GoalsRepository {
     }
   }
 
+  Map<DateTime, int> _splitSessionByDay(TimeEntry entry) {
+    final Map<DateTime, int> result = {};
+    DateTime start = entry.startedAt.toLocal();
+    DateTime end = (entry.endedAt ?? DateTime.now()).toLocal();
+
+    if (!end.isAfter(start)) return result;
+
+    DateTime cursor = start;
+    while (cursor.isBefore(end)) {
+      final DateTime dayStart = DateTime(cursor.year, cursor.month, cursor.day);
+      final DateTime nextMidnight = dayStart.add(const Duration(days: 1));
+      final DateTime chunkEnd = nextMidnight.isBefore(end) ? nextMidnight : end;
+      final int mins = chunkEnd.difference(cursor).inMinutes;
+      final DateTime key = DateTime(cursor.year, cursor.month, cursor.day);
+      if (mins > 0) {
+        result.update(key, (v) => v + mins, ifAbsent: () => mins);
+      }
+      cursor = chunkEnd;
+    }
+
+    return result;
+  }
+
   @override
   Future<List<GoalProgress>> fetchGoalsWithProgress() async {
     try {
@@ -34,13 +58,16 @@ class GoalsRepositoryImpl implements GoalsRepository {
       return goals.map((goal) {
         final Map<DateTime, int> daily = {};
         for (final entry in entries) {
-          final DateTime started = entry.startedAt.toLocal();
-          if (started.isBefore(goal.startDate) || started.isAfter(goal.endDate)) {
-            continue;
+          final splits = _splitSessionByDay(entry);
+          for (final kv in splits.entries) {
+            final day = kv.key;
+            final mins = kv.value;
+            if (day.isBefore(DateTime(goal.startDate.year, goal.startDate.month, goal.startDate.day)) ||
+                day.isAfter(DateTime(goal.endDate.year, goal.endDate.month, goal.endDate.day))) {
+              continue;
+            }
+            daily.update(day, (v) => v + mins, ifAbsent: () => mins);
           }
-          final DateTime day = DateTime(started.year, started.month, started.day);
-          final int minutes = entry.duration.inMinutes;
-          daily.update(day, (v) => v + minutes, ifAbsent: () => minutes);
         }
 
         final int totalDays = goal.endDate.difference(goal.startDate).inDays + 1;

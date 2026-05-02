@@ -3,6 +3,7 @@ import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/constants/app_strings.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
 import 'package:flutter/material.dart';
+import 'package:chronyx/core/widgets/app_card.dart';
 import 'package:intl/intl.dart';
 
 class TimeEntryCard extends StatelessWidget {
@@ -20,10 +21,8 @@ class TimeEntryCard extends StatelessWidget {
     final String startedAt = DateFormat.Hm().format(entry.startedAt.toLocal());
     final String duration = _formatDuration(entry.duration);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
+    return AppCard(
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
@@ -51,7 +50,6 @@ class TimeEntryCard extends StatelessWidget {
             ],
           ],
         ),
-      ),
     );
   }
 

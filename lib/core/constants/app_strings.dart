@@ -26,4 +26,6 @@ class AppStrings {
   static const String activeSessionExists =
       'Please stop the active session before starting a new one.';
   static const String authRequired = 'Please sign in to continue.';
+  static const String goalsTitle = 'Goals';
+  static const String createGoal = 'Create Goal';
 }

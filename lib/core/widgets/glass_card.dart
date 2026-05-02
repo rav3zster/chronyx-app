@@ -44,8 +44,8 @@ class GlassCard extends StatelessWidget {
     final isDark = scheme.brightness == Brightness.dark;
 
     final defaultBg = isDark
-        ? scheme.surfaceContainerHighest.withOpacity(0.55)
-        : scheme.surface.withOpacity(0.75);
+        ? scheme.surfaceContainerHighest.withValues(alpha: 0.55)
+        : scheme.surface.withValues(alpha: 0.75);
 
     final defaultBorder = borderColor ?? scheme.outlineVariant;
 
@@ -56,7 +56,7 @@ class GlassCard extends StatelessWidget {
       boxShadow: boxShadow ??
           [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -69,10 +69,12 @@ class GlassCard extends StatelessWidget {
       child: child,
     );
 
-    if (!useBlur) return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: content,
-    );
+    if (!useBlur) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: content,
+      );
+    }
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),

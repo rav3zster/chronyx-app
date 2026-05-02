@@ -89,7 +89,7 @@ class _InputFieldState extends State<InputField> {
             boxShadow: _focused
                 ? [
                     BoxShadow(
-                      color: scheme.primary.withOpacity(0.12),
+                      color: scheme.primary.withValues(alpha: 0.12),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),

@@ -88,14 +88,14 @@ class _PrimaryButtonState extends State<PrimaryButton>
                     end: Alignment.centerRight,
                   ),
             color: disabled
-                ? Theme.of(context).colorScheme.onSurface.withOpacity(0.08)
+                ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08)
                 : null,
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             boxShadow: disabled
                 ? null
                 : [
                     BoxShadow(
-                      color: colors.first.withOpacity(0.35),
+                      color: colors.first.withValues(alpha: 0.35),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -132,7 +132,7 @@ class _PrimaryButtonState extends State<PrimaryButton>
           widget.label,
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 color: disabled
-                    ? Theme.of(context).colorScheme.onSurface.withOpacity(0.38)
+                    ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)
                     : Colors.white,
                 fontWeight: FontWeight.w600,
                 fontSize: 15,

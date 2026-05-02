@@ -49,8 +49,25 @@ class AppColors {
   static const Color error = Color(0xFFFF5370);
   static const Color info = Color(0xFF38BDF8);
 
+  // ── Ocean (Midnight Ocean) theme palette ───────────────────────────────────
+  static const Color oceanPrimary = Color(0xFF06B6D4);
+  static const Color oceanBackground = Color(0xFF040D12);
+  static const Color oceanSurface = Color(0xFF071419);
+  static const Color oceanSurface2 = Color(0xFF0C1E24);
+  static const Color oceanSurface3 = Color(0xFF132830);
+
+  // ── Amber (Sunset Amber) theme palette ────────────────────────────────────
+  static const Color amberPrimary = Color(0xFFF59E0B);
+  static const Color amberBackground = Color(0xFF0A0700);
+  static const Color amberSurface = Color(0xFF120E02);
+  static const Color amberSurface2 = Color(0xFF1C1704);
+  static const Color amberSurface3 = Color(0xFF28200A);
+
   // ── Gradient stops ─────────────────────────────────────────────────────────
   static const List<Color> brandGradient = [indigo, violet];
+  static const List<Color> oceanGradient = [oceanPrimary, Color(0xFF38BDF8)];
+  static const List<Color> amberGradient = [amberPrimary, Color(0xFFFF8C42)];
+  static const List<Color> violetGradient = [violet, Color(0xFF6366F1)];
   static const List<Color> darkBgGradient = [
     Color(0xFF0A0E1A),
     Color(0xFF0F1525),

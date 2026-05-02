@@ -5,60 +5,42 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// The single source of truth for all [ThemeData] in Chronyx.
-///
-/// Usage:
-/// ```dart
-/// MaterialApp(
-///   theme: AppTheme.light,
-///   darkTheme: AppTheme.dark,
-///   themeMode: ThemeMode.dark,
-/// )
-/// ```
 class AppTheme {
   const AppTheme._();
 
-  // ── Dark (default, premium) ────────────────────────────────────────────────
+  // ── Dark (Cosmic Dark — default, premium) ──────────────────────────────────
 
   static ThemeData get dark {
     const scheme = ColorScheme(
       brightness: Brightness.dark,
-      // Brand
       primary: AppColors.indigo,
       onPrimary: Color(0xFFF1F4FF),
       primaryContainer: Color(0xFF1E2652),
       onPrimaryContainer: Color(0xFFCDD5FF),
-      // Secondary
       secondary: AppColors.violet,
       onSecondary: Color(0xFFF1F4FF),
       secondaryContainer: Color(0xFF2D1F52),
       onSecondaryContainer: Color(0xFFDDD0FF),
-      // Tertiary
       tertiary: AppColors.cyan,
       onTertiary: Color(0xFF001F26),
       tertiaryContainer: Color(0xFF003640),
       onTertiaryContainer: Color(0xFFA8EEFF),
-      // Error
       error: AppColors.error,
       onError: Color(0xFF1A0010),
       errorContainer: Color(0xFF3D0020),
       onErrorContainer: Color(0xFFFFD9E2),
-      // Surface
       surface: AppColors.darkSurface,
       onSurface: AppColors.textPrimaryDark,
       surfaceContainerHighest: AppColors.darkSurface3,
       onSurfaceVariant: AppColors.textSecondaryDark,
-      // Outline
       outline: AppColors.darkBorder,
       outlineVariant: AppColors.darkBorderSubtle,
-      // Inverse
       inverseSurface: AppColors.lightSurface,
       onInverseSurface: AppColors.textPrimaryLight,
       inversePrimary: AppColors.indigoDark,
-      // Shadow / scrim
       shadow: Color(0xFF000000),
       scrim: Color(0xFF000000),
     );
-
     return _buildTheme(
       scheme: scheme,
       textTheme: AppTextTheme.dark,
@@ -67,7 +49,7 @@ class AppTheme {
     );
   }
 
-  // ── Light ──────────────────────────────────────────────────────────────────
+  // ── Light (Light Clean) ────────────────────────────────────────────────────
 
   static ThemeData get light {
     const scheme = ColorScheme(
@@ -100,7 +82,6 @@ class AppTheme {
       shadow: Color(0xFF000000),
       scrim: Color(0xFF000000),
     );
-
     return _buildTheme(
       scheme: scheme,
       textTheme: AppTextTheme.light,
@@ -109,7 +90,7 @@ class AppTheme {
     );
   }
 
-  // ── Accent (Dark with violet shift) ───────────────────────────────────────
+  // ── Accent (Violet Dream — dark with violet shift) ─────────────────────────
 
   static ThemeData get accent {
     const scheme = ColorScheme(
@@ -142,11 +123,98 @@ class AppTheme {
       shadow: Color(0xFF000000),
       scrim: Color(0xFF000000),
     );
-
     return _buildTheme(
       scheme: scheme,
       textTheme: AppTextTheme.dark,
       scaffoldBg: const Color(0xFF08050F),
+      systemOverlayStyle: SystemUiOverlayStyle.light,
+    );
+  }
+
+  // ── Ocean (Midnight Ocean — deep teal/cyan on dark navy) ──────────────────
+
+  static ThemeData get ocean {
+    const scheme = ColorScheme(
+      brightness: Brightness.dark,
+      primary: AppColors.oceanPrimary,
+      onPrimary: Color(0xFFF0FEFF),
+      primaryContainer: Color(0xFF063A42),
+      onPrimaryContainer: Color(0xFFA8EEFF),
+      secondary: Color(0xFF38BDF8),
+      onSecondary: Color(0xFF001F2B),
+      secondaryContainer: Color(0xFF002D3D),
+      onSecondaryContainer: Color(0xFFB3E7FF),
+      tertiary: AppColors.indigo,
+      onTertiary: Color(0xFFF1F4FF),
+      tertiaryContainer: Color(0xFF1E2652),
+      onTertiaryContainer: Color(0xFFCDD5FF),
+      error: AppColors.error,
+      onError: Color(0xFF1A0010),
+      errorContainer: Color(0xFF3D0020),
+      onErrorContainer: Color(0xFFFFD9E2),
+      surface: AppColors.oceanSurface,
+      onSurface: Color(0xFFE0F7FA),
+      surfaceContainerHighest: AppColors.oceanSurface3,
+      onSurfaceVariant: Color(0xFF7ABCC6),
+      outline: Color(0xFF1C3D44),
+      outlineVariant: Color(0xFF112830),
+      inverseSurface: Color(0xFFE0F7FA),
+      onInverseSurface: Color(0xFF00171C),
+      inversePrimary: AppColors.oceanPrimary,
+      shadow: Color(0xFF000000),
+      scrim: Color(0xFF000000),
+    );
+    return _buildTheme(
+      scheme: scheme,
+      textTheme: AppTextTheme.build(
+        displayColor: const Color(0xFFE0F7FA),
+        bodyColor: const Color(0xFF7ABCC6),
+      ),
+      scaffoldBg: AppColors.oceanBackground,
+      systemOverlayStyle: SystemUiOverlayStyle.light,
+    );
+  }
+
+  // ── Amber (Sunset Amber — warm amber on near-black) ────────────────────────
+
+  static ThemeData get amber {
+    const scheme = ColorScheme(
+      brightness: Brightness.dark,
+      primary: AppColors.amberPrimary,
+      onPrimary: Color(0xFF1A0F00),
+      primaryContainer: Color(0xFF3D2800),
+      onPrimaryContainer: Color(0xFFFFDFA3),
+      secondary: Color(0xFFFF8C42),
+      onSecondary: Color(0xFF200E00),
+      secondaryContainer: Color(0xFF402300),
+      onSecondaryContainer: Color(0xFFFFDBC0),
+      tertiary: Color(0xFFFBD059),
+      onTertiary: Color(0xFF1C1400),
+      tertiaryContainer: Color(0xFF3A2C00),
+      onTertiaryContainer: Color(0xFFFFE985),
+      error: AppColors.error,
+      onError: Color(0xFF1A0010),
+      errorContainer: Color(0xFF3D0020),
+      onErrorContainer: Color(0xFFFFD9E2),
+      surface: AppColors.amberSurface,
+      onSurface: Color(0xFFFFF3E0),
+      surfaceContainerHighest: AppColors.amberSurface3,
+      onSurfaceVariant: Color(0xFFBFA880),
+      outline: Color(0xFF40300A),
+      outlineVariant: Color(0xFF281E05),
+      inverseSurface: Color(0xFFFFF3E0),
+      onInverseSurface: Color(0xFF1A0F00),
+      inversePrimary: AppColors.amberPrimary,
+      shadow: Color(0xFF000000),
+      scrim: Color(0xFF000000),
+    );
+    return _buildTheme(
+      scheme: scheme,
+      textTheme: AppTextTheme.build(
+        displayColor: const Color(0xFFFFF3E0),
+        bodyColor: const Color(0xFFBFA880),
+      ),
+      scaffoldBg: AppColors.amberBackground,
       systemOverlayStyle: SystemUiOverlayStyle.light,
     );
   }
@@ -167,7 +235,7 @@ class AppTheme {
       textTheme: textTheme,
       scaffoldBackgroundColor: scaffoldBg,
 
-      // ── AppBar ──────────────────────────────────────────────────────────
+      // ── AppBar ────────────────────────────────────────────────────────────
       appBarTheme: AppBarTheme(
         centerTitle: false,
         backgroundColor: Colors.transparent,
@@ -176,11 +244,43 @@ class AppTheme {
         systemOverlayStyle: systemOverlayStyle,
         titleTextStyle: textTheme.titleLarge?.copyWith(
           color: scheme.onSurface,
+          fontWeight: FontWeight.w700,
         ),
         iconTheme: IconThemeData(color: scheme.onSurface),
       ),
 
-      // ── Card ────────────────────────────────────────────────────────────
+      // ── NavigationBar (M3) ────────────────────────────────────────────────
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: isDark
+            ? scheme.surface.withValues(alpha: 0.92)
+            : scheme.surface.withValues(alpha: 0.96),
+        indicatorColor: scheme.primary.withValues(alpha: 0.18),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return IconThemeData(color: scheme.primary, size: AppSpacing.iconLg);
+          }
+          return IconThemeData(
+            color: scheme.onSurfaceVariant,
+            size: AppSpacing.iconLg,
+          );
+        }),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return textTheme.labelSmall?.copyWith(
+              color: scheme.primary,
+              fontWeight: FontWeight.w600,
+            );
+          }
+          return textTheme.labelSmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          );
+        }),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+      ),
+
+      // ── Card ─────────────────────────────────────────────────────────────
       cardTheme: CardThemeData(
         color: scheme.surfaceContainerHighest,
         elevation: 0,
@@ -191,7 +291,7 @@ class AppTheme {
         margin: EdgeInsets.zero,
       ),
 
-      // ── Elevated Button ────────────────────────────────────────────────
+      // ── Elevated Button ──────────────────────────────────────────────────
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: scheme.primary,
@@ -208,7 +308,7 @@ class AppTheme {
         ),
       ),
 
-      // ── Filled Button ──────────────────────────────────────────────────
+      // ── Filled Button ────────────────────────────────────────────────────
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: scheme.primary,
@@ -225,7 +325,7 @@ class AppTheme {
         ),
       ),
 
-      // ── Outlined Button ────────────────────────────────────────────────
+      // ── Outlined Button ──────────────────────────────────────────────────
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: scheme.onSurface,
@@ -241,7 +341,7 @@ class AppTheme {
         ),
       ),
 
-      // ── Input Decoration ───────────────────────────────────────────────
+      // ── Input Decoration ─────────────────────────────────────────────────
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark
@@ -268,23 +368,24 @@ class AppTheme {
           borderSide: BorderSide(color: scheme.error),
         ),
         hintStyle: textTheme.bodyMedium?.copyWith(
-          color: scheme.onSurfaceVariant.withOpacity(0.6),
+          color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
         ),
         labelStyle: textTheme.bodyMedium?.copyWith(
           color: scheme.onSurfaceVariant,
         ),
       ),
 
-      // ── Divider ────────────────────────────────────────────────────────
+      // ── Divider ──────────────────────────────────────────────────────────
       dividerTheme: DividerThemeData(
         color: scheme.outlineVariant,
         thickness: 1,
         space: 1,
       ),
 
-      // ── Snackbar ───────────────────────────────────────────────────────
+      // ── Snackbar ─────────────────────────────────────────────────────────
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: isDark ? AppColors.darkSurface3 : AppColors.darkSurface,
+        backgroundColor:
+            isDark ? AppColors.darkSurface3 : AppColors.darkSurface,
         contentTextStyle: textTheme.bodyMedium?.copyWith(
           color: AppColors.textPrimaryDark,
         ),
@@ -294,7 +395,7 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
       ),
 
-      // ── ListTile ───────────────────────────────────────────────────────
+      // ── ListTile ─────────────────────────────────────────────────────────
       listTileTheme: ListTileThemeData(
         iconColor: scheme.onSurfaceVariant,
         titleTextStyle: textTheme.bodyMedium?.copyWith(
@@ -306,10 +407,20 @@ class AppTheme {
         ),
       ),
 
-      // ── Icon ───────────────────────────────────────────────────────────
+      // ── Icon ─────────────────────────────────────────────────────────────
       iconTheme: IconThemeData(
         color: scheme.onSurfaceVariant,
         size: AppSpacing.iconLg,
+      ),
+
+      // ── FloatingActionButton ─────────────────────────────────────────────
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.onPrimary,
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        ),
       ),
     );
   }

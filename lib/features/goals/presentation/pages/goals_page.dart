@@ -2,15 +2,13 @@ import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/widgets/empty_state.dart';
 import 'package:chronyx/core/widgets/error_card.dart';
+import 'package:chronyx/core/widgets/settings_icon_button.dart';
 import 'package:chronyx/features/goals/presentation/providers/goals_providers.dart';
 import 'package:chronyx/features/goals/presentation/widgets/goal_card.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'create_goal_page.dart';
-import 'goal_detail_page.dart';
 
 class GoalsPage extends ConsumerWidget {
   const GoalsPage({super.key});
@@ -20,7 +18,13 @@ class GoalsPage extends ConsumerWidget {
     final state = ref.watch(goalsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Goals')),
+      appBar: AppBar(
+        title: const Text('Goals'),
+        actions: const [
+          SettingsIconButton(),
+          SizedBox(width: AppSpacing.xs),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: state.isLoading
             ? null
@@ -28,10 +32,15 @@ class GoalsPage extends ConsumerWidget {
                 await context.push(AppRoutes.goalsCreate);
                 ref.read(goalsProvider.notifier).refresh();
               },
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add_rounded),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.md,
+          AppSpacing.md,
+        ),
         child: state.when(
           data: (items) {
             if (items.isEmpty) {
@@ -50,6 +59,9 @@ class GoalsPage extends ConsumerWidget {
               duration: const Duration(milliseconds: 300),
               child: ListView.separated(
                 key: ValueKey('goals_list_${items.length}'),
+                padding: const EdgeInsets.only(
+                  bottom: AppSpacing.xxxl + AppSpacing.lg,
+                ),
                 itemCount: items.length,
                 separatorBuilder: (context, index) =>
                     const SizedBox(height: AppSpacing.sm),

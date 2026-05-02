@@ -1,5 +1,4 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
-import 'package:chronyx/features/goals/domain/entities/goal_progress.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chronyx/features/goals/presentation/providers/goals_providers.dart';

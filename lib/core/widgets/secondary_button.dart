@@ -71,12 +71,12 @@ class _SecondaryButtonState extends State<SecondaryButton>
             width: double.infinity,
             decoration: BoxDecoration(
               color: _hovered
-                  ? scheme.onSurface.withOpacity(0.04)
+                  ? scheme.onSurface.withValues(alpha: 0.04)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               border: Border.all(
                 color: disabled
-                    ? scheme.outline.withOpacity(0.3)
+                    ? scheme.outline.withValues(alpha: 0.3)
                     : scheme.outline,
                 width: 1,
               ),
@@ -101,7 +101,7 @@ class _SecondaryButtonState extends State<SecondaryButton>
           height: 20,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            color: scheme.onSurface.withOpacity(0.6),
+            color: scheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
       );
@@ -118,7 +118,7 @@ class _SecondaryButtonState extends State<SecondaryButton>
           widget.label,
           style: textTheme.labelLarge?.copyWith(
             color: disabled
-                ? scheme.onSurface.withOpacity(0.38)
+                ? scheme.onSurface.withValues(alpha: 0.38)
                 : scheme.onSurface,
             fontWeight: FontWeight.w600,
             fontSize: 15,

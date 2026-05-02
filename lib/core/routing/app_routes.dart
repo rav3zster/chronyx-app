@@ -11,6 +11,7 @@ class AppRoutes {
   static const String goals = '/goals';
   static const String goalsCreate = '/goals/create';
   static const String goalDetail = '/goals/:id';
+  static const String settings = '/settings';
 
   /// Matches [GoRoute.name] for login (must equal `'login'`).
   static const String loginName = 'login';
@@ -20,4 +21,7 @@ class AppRoutes {
 
   /// Matches [GoRoute.name] for time tracking.
   static const String timeTrackingName = 'timeTracking';
+
+  /// Matches [GoRoute.name] for settings.
+  static const String settingsName = 'settings';
 }

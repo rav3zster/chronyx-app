@@ -11,4 +11,6 @@ abstract class GoalsRemoteDataSource {
     required int dailyTargetMinutes,
     required bool isChallenge,
   });
+
+  Future<void> deleteGoal(String goalId);
 }

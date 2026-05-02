@@ -59,4 +59,12 @@ class GoalsNotifier extends AsyncNotifier<List<GoalProgress>> {
       return _repository.fetchGoalsWithProgress();
     });
   }
+
+  Future<void> deleteGoal(String goalId) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await _repository.deleteGoal(goalId);
+      return _repository.fetchGoalsWithProgress();
+    });
+  }
 }

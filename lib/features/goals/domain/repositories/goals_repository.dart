@@ -14,4 +14,6 @@ abstract class GoalsRepository {
     required int dailyTargetMinutes,
     required bool isChallenge,
   });
+
+  Future<void> deleteGoal(String goalId);
 }

@@ -7,6 +7,9 @@ class AnalyticsSummary {
     required this.peakHour,
     required this.mostActiveDay,
     required this.goalPerformance,
+    required this.productivityScore,
+    required this.categoryBreakdown,
+    required this.dailyMinutes,
   });
 
   final int totalMinutesDaily;
@@ -15,5 +18,14 @@ class AnalyticsSummary {
   final List<MapEntry<String, int>> topTasks; // taskName -> minutes
   final int peakHour; // 0-23
   final String mostActiveDay; // weekday name
-  final Map<String, dynamic> goalPerformance; // summary data
+  final Map<String, dynamic> goalPerformance;
+
+  /// 0–100 productivity score based on category distribution
+  final double productivityScore;
+
+  /// Minutes tracked per category this week
+  final Map<String, int> categoryBreakdown;
+
+  /// Daily minutes for the last 7 days (key = day offset from today, 0 = today)
+  final Map<int, int> dailyMinutes;
 }

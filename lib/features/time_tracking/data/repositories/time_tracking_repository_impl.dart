@@ -26,9 +26,15 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
   }
 
   @override
-  Future<TimeEntry> startSession({required String taskName}) async {
+  Future<TimeEntry> startSession({
+    required String taskName,
+    required TaskCategory category,
+  }) async {
     try {
-      final model = await _remoteDataSource.startSession(taskName: taskName);
+      final model = await _remoteDataSource.startSession(
+        taskName: taskName,
+        category: category,
+      );
       return model.toEntity();
     } on SocketException {
       throw const NetworkException();

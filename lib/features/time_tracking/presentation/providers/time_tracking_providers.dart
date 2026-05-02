@@ -3,12 +3,21 @@ import 'dart:async';
 import 'package:chronyx/core/constants/app_strings.dart';
 import 'package:chronyx/core/errors/app_exception.dart';
 import 'package:chronyx/core/providers/supabase_provider.dart';
+import 'package:chronyx/core/services/focus_tracker.dart';
 import 'package:chronyx/features/time_tracking/data/datasources/time_tracking_remote_datasource.dart';
 import 'package:chronyx/features/time_tracking/data/datasources/time_tracking_supabase_datasource.dart';
 import 'package:chronyx/features/time_tracking/data/repositories/time_tracking_repository_impl.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
 import 'package:chronyx/features/time_tracking/domain/repositories/time_tracking_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+// ── Infrastructure providers ──────────────────────────────────────────────────
+
+final focusTrackerProvider = Provider<FocusTracker>((ref) {
+  final tracker = FocusTracker();
+  ref.onDispose(tracker.dispose);
+  return tracker;
+});
 
 final timeTrackingRemoteDataSourceProvider =
     Provider<TimeTrackingRemoteDataSource>((ref) {
@@ -20,6 +29,68 @@ final timeTrackingRepositoryProvider = Provider<TimeTrackingRepository>((ref) {
     ref.watch(timeTrackingRemoteDataSourceProvider),
   );
 });
+
+// ── Focus ratio tracking ──────────────────────────────────────────────────────
+
+/// Tracks today's focused vs away seconds since the app was opened.
+final focusStatsProvider = NotifierProvider<FocusStatsNotifier, FocusStats>(
+  FocusStatsNotifier.new,
+);
+
+class FocusStats {
+  const FocusStats({
+    this.focusedSeconds = 0,
+    this.awaySeconds = 0,
+  });
+
+  final int focusedSeconds;
+  final int awaySeconds;
+
+  int get totalSeconds => focusedSeconds + awaySeconds;
+
+  double get focusRatio =>
+      totalSeconds == 0 ? 1.0 : focusedSeconds / totalSeconds;
+}
+
+class FocusStatsNotifier extends Notifier<FocusStats> {
+  Timer? _tick;
+  StreamSubscription<bool>? _focusSub;
+  bool _isFocused = true;
+
+  @override
+  FocusStats build() {
+    final tracker = ref.watch(focusTrackerProvider);
+    _isFocused = tracker.isFocused;
+
+    _focusSub = tracker.focusStream.listen((focused) {
+      _isFocused = focused;
+    });
+
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      final s = state;
+      if (_isFocused) {
+        state = FocusStats(
+          focusedSeconds: s.focusedSeconds + 1,
+          awaySeconds: s.awaySeconds,
+        );
+      } else {
+        state = FocusStats(
+          focusedSeconds: s.focusedSeconds,
+          awaySeconds: s.awaySeconds + 1,
+        );
+      }
+    });
+
+    ref.onDispose(() {
+      _tick?.cancel();
+      _focusSub?.cancel();
+    });
+
+    return const FocusStats();
+  }
+}
+
+// ── Time entries ──────────────────────────────────────────────────────────────
 
 final timeEntriesProvider =
     AsyncNotifierProvider<TimeEntriesNotifier, List<TimeEntry>>(
@@ -37,10 +108,8 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
     if (hasActive && _ticker == null) {
       _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
         final current = state.value ?? <TimeEntry>[];
-        // Create a new list instance to trigger UI updates for live timers.
         state = AsyncData(List<TimeEntry>.from(current));
       });
-      // Ensure ticker is cancelled when notifier is disposed.
       ref.onDispose(() {
         _ticker?.cancel();
         _ticker = null;
@@ -67,7 +136,10 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
     });
   }
 
-  Future<void> startSession({required String taskName}) async {
+  Future<void> startSession({
+    required String taskName,
+    required TaskCategory category,
+  }) async {
     final currentEntries = state.value ?? <TimeEntry>[];
     final hasActiveSession = currentEntries.any((entry) => entry.isActive);
     if (hasActiveSession) {
@@ -76,7 +148,7 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
 
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      await _repository.startSession(taskName: taskName);
+      await _repository.startSession(taskName: taskName, category: category);
       final entries = await _repository.fetchTimeEntries();
       _startTickerIfNeeded(entries);
       return entries;

@@ -4,6 +4,7 @@ import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:chronyx/core/widgets/glass_card.dart';
 import 'package:chronyx/core/widgets/error_card.dart';
 import 'package:chronyx/core/widgets/settings_icon_button.dart';
+import 'package:chronyx/features/analytics/presentation/providers/analytics_providers.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/time_tracking/presentation/providers/time_tracking_providers.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
@@ -18,6 +19,8 @@ class DashboardPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final timeState = ref.watch(timeEntriesProvider);
+    final analyticsState = ref.watch(analyticsProvider);
+    final focusStats = ref.watch(focusStatsProvider);
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -202,6 +205,99 @@ class DashboardPage extends ConsumerWidget {
                   onRetry: () =>
                       ref.read(timeEntriesProvider.notifier).refreshEntries(),
                 ),
+              ),
+
+              const SizedBox(height: AppSpacing.lg),
+
+              // ── Today's Stats ─────────────────────────────────────────────
+              _SectionLabel(label: "Today's Overview"),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: GlassCard(
+                      useBlur: false,
+                      padding: const EdgeInsets.all(AppSpacing.sm + 2),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.today_rounded,
+                              color: scheme.primary, size: AppSpacing.iconMd),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            analyticsState.value != null
+                                ? '${(analyticsState.value!.totalMinutesDaily / 60).toStringAsFixed(1)}h'
+                                : '—',
+                            style: textTheme.titleSmall?.copyWith(
+                              color: scheme.onSurface,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text('Today',
+                              style: textTheme.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                  fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: GlassCard(
+                      useBlur: false,
+                      padding: const EdgeInsets.all(AppSpacing.sm + 2),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.insights_rounded,
+                              color: const Color(0xFF818CF8),
+                              size: AppSpacing.iconMd),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            analyticsState.value != null
+                                ? '${analyticsState.value!.productivityScore.toStringAsFixed(0)}%'
+                                : '—',
+                            style: textTheme.titleSmall?.copyWith(
+                              color: scheme.onSurface,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text('Productivity',
+                              style: textTheme.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                  fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: GlassCard(
+                      useBlur: false,
+                      padding: const EdgeInsets.all(AppSpacing.sm + 2),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.center_focus_strong_rounded,
+                              color: const Color(0xFF22D3A6),
+                              size: AppSpacing.iconMd),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            '${(focusStats.focusRatio * 100).toStringAsFixed(0)}%',
+                            style: textTheme.titleSmall?.copyWith(
+                              color: scheme.onSurface,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text('Focus',
+                              style: textTheme.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                  fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: AppSpacing.lg),

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:chronyx/core/errors/app_exception.dart';
 import 'package:chronyx/features/goals/data/datasources/goals_remote_datasource.dart';
 import 'package:chronyx/features/goals/domain/entities/goal.dart';
@@ -19,9 +17,7 @@ class GoalsRepositoryImpl implements GoalsRepository {
     try {
       final models = await _remoteDataSource.fetchGoals();
       return models.map((m) => m.toEntity()).toList();
-    } on SocketException {
-      throw const NetworkException();
-    } catch (_) {
+    } on Exception {
       throw const UnknownException();
     }
   }
@@ -112,9 +108,7 @@ class GoalsRepositoryImpl implements GoalsRepository {
           dailyMinutes: daily,
         );
       }).toList();
-    } on SocketException {
-      throw const NetworkException();
-    } catch (_) {
+    } on Exception {
       throw const UnknownException();
     }
   }
@@ -138,9 +132,16 @@ class GoalsRepositoryImpl implements GoalsRepository {
         isChallenge: isChallenge,
       );
       return model.toEntity();
-    } on SocketException {
-      throw const NetworkException();
-    } catch (_) {
+    } on Exception {
+      throw const UnknownException();
+    }
+  }
+
+  @override
+  Future<void> deleteGoal(String goalId) async {
+    try {
+      await _remoteDataSource.deleteGoal(goalId);
+    } on Exception {
       throw const UnknownException();
     }
   }

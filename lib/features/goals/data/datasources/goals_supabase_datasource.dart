@@ -46,4 +46,14 @@ class GoalsSupabaseDataSource implements GoalsRemoteDataSource {
 
     return GoalModel.fromJson(rows.first as Map<String, dynamic>);
   }
+
+  @override
+  Future<void> deleteGoal(String goalId) async {
+    final String userId = _currentUserId;
+    await _supabaseClient
+        .from(_tableName)
+        .delete()
+        .eq('user_id', userId)
+        .eq('id', goalId);
+  }
 }

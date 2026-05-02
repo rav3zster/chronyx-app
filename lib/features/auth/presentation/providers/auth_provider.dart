@@ -23,7 +23,9 @@ final authProvider = AsyncNotifierProvider<AuthNotifier, AuthUser?>(
 
 final authRouterRefreshListenableProvider = Provider<ChangeNotifier>((ref) {
   final notifier = _RouterAuthRefreshNotifier();
-  ref.listen<AsyncValue<AuthUser?>>(authProvider, (_, next) {
+  ref.listen<AsyncValue<AuthUser?>>(authProvider, (previous, next) {
+    debugPrint('[Auth] provider update: ${next.runtimeType} '
+        'hasValue=${next.hasValue} isLoading=${next.isLoading}');
     notifier.notify();
   });
   ref.onDispose(notifier.dispose);
@@ -37,22 +39,38 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
 
   @override
   Future<AuthUser?> build() async {
+    debugPrint('[Auth] build() — subscribe + loadCurrentUser');
     _subscribeToAuthState();
-    return _repository.getCurrentUser();
+    final user = await _repository.getCurrentUser();
+    debugPrint('[Auth] build() — initial user: ${user?.id ?? "null"}');
+    return user;
   }
 
+  /// Refresh session from Supabase (optional explicit reload).
   Future<void> getCurrentUser() async {
-    state = const AsyncLoading();
+    debugPrint('[Auth] getCurrentUser()');
     state = await AsyncValue.guard(_repository.getCurrentUser);
   }
 
+  /// Starts Google OAuth. Does **not** set [AsyncLoading] on this notifier —
+  /// the auth stream emits when the session exists (including after web redirect).
   Future<void> signInWithGoogle() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(_repository.signInWithGoogle);
+    debugPrint('[Auth] signInWithGoogle() start');
+    try {
+      await _repository.signInWithGoogle();
+    } catch (e, st) {
+      debugPrint('[Auth] signInWithGoogle() error: $e');
+      state = AsyncError(e, st);
+      return;
+    }
+    debugPrint(
+      '[Auth] signInWithGoogle() OAuth flow invoked — '
+      'waiting for onAuthStateChange / session',
+    );
   }
 
   Future<void> signOut() async {
-    state = const AsyncLoading();
+    debugPrint('[Auth] signOut()');
     state = await AsyncValue.guard(() async {
       await _repository.signOut();
       return null;
@@ -62,10 +80,14 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
   void _subscribeToAuthState() {
     _authSubscription?.cancel();
     _authSubscription = _repository.observeAuthState().listen(
-      (user) {
+      (AuthUser? user) {
+        debugPrint(
+          '[Auth] onAuthStateChange mapped user: ${user?.id ?? "null"}',
+        );
         state = AsyncData(user);
       },
-      onError: (error, stackTrace) {
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('[Auth] onAuthStateChange stream error: $error');
         state = AsyncError(error, stackTrace);
       },
     );

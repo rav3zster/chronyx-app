@@ -6,25 +6,48 @@ import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class LoginPage extends ConsumerWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
-  Future<void> _signIn(WidgetRef ref, BuildContext context) async {
-    await ref.read(authProvider.notifier).signInWithGoogle();
-    final authState = ref.read(authProvider);
-    authState.whenOrNull(
-      error: (error, _) {
-        final message = ErrorMessageMapper.fromError(error);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
-      },
-    );
+  @override
+  ConsumerState<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends ConsumerState<LoginPage> {
+  bool _oauthLaunchBusy = false;
+
+  Future<void> _signIn() async {
+    setState(() {
+      _oauthLaunchBusy = true;
+    });
+    try {
+      await ref.read(authProvider.notifier).signInWithGoogle();
+      if (!mounted) {
+        return;
+      }
+      final authState = ref.read(authProvider);
+      authState.whenOrNull(
+        error: (error, _) {
+          final message = ErrorMessageMapper.fromError(error);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message)),
+          );
+        },
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _oauthLaunchBusy = false;
+        });
+      }
+    }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final bool buttonBusy =
+        _oauthLaunchBusy || (authState.isLoading && !authState.hasValue);
 
     return Scaffold(
       body: Center(
@@ -50,8 +73,8 @@ class LoginPage extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.lg),
                 PrimaryButton(
                   label: AppStrings.continueWithGoogle,
-                  isLoading: authState.isLoading,
-                  onPressed: () => _signIn(ref, context),
+                  isLoading: buttonBusy,
+                  onPressed: _signIn,
                 ),
               ],
             ),

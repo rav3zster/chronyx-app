@@ -1,3 +1,4 @@
+import 'package:chronyx/core/constants/oauth_config.dart';
 import 'package:chronyx/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:chronyx/features/auth/data/models/auth_user_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,7 +19,10 @@ class AuthSupabaseDataSource implements AuthRemoteDataSource {
 
   @override
   Future<AuthUserModel?> signInWithGoogle() async {
-    await _supabaseClient.auth.signInWithOAuth(OAuthProvider.google);
+    await _supabaseClient.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: OAuthConfig.googleWebRedirectTo,
+    );
     final user = _supabaseClient.auth.currentUser;
     if (user == null) {
       return null;
@@ -33,12 +37,12 @@ class AuthSupabaseDataSource implements AuthRemoteDataSource {
 
   @override
   Stream<AuthUserModel?> observeAuthState() {
-    return _supabaseClient.auth.onAuthStateChange.map((event) {
-      final user = event.session?.user;
-      if (user == null) {
+    return _supabaseClient.auth.onAuthStateChange.map((AuthState data) {
+      final session = data.session;
+      if (session == null) {
         return null;
       }
-      return AuthUserModel.fromSupabaseUser(user);
+      return AuthUserModel.fromSupabaseUser(session.user);
     });
   }
 }

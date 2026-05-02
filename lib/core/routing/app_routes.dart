@@ -8,6 +8,9 @@ class AppRoutes {
   static const String analytics = '/analytics';
   static const String wrapped = '/wrapped';
   static const String aiCoach = '/ai-coach';
+  static const String goals = '/goals';
+  static const String goalsCreate = '/goals/create';
+  static const String goalDetail = '/goals/:id';
 
   /// Matches [GoRoute.name] for login (must equal `'login'`).
   static const String loginName = 'login';

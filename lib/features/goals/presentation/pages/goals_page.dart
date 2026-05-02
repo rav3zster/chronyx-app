@@ -3,6 +3,8 @@ import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/features/goals/presentation/providers/goals_providers.dart';
 import 'package:chronyx/features/goals/presentation/widgets/goal_card.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'create_goal_page.dart';
@@ -19,7 +21,7 @@ class GoalsPage extends ConsumerWidget {
       appBar: AppBar(title: const Text('Goals')),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CreateGoalPage()));
+          await context.push(AppRoutes.goalsCreate);
           ref.read(goalsProvider.notifier).refresh();
         },
         child: const Icon(Icons.add),
@@ -38,7 +40,7 @@ class GoalsPage extends ConsumerWidget {
                 final g = items[index];
                 return GoalCard(
                   progress: g,
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GoalDetailPage(progress: g))),
+                  onTap: () => context.push('/goals/${g.goal.id}'),
                 );
               },
             );

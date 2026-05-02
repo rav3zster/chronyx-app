@@ -2,8 +2,10 @@ import 'package:chronyx/core/constants/app_spacing.dart';
 // strings not required in this file
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/features/analytics/presentation/providers/analytics_providers.dart';
-import 'package:chronyx/features/analytics/presentation/pages/wrapped_page.dart';
+// wrapped route is registered; no direct import needed
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AnalyticsPage extends ConsumerWidget {
@@ -44,7 +46,7 @@ class AnalyticsPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 ElevatedButton(
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WrappedPage())),
+                  onPressed: () => context.push(AppRoutes.wrapped),
                   child: const Text('Open Wrapped'),
                 ),
               ],

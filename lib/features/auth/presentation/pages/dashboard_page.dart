@@ -6,8 +6,7 @@ import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:chronyx/features/analytics/presentation/pages/analytics_page.dart';
-import 'package:chronyx/features/ai_coach/presentation/pages/ai_coach_page.dart';
+// navigation uses GoRouter; no direct page imports required here
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -43,12 +42,12 @@ class DashboardPage extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             PrimaryButton(
               label: 'Analytics',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AnalyticsPage())),
+              onPressed: () => context.push(AppRoutes.analytics),
             ),
             const SizedBox(height: AppSpacing.md),
             PrimaryButton(
               label: 'AI Coach',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AICoachPage())),
+              onPressed: () => context.push(AppRoutes.aiCoach),
             ),
             const SizedBox(height: AppSpacing.md),
             OutlinedButton(

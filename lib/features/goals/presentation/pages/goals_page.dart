@@ -1,14 +1,13 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
-import 'package:chronyx/core/widgets/empty_state.dart';
-import 'package:chronyx/core/widgets/error_card.dart';
+import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:chronyx/core/widgets/settings_icon_button.dart';
+import 'package:chronyx/core/widgets/state_view.dart';
 import 'package:chronyx/features/goals/presentation/providers/goals_providers.dart';
 import 'package:chronyx/features/goals/presentation/widgets/goal_card.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class GoalsPage extends ConsumerWidget {
   const GoalsPage({super.key});
@@ -25,14 +24,20 @@ class GoalsPage extends ConsumerWidget {
           SizedBox(width: AppSpacing.xs),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: state.isLoading
-            ? null
-            : () async {
-                await context.push(AppRoutes.goalsCreate);
-                ref.read(goalsProvider.notifier).refresh();
-              },
-        child: const Icon(Icons.add_rounded),
+      // Lift FAB above the floating bottom nav (height 64 + 12 margin + safe area).
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 76),
+        child: FloatingActionButton.extended(
+          onPressed: state.isLoading
+              ? null
+              : () async {
+                  await context.push(AppRoutes.goalsCreate);
+                  ref.read(goalsProvider.notifier).refresh();
+                },
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('New goal'),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(
@@ -44,12 +49,13 @@ class GoalsPage extends ConsumerWidget {
         child: state.when(
           data: (items) {
             if (items.isEmpty) {
-              return EmptyState(
+              return StateView.empty(
                 icon: Icons.flag_outlined,
                 title: 'No goals yet',
-                subtitle: 'Create a goal to stay on track',
-                ctaLabel: 'Create Goal',
-                onCta: () async {
+                message:
+                    'Create a goal to build a streak and stay accountable.',
+                actionLabel: 'Create goal',
+                onAction: () async {
                   await context.push(AppRoutes.goalsCreate);
                   ref.read(goalsProvider.notifier).refresh();
                 },
@@ -59,9 +65,7 @@ class GoalsPage extends ConsumerWidget {
               duration: const Duration(milliseconds: 300),
               child: ListView.separated(
                 key: ValueKey('goals_list_${items.length}'),
-                padding: const EdgeInsets.only(
-                  bottom: AppSpacing.xxxl + AppSpacing.lg,
-                ),
+                padding: const EdgeInsets.only(bottom: 120),
                 itemCount: items.length,
                 separatorBuilder: (context, index) =>
                     const SizedBox(height: AppSpacing.sm),
@@ -75,7 +79,7 @@ class GoalsPage extends ConsumerWidget {
               ),
             );
           },
-          error: (err, _) => ErrorCard(
+          error: (err, _) => StateView.error(
             message: ErrorMessageMapper.fromError(err),
             onRetry: () => ref.read(goalsProvider.notifier).refresh(),
           ),

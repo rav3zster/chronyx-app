@@ -9,6 +9,8 @@ import 'package:chronyx/core/widgets/section_header.dart';
 import 'package:chronyx/core/widgets/settings_icon_button.dart';
 import 'package:chronyx/features/analytics/presentation/providers/analytics_providers.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
+import 'package:chronyx/features/life_insights/presentation/providers/life_insights_providers.dart';
+import 'package:chronyx/features/life_insights/presentation/widgets/life_insights_panel.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project_task.dart';
 import 'package:chronyx/features/project_planner/presentation/providers/project_planner_providers.dart';
 import 'package:chronyx/features/project_planner/presentation/providers/todays_roadmap_provider.dart';
@@ -83,6 +85,21 @@ class _DashboardContent extends StatelessWidget {
           ),
           sliver: SliverToBoxAdapter(child: _TodaysMetrics()),
         ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.xl,
+            AppSpacing.md,
+            0,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: Builder(
+              builder: (context) => LifeInsightsPanel(
+                onTap: () => context.push(AppRoutes.lifeInsights),
+              ),
+            ),
+          ),
+        ),
         const SliverPadding(
           padding: EdgeInsets.fromLTRB(
             AppSpacing.md,
@@ -144,16 +161,7 @@ class _GreetingHeader extends ConsumerWidget {
   const _GreetingHeader({required this.user});
   final dynamic user;
 
-  String get _timeBasedGreeting {
-    final hour = DateTime.now().hour;
-    if (hour < 5) return 'Late night';
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    if (hour < 21) return 'Good evening';
-    return 'Good night';
-  }
-
-  String get _firstName {
+  String get _fallbackName {
     if (user?.email == null) return 'there';
     final email = user.email as String;
     final local = email.split('@').first;
@@ -166,17 +174,25 @@ class _GreetingHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
+    final greetingAsync = ref.watch(greetingProvider);
+
+    final greeting = greetingAsync.valueOrNull;
+    final salutation = greeting?.salutation ?? _fallbackSalutation();
+    final name = greeting?.name ?? _fallbackName;
+    final message = greeting?.message ?? "Let's make today count.";
+    final glyph = greeting?.glyph ?? '✨';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$_timeBasedGreeting, $_firstName',
+                  '$salutation, $name',
                   style: textTheme.headlineSmall?.copyWith(
                     color: scheme.onSurface,
                     fontWeight: FontWeight.w700,
@@ -184,11 +200,27 @@ class _GreetingHeader extends ConsumerWidget {
                     height: 1.1,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Let\'s make today count.',
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
+                const SizedBox(height: 6),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 350),
+                  transitionBuilder: (child, anim) =>
+                      FadeTransition(opacity: anim, child: child),
+                  child: Row(
+                    key: ValueKey(message),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(glyph, style: const TextStyle(fontSize: 14)),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          message,
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -198,6 +230,15 @@ class _GreetingHeader extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _fallbackSalutation() {
+    final h = DateTime.now().hour;
+    if (h < 5) return 'Late night';
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    if (h < 22) return 'Good evening';
+    return 'Late night';
   }
 }
 

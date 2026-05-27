@@ -5,6 +5,8 @@ import 'package:chronyx/features/goals/domain/entities/goal_progress.dart';
 import 'package:chronyx/features/goals/domain/repositories/goals_repository.dart';
 import 'package:chronyx/features/time_tracking/domain/repositories/time_tracking_repository.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class GoalsRepositoryImpl implements GoalsRepository {
   GoalsRepositoryImpl(this._remoteDataSource, this._timeRepo);
@@ -17,9 +19,49 @@ class GoalsRepositoryImpl implements GoalsRepository {
     try {
       final models = await _remoteDataSource.fetchGoals();
       return models.map((m) => m.toEntity()).toList();
-    } on Exception {
+    } on AppException {
+      rethrow;
+    } on PostgrestException catch (e, st) {
+      debugPrint('[Goals] PostgrestException: ${e.code} ${e.message}');
+      debugPrintStack(stackTrace: st);
+      throw _mapPostgrestException(e);
+    } catch (e, st) {
+      debugPrint('[Goals] Unexpected fetch error: $e');
+      debugPrintStack(stackTrace: st);
+      if (_isNetworkError(e)) throw const NetworkException();
       throw const UnknownException();
     }
+  }
+
+  AppException _mapPostgrestException(PostgrestException e) {
+    final code = e.code ?? '';
+    final msg = e.message.toLowerCase();
+    // 42P01 = undefined_table, PGRST116/PGRST204 = not found, 42501 = perm denied
+    if (code == '42P01' || msg.contains('does not exist')) {
+      return const ServerException(
+        'Database not set up. Run the migration SQL in Supabase.',
+      );
+    }
+    if (code == '42501' ||
+        msg.contains('permission denied') ||
+        msg.contains('row-level security') ||
+        msg.contains('rls')) {
+      return const ServerException(
+        'Access denied by database policy. Check RLS rules.',
+      );
+    }
+    if (msg.contains('jwt') || msg.contains('not authenticated')) {
+      return const ServerException('Session expired. Please sign in again.');
+    }
+    return ServerException(e.message);
+  }
+
+  bool _isNetworkError(Object e) {
+    final msg = e.toString().toLowerCase();
+    return msg.contains('socketexception') ||
+        msg.contains('failed host lookup') ||
+        msg.contains('connection refused') ||
+        msg.contains('network is unreachable');
   }
 
   Map<DateTime, int> _splitSessionByDay(TimeEntry entry) {
@@ -58,15 +100,28 @@ class GoalsRepositoryImpl implements GoalsRepository {
           for (final kv in splits.entries) {
             final day = kv.key;
             final mins = kv.value;
-            if (day.isBefore(DateTime(goal.startDate.year, goal.startDate.month, goal.startDate.day)) ||
-                day.isAfter(DateTime(goal.endDate.year, goal.endDate.month, goal.endDate.day))) {
+            if (day.isBefore(
+                  DateTime(
+                    goal.startDate.year,
+                    goal.startDate.month,
+                    goal.startDate.day,
+                  ),
+                ) ||
+                day.isAfter(
+                  DateTime(
+                    goal.endDate.year,
+                    goal.endDate.month,
+                    goal.endDate.day,
+                  ),
+                )) {
               continue;
             }
             daily.update(day, (v) => v + mins, ifAbsent: () => mins);
           }
         }
 
-        final int totalDays = goal.endDate.difference(goal.startDate).inDays + 1;
+        final int totalDays =
+            goal.endDate.difference(goal.startDate).inDays + 1;
         int daysCompleted = 0;
         for (int i = 0; i < totalDays; i++) {
           final DateTime day = DateTime(
@@ -81,7 +136,9 @@ class GoalsRepositoryImpl implements GoalsRepository {
         }
 
         final int daysMissed = totalDays - daysCompleted;
-        final double percentCompleted = totalDays == 0 ? 0 : (daysCompleted / totalDays) * 100;
+        final double percentCompleted = totalDays == 0
+            ? 0
+            : (daysCompleted / totalDays) * 100;
 
         // compute current streak ending today
         int streak = 0;
@@ -108,7 +165,12 @@ class GoalsRepositoryImpl implements GoalsRepository {
           dailyMinutes: daily,
         );
       }).toList();
-    } on Exception {
+    } on AppException {
+      rethrow;
+    } on PostgrestException catch (e) {
+      throw _mapPostgrestException(e);
+    } catch (e) {
+      if (_isNetworkError(e)) throw const NetworkException();
       throw const UnknownException();
     }
   }
@@ -132,7 +194,12 @@ class GoalsRepositoryImpl implements GoalsRepository {
         isChallenge: isChallenge,
       );
       return model.toEntity();
-    } on Exception {
+    } on AppException {
+      rethrow;
+    } on PostgrestException catch (e) {
+      throw _mapPostgrestException(e);
+    } catch (e) {
+      if (_isNetworkError(e)) throw const NetworkException();
       throw const UnknownException();
     }
   }
@@ -141,7 +208,12 @@ class GoalsRepositoryImpl implements GoalsRepository {
   Future<void> deleteGoal(String goalId) async {
     try {
       await _remoteDataSource.deleteGoal(goalId);
-    } on Exception {
+    } on AppException {
+      rethrow;
+    } on PostgrestException catch (e) {
+      throw _mapPostgrestException(e);
+    } catch (e) {
+      if (_isNetworkError(e)) throw const NetworkException();
       throw const UnknownException();
     }
   }

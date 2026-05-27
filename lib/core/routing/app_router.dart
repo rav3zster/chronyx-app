@@ -8,6 +8,7 @@ import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart'
 import 'package:chronyx/features/goals/presentation/pages/create_goal_page.dart';
 import 'package:chronyx/features/goals/presentation/pages/goal_detail_page.dart';
 import 'package:chronyx/features/goals/presentation/pages/goals_page.dart';
+import 'package:chronyx/features/life_insights/presentation/pages/life_insights_page.dart';
 import 'package:chronyx/features/project_planner/presentation/pages/blueprint_wizard_page.dart';
 import 'package:chronyx/features/project_planner/presentation/pages/project_detail_page.dart';
 import 'package:chronyx/features/settings/presentation/pages/settings_page.dart';
@@ -120,6 +121,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final projectId = state.pathParameters['projectId']!;
           return ProjectDetailPage(projectId: projectId);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.lifeInsights,
+        name: 'lifeInsights',
+        builder: (context, state) => const LifeInsightsPage(),
       ),
     ],
   );
@@ -238,44 +244,35 @@ class _NavPill extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(14),
         splashColor: scheme.primary.withValues(alpha: 0.08),
         highlightColor: Colors.transparent,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          decoration: BoxDecoration(
-            color: isActive
-                ? scheme.primary.withValues(alpha: 0.14)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(
-                    isActive ? item.activeIcon : item.icon,
-                    key: ValueKey(isActive),
-                    size: 22,
-                    color: isActive ? scheme.primary : scheme.onSurfaceVariant,
-                  ),
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: isActive
+                  ? scheme.primary.withValues(alpha: 0.16)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                transitionBuilder: (child, anim) => ScaleTransition(
+                  scale: anim,
+                  child: FadeTransition(opacity: anim, child: child),
                 ),
-                if (isActive) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    item.label,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: scheme.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ],
+                child: Icon(
+                  isActive ? item.activeIcon : item.icon,
+                  key: ValueKey(isActive),
+                  size: 22,
+                  color: isActive ? scheme.primary : scheme.onSurfaceVariant,
+                ),
+              ),
             ),
           ),
         ),

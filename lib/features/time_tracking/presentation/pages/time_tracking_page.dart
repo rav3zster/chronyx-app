@@ -41,9 +41,9 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
     } catch (error) {
       if (!mounted) return;
       final message = ErrorMessageMapper.fromError(error);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -147,17 +147,14 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
             const SizedBox(height: AppSpacing.sm),
             Expanded(
               child: timeEntriesState.when(
-                data: (entries) => _SessionList(
-                  entries: entries,
-                  onStopSession: _stopSession,
-                ),
+                data: (entries) =>
+                    _SessionList(entries: entries, onStopSession: _stopSession),
                 error: (error, _) => AppErrorView(
                   message: ErrorMessageMapper.fromError(error),
                   onRetry: () =>
                       ref.read(timeEntriesProvider.notifier).refreshEntries(),
                 ),
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
               ),
             ),
           ],
@@ -179,8 +176,9 @@ class _FocusRatioBanner extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final ratio = stats.focusRatio;
     final pct = (ratio * 100).toStringAsFixed(0);
-    final color =
-        ratio >= 0.8 ? const Color(0xFF22D3A6) : (ratio >= 0.5 ? scheme.primary : scheme.error);
+    final color = ratio >= 0.8
+        ? const Color(0xFF22D3A6)
+        : (ratio >= 0.5 ? scheme.primary : scheme.error);
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -194,8 +192,11 @@ class _FocusRatioBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.center_focus_strong_rounded,
-              color: color, size: AppSpacing.iconMd),
+          Icon(
+            Icons.center_focus_strong_rounded,
+            color: color,
+            size: AppSpacing.iconMd,
+          ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
@@ -237,12 +238,12 @@ class _CategoryChips extends StatelessWidget {
   final ValueChanged<TaskCategory> onSelected;
 
   Color _colorForCategory(TaskCategory cat) => switch (cat) {
-        TaskCategory.productive => const Color(0xFF22D3A6),
-        TaskCategory.learning => const Color(0xFF818CF8),
-        TaskCategory.break_ => const Color(0xFFFBBC05),
-        TaskCategory.distraction => const Color(0xFFEA4335),
-        TaskCategory.other => const Color(0xFF94A3B8),
-      };
+    TaskCategory.productive => const Color(0xFF22D3A6),
+    TaskCategory.learning => const Color(0xFF818CF8),
+    TaskCategory.break_ => const Color(0xFFFBBC05),
+    TaskCategory.distraction => const Color(0xFFEA4335),
+    TaskCategory.other => const Color(0xFF94A3B8),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -263,7 +264,9 @@ class _CategoryChips extends StatelessWidget {
               vertical: AppSpacing.xs,
             ),
             decoration: BoxDecoration(
-              color: isSelected ? color.withValues(alpha: 0.2) : Colors.transparent,
+              color: isSelected
+                  ? color.withValues(alpha: 0.2)
+                  : Colors.transparent,
               border: Border.all(
                 color: isSelected ? color : scheme.outlineVariant,
                 width: isSelected ? 1.5 : 1,
@@ -273,15 +276,14 @@ class _CategoryChips extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(cat.emoji,
-                    style: const TextStyle(fontSize: 13)),
+                Text(cat.emoji, style: const TextStyle(fontSize: 13)),
                 const SizedBox(width: 4),
                 Text(
                   cat.label,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: isSelected ? color : scheme.onSurfaceVariant,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      ),
+                    color: isSelected ? color : scheme.onSurfaceVariant,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -295,10 +297,7 @@ class _CategoryChips extends StatelessWidget {
 // ── Session List ──────────────────────────────────────────────────────────────
 
 class _SessionList extends StatelessWidget {
-  const _SessionList({
-    required this.entries,
-    required this.onStopSession,
-  });
+  const _SessionList({required this.entries, required this.onStopSession});
 
   final List<TimeEntry> entries;
   final Future<void> Function(String id) onStopSession;
@@ -319,8 +318,8 @@ class _SessionList extends StatelessWidget {
             Text(
               AppStrings.noSessionsYet,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -328,16 +327,14 @@ class _SessionList extends StatelessWidget {
     }
 
     return ListView.separated(
-      padding:
-          const EdgeInsets.only(bottom: AppSpacing.xxxl + AppSpacing.lg),
+      padding: const EdgeInsets.only(bottom: 120),
       itemCount: entries.length,
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
       itemBuilder: (context, index) {
         final entry = entries[index];
         return TimeEntryCard(
           entry: entry,
-          onStopSession:
-              entry.isActive ? () => onStopSession(entry.id) : null,
+          onStopSession: entry.isActive ? () => onStopSession(entry.id) : null,
         );
       },
     );

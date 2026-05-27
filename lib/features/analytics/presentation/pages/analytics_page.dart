@@ -2,10 +2,9 @@ import 'dart:math' as math;
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
-import 'package:chronyx/core/widgets/empty_state.dart';
-import 'package:chronyx/core/widgets/error_card.dart';
 import 'package:chronyx/core/widgets/glass_card.dart';
 import 'package:chronyx/core/widgets/settings_icon_button.dart';
+import 'package:chronyx/core/widgets/state_view.dart';
 import 'package:chronyx/features/analytics/domain/entities/analytics_summary.dart';
 import 'package:chronyx/features/analytics/presentation/providers/analytics_providers.dart';
 import 'package:flutter/material.dart';
@@ -22,22 +21,25 @@ class AnalyticsPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Analytics'),
-        actions: const [SettingsIconButton(), SizedBox(width: AppSpacing.xs)],
+        actions: const [
+          SettingsIconButton(),
+          SizedBox(width: AppSpacing.xs),
+        ],
       ),
       body: state.when(
         data: (summary) {
           if (summary == null) {
-            return EmptyState(
+            return StateView.empty(
               icon: Icons.analytics_outlined,
               title: 'No analytics yet',
-              subtitle: 'Start tracking time to generate insights',
-              ctaLabel: 'Track Time',
-              onCta: () => context.go(AppRoutes.timeTracking),
+              message: 'Track a few sessions to unlock your insights.',
+              actionLabel: 'Track time',
+              onAction: () => context.go(AppRoutes.timeTracking),
             );
           }
           return _AnalyticsBody(summary: summary);
         },
-        error: (err, _) => ErrorCard(
+        error: (err, _) => StateView.error(
           message: ErrorMessageMapper.fromError(err),
           onRetry: () => ref.read(analyticsProvider.notifier).refresh(),
         ),
@@ -53,13 +55,13 @@ class _AnalyticsBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
         AppSpacing.sm,
         AppSpacing.md,
-        AppSpacing.xxxl + AppSpacing.lg,
+        // Extra bottom padding so floating nav doesn't overlap content.
+        120,
       ),
       children: [
         // ── Productivity Score ───────────────────────────────────────────
@@ -124,15 +126,15 @@ class _ProductivityScoreCard extends StatelessWidget {
     final color = score >= 70
         ? const Color(0xFF22D3A6)
         : score >= 40
-            ? scheme.primary
-            : scheme.error;
+        ? scheme.primary
+        : scheme.error;
     final label = score >= 70
         ? 'Excellent'
         : score >= 40
-            ? 'Good'
-            : score > 0
-                ? 'Needs Work'
-                : 'No Data';
+        ? 'Good'
+        : score > 0
+        ? 'Needs Work'
+        : 'No Data';
 
     return GlassCard(
       useBlur: false,
@@ -245,8 +247,7 @@ class _StatsRow extends StatelessWidget {
             icon: Icons.today_rounded,
             color: scheme.primary,
             label: 'Today',
-            value:
-                '${(summary.totalMinutesDaily / 60).toStringAsFixed(1)}h',
+            value: '${(summary.totalMinutesDaily / 60).toStringAsFixed(1)}h',
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -255,8 +256,7 @@ class _StatsRow extends StatelessWidget {
             icon: Icons.calendar_view_week_rounded,
             color: const Color(0xFF818CF8),
             label: 'This Week',
-            value:
-                '${(summary.totalMinutesWeekly / 60).toStringAsFixed(1)}h',
+            value: '${(summary.totalMinutesWeekly / 60).toStringAsFixed(1)}h',
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -329,8 +329,9 @@ class _WeeklyBarChart extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    final maxMinutes =
-        dailyMinutes.values.isEmpty ? 1 : dailyMinutes.values.reduce(math.max);
+    final maxMinutes = dailyMinutes.values.isEmpty
+        ? 1
+        : dailyMinutes.values.reduce(math.max);
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     final now = DateTime.now();
 
@@ -341,8 +342,7 @@ class _WeeklyBarChart extends StatelessWidget {
         children: List.generate(7, (i) {
           final int dayOffset = 6 - i; // 6=oldest, 0=today
           final int minutes = dailyMinutes[dayOffset] ?? 0;
-          final double ratio =
-              maxMinutes == 0 ? 0.0 : minutes / maxMinutes;
+          final double ratio = maxMinutes == 0 ? 0.0 : minutes / maxMinutes;
           final bool isToday = dayOffset == 0;
           final dayName = days[(now.weekday - dayOffset - 1) % 7];
 
@@ -358,8 +358,7 @@ class _WeeklyBarChart extends StatelessWidget {
                       style: textTheme.labelSmall?.copyWith(
                         color: scheme.onSurface,
                         fontSize: 9,
-                        fontWeight:
-                            isToday ? FontWeight.w700 : FontWeight.w400,
+                        fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
                       ),
                     ),
                   const SizedBox(height: 4),
@@ -373,10 +372,7 @@ class _WeeklyBarChart extends StatelessWidget {
                       height: ratio * 72,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
-                            scheme.primary,
-                            scheme.secondary,
-                          ],
+                          colors: [scheme.primary, scheme.secondary],
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
                         ),
@@ -387,9 +383,7 @@ class _WeeklyBarChart extends StatelessWidget {
                   Text(
                     dayName,
                     style: textTheme.labelSmall?.copyWith(
-                      color: isToday
-                          ? scheme.primary
-                          : scheme.onSurfaceVariant,
+                      color: isToday ? scheme.primary : scheme.onSurfaceVariant,
                       fontSize: 9,
                       fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
                     ),
@@ -426,8 +420,8 @@ class _CategoryBreakdown extends StatelessWidget {
 
     return Column(
       children: breakdown.entries.map((e) {
-        final meta = _meta[e.key] ??
-            const _CatMeta('📌', 'Other', Color(0xFF94A3B8));
+        final meta =
+            _meta[e.key] ?? const _CatMeta('📌', 'Other', Color(0xFF94A3B8));
         final pct = total == 0 ? 0.0 : e.value / total;
         final mins = e.value;
         final hrs = (mins / 60).toStringAsFixed(1);
@@ -439,8 +433,7 @@ class _CategoryBreakdown extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text(meta.emoji,
-                      style: const TextStyle(fontSize: 13)),
+                  Text(meta.emoji, style: const TextStyle(fontSize: 13)),
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     meta.label,
@@ -460,14 +453,11 @@ class _CategoryBreakdown extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               ClipRRect(
-                borderRadius:
-                    BorderRadius.circular(AppSpacing.radiusFull),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 child: LinearProgressIndicator(
                   value: pct,
-                  backgroundColor:
-                      scheme.surfaceContainerHighest,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(meta.color),
+                  backgroundColor: scheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation<Color>(meta.color),
                   minHeight: 6,
                 ),
               ),
@@ -515,8 +505,7 @@ class _TopTasksList extends StatelessWidget {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: scheme.primary.withValues(alpha: 0.15),
-                  borderRadius:
-                      BorderRadius.circular(AppSpacing.radiusSm),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                 ),
                 child: Text(
                   '#$rank',
@@ -556,13 +545,14 @@ class _TopTasksList extends StatelessWidget {
                     const SizedBox(height: 3),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusFull),
+                        AppSpacing.radiusFull,
+                      ),
                       child: LinearProgressIndicator(
                         value: ratio,
-                        backgroundColor:
-                            scheme.surfaceContainerHighest,
+                        backgroundColor: scheme.surfaceContainerHighest,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                            scheme.primary),
+                          scheme.primary,
+                        ),
                         minHeight: 4,
                       ),
                     ),
@@ -603,25 +593,33 @@ class _WrappedCta extends StatelessWidget {
                 ),
                 borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
               ),
-              child: Icon(Icons.auto_awesome_rounded,
-                  color: scheme.onPrimary, size: AppSpacing.iconMd),
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                color: scheme.onPrimary,
+                size: AppSpacing.iconMd,
+              ),
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Your Wrapped',
-                      style: textTheme.titleSmall
-                          ?.copyWith(color: scheme.onSurface)),
-                  Text('Your productivity highlights',
-                      style: textTheme.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant)),
+                  Text(
+                    'Your Wrapped',
+                    style: textTheme.titleSmall?.copyWith(
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  Text(
+                    'Your productivity highlights',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded,
-                color: scheme.onSurfaceVariant),
+            Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
           ],
         ),
       ),

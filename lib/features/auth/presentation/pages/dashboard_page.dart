@@ -1,11 +1,15 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/constants/app_strings.dart';
+import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:chronyx/core/widgets/glass_card.dart';
 import 'package:chronyx/core/widgets/error_card.dart';
 import 'package:chronyx/core/widgets/settings_icon_button.dart';
 import 'package:chronyx/features/analytics/presentation/providers/analytics_providers.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
+import 'package:chronyx/features/project_planner/domain/entities/project_task.dart';
+import 'package:chronyx/features/project_planner/presentation/providers/project_planner_providers.dart';
+import 'package:chronyx/features/project_planner/presentation/providers/todays_roadmap_provider.dart';
 import 'package:chronyx/features/time_tracking/presentation/providers/time_tracking_providers.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
 import 'package:flutter/material.dart';
@@ -57,8 +61,9 @@ class DashboardPage extends ConsumerWidget {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius:
-                            BorderRadius.circular(AppSpacing.radiusMd),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMd,
+                        ),
                       ),
                       child: Icon(
                         Icons.person_rounded,
@@ -116,8 +121,9 @@ class DashboardPage extends ConsumerWidget {
                             padding: const EdgeInsets.all(AppSpacing.sm),
                             decoration: BoxDecoration(
                               color: scheme.primary.withValues(alpha: 0.15),
-                              borderRadius:
-                                  BorderRadius.circular(AppSpacing.radiusSm),
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.radiusSm,
+                              ),
                             ),
                             child: Icon(
                               Icons.timer_rounded,
@@ -159,8 +165,8 @@ class DashboardPage extends ConsumerWidget {
                             onPressed: timeState.isLoading
                                 ? null
                                 : () => ref
-                                    .read(timeEntriesProvider.notifier)
-                                    .stopSession(sessionId: activeId),
+                                      .read(timeEntriesProvider.notifier)
+                                      .stopSession(sessionId: activeId),
                             child: const Text('Stop'),
                           ),
                         ],
@@ -201,11 +207,16 @@ class DashboardPage extends ConsumerWidget {
                   ),
                 ),
                 error: (err, _) => ErrorCard(
-                  message: err.toString(),
+                  message: ErrorMessageMapper.fromError(err),
                   onRetry: () =>
                       ref.read(timeEntriesProvider.notifier).refreshEntries(),
                 ),
               ),
+
+              const SizedBox(height: AppSpacing.lg),
+
+              // ── Today's Roadmap ────────────────────────────────────────
+              _TodaysRoadmapSection(),
 
               const SizedBox(height: AppSpacing.lg),
 
@@ -225,8 +236,11 @@ class DashboardPage extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.today_rounded,
-                              color: scheme.primary, size: AppSpacing.iconSm),
+                          Icon(
+                            Icons.today_rounded,
+                            color: scheme.primary,
+                            size: AppSpacing.iconSm,
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             analyticsState.valueOrNull != null
@@ -237,10 +251,13 @@ class DashboardPage extends ConsumerWidget {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          Text('Today',
-                              style: textTheme.bodySmall?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  fontSize: 10)),
+                          Text(
+                            'Today',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              fontSize: 10,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -257,9 +274,11 @@ class DashboardPage extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.insights_rounded,
-                              color: const Color(0xFF818CF8),
-                              size: AppSpacing.iconSm),
+                          Icon(
+                            Icons.insights_rounded,
+                            color: const Color(0xFF818CF8),
+                            size: AppSpacing.iconSm,
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             analyticsState.valueOrNull != null
@@ -270,10 +289,13 @@ class DashboardPage extends ConsumerWidget {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          Text('Score',
-                              style: textTheme.bodySmall?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  fontSize: 10)),
+                          Text(
+                            'Score',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              fontSize: 10,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -290,9 +312,11 @@ class DashboardPage extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.center_focus_strong_rounded,
-                              color: const Color(0xFF22D3A6),
-                              size: AppSpacing.iconSm),
+                          Icon(
+                            Icons.center_focus_strong_rounded,
+                            color: const Color(0xFF22D3A6),
+                            size: AppSpacing.iconSm,
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             '${(focusStats.focusRatio * 100).toStringAsFixed(0)}%',
@@ -301,10 +325,13 @@ class DashboardPage extends ConsumerWidget {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          Text('Focus',
-                              style: textTheme.bodySmall?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  fontSize: 10)),
+                          Text(
+                            'Focus',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              fontSize: 10,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -343,8 +370,21 @@ class DashboardPage extends ConsumerWidget {
                     color: const Color(0xFF22D3A6),
                     onTap: () => context.go(AppRoutes.aiCoach),
                   ),
+                  _QuickAction(
+                    icon: Icons.map_rounded,
+                    label: 'Blueprint',
+                    color: const Color(0xFFF59E0B),
+                    onTap: () => context.push(AppRoutes.blueprint),
+                  ),
                 ],
               ),
+
+              const SizedBox(height: AppSpacing.xl),
+
+              // ── Recent Projects ────────────────────────────────────────
+              _SectionLabel(label: 'Recent Projects'),
+              const SizedBox(height: AppSpacing.sm),
+              _RecentProjectsSection(),
 
               const SizedBox(height: AppSpacing.xl),
 
@@ -361,7 +401,7 @@ class DashboardPage extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => ErrorCard(
-          message: err.toString(),
+          message: ErrorMessageMapper.fromError(err),
           onRetry: () => ref.read(authProvider.notifier).getCurrentUser(),
         ),
       ),
@@ -387,9 +427,9 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label,
       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.w700,
-          ),
+        color: Theme.of(context).colorScheme.onSurface,
+        fontWeight: FontWeight.w700,
+      ),
     );
   }
 }
@@ -451,9 +491,10 @@ class _QuickActionCardState extends State<_QuickActionCard>
       vsync: this,
       duration: const Duration(milliseconds: 120),
     );
-    _scale = Tween<double>(begin: 1, end: 0.95).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
-    );
+    _scale = Tween<double>(
+      begin: 1,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   @override
@@ -511,6 +552,233 @@ class _QuickActionCardState extends State<_QuickActionCard>
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RecentProjectsSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final projectsAsync = ref.watch(projectsProvider);
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return projectsAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(AppSpacing.md),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (projects) {
+        if (projects.isEmpty) {
+          return GlassCard(
+            useBlur: false,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.map_outlined,
+                  color: scheme.onSurfaceVariant,
+                  size: AppSpacing.iconLg,
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    'No blueprints yet. Create one from the Blueprint wizard!',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Show up to 3 recent projects
+        final recent = projects.take(3).toList();
+        return Column(
+          children: recent.map((project) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: GestureDetector(
+                onTap: () => context.push('/project/${project.id}'),
+                child: GlassCard(
+                  useBlur: false,
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: scheme.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.map_rounded,
+                          color: scheme.primary,
+                          size: AppSpacing.iconMd,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              project.title,
+                              style: textTheme.titleSmall?.copyWith(
+                                color: scheme.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${project.durationDays} days • ${project.difficulty.label}',
+                              style: textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+}
+
+class _TodaysRoadmapSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final roadmapAsync = ref.watch(todaysRoadmapProvider);
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return roadmapAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (roadmap) {
+        if (roadmap == null || roadmap.tasks.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionLabel(label: "Today's Roadmap"),
+            const SizedBox(height: AppSpacing.sm),
+            GlassCard(
+              useBlur: false,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.map_rounded,
+                        color: scheme.primary,
+                        size: AppSpacing.iconMd,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          roadmap.projectTitle,
+                          style: textTheme.titleSmall?.copyWith(
+                            color: scheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '${roadmap.completedCount}/${roadmap.totalCount}',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  ...roadmap.tasks.take(4).map((task) {
+                    final done = task.status == ProjectTaskStatus.completed;
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        children: [
+                          Icon(
+                            done
+                                ? Icons.check_circle_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            size: 16,
+                            color: done
+                                ? scheme.primary
+                                : scheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              task.title,
+                              style: textTheme.bodySmall?.copyWith(
+                                color: done
+                                    ? scheme.onSurfaceVariant
+                                    : scheme.onSurface,
+                                decoration: done
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  if (roadmap.tasks.length > 4)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.xs),
+                      child: Text(
+                        '+${roadmap.tasks.length - 4} more tasks',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: AppSpacing.sm),
+                  GestureDetector(
+                    onTap: () => context.push('/project/${roadmap.projectId}'),
+                    child: Text(
+                      'View full roadmap →',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: scheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
+import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/widgets/glass_card.dart';
 import 'package:chronyx/features/goals/presentation/providers/goals_providers.dart';
 import 'package:flutter/material.dart';
@@ -36,10 +37,10 @@ class GoalDetailPage extends ConsumerWidget {
           final color = pct >= 80
               ? const Color(0xFF22D3A6)
               : pct >= 50
-                  ? const Color(0xFF818CF8)
-                  : pct >= 25
-                      ? const Color(0xFFFBBC05)
-                      : scheme.error;
+              ? const Color(0xFF818CF8)
+              : pct >= 25
+              ? const Color(0xFFFBBC05)
+              : scheme.error;
           final daysLeft = g.endDate.difference(DateTime.now()).inDays;
 
           return ListView(
@@ -69,8 +70,7 @@ class GoalDetailPage extends ConsumerWidget {
                           ),
                         ),
                         if (g.isChallenge)
-                          const Text('🔥',
-                              style: TextStyle(fontSize: 20)),
+                          const Text('🔥', style: TextStyle(fontSize: 20)),
                       ],
                     ),
                     if (g.description.isNotEmpty) ...[
@@ -85,7 +85,9 @@ class GoalDetailPage extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.md),
                     // Big progress bar
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.radiusFull,
+                      ),
                       child: LinearProgressIndicator(
                         value: pct / 100,
                         backgroundColor: scheme.surfaceContainerHighest,
@@ -108,8 +110,8 @@ class GoalDetailPage extends ConsumerWidget {
                           daysLeft > 0
                               ? '$daysLeft days left'
                               : daysLeft == 0
-                                  ? 'Last day!'
-                                  : 'Ended',
+                              ? 'Last day!'
+                              : 'Ended',
                           style: textTheme.labelSmall?.copyWith(
                             color: scheme.onSurfaceVariant,
                           ),
@@ -162,16 +164,21 @@ class GoalDetailPage extends ConsumerWidget {
                 padding: const EdgeInsets.all(AppSpacing.md),
                 child: Row(
                   children: [
-                    Icon(Icons.timer_rounded,
-                        color: scheme.primary, size: AppSpacing.iconLg),
+                    Icon(
+                      Icons.timer_rounded,
+                      color: scheme.primary,
+                      size: AppSpacing.iconLg,
+                    ),
                     const SizedBox(width: AppSpacing.md),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Daily Target',
-                            style: textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            )),
+                        Text(
+                          'Daily Target',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
                         Text(
                           '${g.dailyTargetMinutes} min/day',
                           style: textTheme.titleMedium?.copyWith(
@@ -185,10 +192,12 @@ class GoalDetailPage extends ConsumerWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text('Period',
-                            style: textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            )),
+                        Text(
+                          'Period',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
                         Text(
                           '${p.totalDays} days',
                           style: textTheme.titleSmall?.copyWith(
@@ -218,15 +227,19 @@ class GoalDetailPage extends ConsumerWidget {
                     builder: (ctx) => AlertDialog(
                       title: const Text('Delete Goal?'),
                       content: Text(
-                          'Are you sure you want to delete "${g.title}"? This cannot be undone.'),
+                        'Are you sure you want to delete "${g.title}"? This cannot be undone.',
+                      ),
                       actions: [
                         TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(false),
-                            child: const Text('Cancel')),
+                          onPressed: () => Navigator.of(ctx).pop(false),
+                          child: const Text('Cancel'),
+                        ),
                         TextButton(
                           onPressed: () => Navigator.of(ctx).pop(true),
-                          child: Text('Delete',
-                              style: TextStyle(color: scheme.error)),
+                          child: Text(
+                            'Delete',
+                            style: TextStyle(color: scheme.error),
+                          ),
                         ),
                       ],
                     ),
@@ -241,7 +254,15 @@ class GoalDetailPage extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text(err.toString())),
+        error: (err, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Text(
+              ErrorMessageMapper.fromError(err),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
       ),
     );
   }

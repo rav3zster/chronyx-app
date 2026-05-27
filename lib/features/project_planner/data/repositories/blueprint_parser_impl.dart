@@ -1,0 +1,466 @@
+import 'dart:convert';
+
+import 'package:chronyx/features/project_planner/data/prompt_generator.dart';
+import 'package:chronyx/features/project_planner/domain/entities/blueprint_parse_exception.dart';
+import 'package:chronyx/features/project_planner/domain/entities/blueprint_prompt.dart';
+import 'package:chronyx/features/project_planner/domain/entities/project.dart';
+import 'package:chronyx/features/project_planner/domain/entities/project_task.dart';
+import 'package:chronyx/features/project_planner/domain/entities/prompt_template.dart';
+import 'package:chronyx/features/project_planner/domain/repositories/blueprint_parser.dart';
+
+/// Concrete implementation of [BlueprintParser].
+///
+/// Handles:
+/// - Prompt generation (delegates to [PromptGenerator])
+/// - Markdown stripping
+/// - JSON extraction from mixed text
+/// - Validation, normalization, deduplication
+/// - Blueprint-to-tasks conversion
+class BlueprintParserImpl implements BlueprintParser {
+  const BlueprintParserImpl({
+    PromptGenerator promptGenerator = const PromptGenerator(),
+  }) : _promptGenerator = promptGenerator;
+
+  final PromptGenerator _promptGenerator;
+
+  // ─────────────────────────────────────────────────────────────────
+  // Prompt Generation
+  // ─────────────────────────────────────────────────────────────────
+
+  @override
+  BlueprintPrompt generatePrompt({
+    required String goalDescription,
+    required PromptTemplate template,
+    required int durationDays,
+    required ProjectDifficulty difficulty,
+    required int dailyTimeMinutes,
+  }) {
+    return _promptGenerator.generate(
+      goalDescription: goalDescription,
+      template: template,
+      durationDays: durationDays,
+      difficulty: difficulty,
+      dailyTimeMinutes: dailyTimeMinutes,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Blueprint Parsing
+  // ─────────────────────────────────────────────────────────────────
+
+  @override
+  ParsedBlueprint parseBlueprint(String rawResponse, {int? durationDays}) {
+    final issues = <ParseIssue>[];
+
+    // Guard: empty or whitespace-only input
+    if (rawResponse.trim().isEmpty) {
+      throw const BlueprintParseException(
+        message: 'The AI response is empty.',
+        issues: [
+          ParseIssue(
+            severity: ParseIssueSeverity.error,
+            field: 'root',
+            message: 'Empty response received. Please try again.',
+          ),
+        ],
+      );
+    }
+
+    // Step 1: Strip markdown and extract JSON
+    final jsonString = _extractJson(rawResponse);
+    if (jsonString == null) {
+      throw const BlueprintParseException(
+        message: 'Could not find valid JSON in the AI response.',
+        issues: [
+          ParseIssue(
+            severity: ParseIssueSeverity.error,
+            field: 'root',
+            message:
+                'No JSON object found. Response may be truncated or malformed.',
+          ),
+        ],
+      );
+    }
+
+    // Step 2: Decode JSON
+    final Map<String, dynamic> json;
+    try {
+      final decoded = jsonDecode(jsonString);
+      if (decoded is! Map<String, dynamic>) {
+        throw const BlueprintParseException(
+          message: 'AI response is not a JSON object.',
+          issues: [
+            ParseIssue(
+              severity: ParseIssueSeverity.error,
+              field: 'root',
+              message: 'Expected a JSON object, got a different type.',
+            ),
+          ],
+        );
+      }
+      json = decoded;
+    } on FormatException catch (e) {
+      throw BlueprintParseException(
+        message: 'AI response contains malformed JSON.',
+        issues: [
+          ParseIssue(
+            severity: ParseIssueSeverity.error,
+            field: 'root',
+            message: 'JSON parse error: ${e.message}',
+          ),
+        ],
+      );
+    }
+
+    // Step 3: Validate and extract title
+    final title = _extractTitle(json, issues);
+
+    // Step 4: Validate and extract days
+    final days = _extractDays(json, issues, durationDays: durationDays);
+
+    // Step 5: Deduplicate tasks within each day
+    final deduplicatedDays = days.map(_deduplicateTasks).toList();
+
+    // If we have blocking errors, throw
+    if (issues.any((i) => i.severity == ParseIssueSeverity.error)) {
+      throw BlueprintParseException(
+        message: 'Blueprint parsing failed due to validation errors.',
+        issues: issues,
+      );
+    }
+
+    return ParsedBlueprint(title: title, days: deduplicatedDays);
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Blueprint to Tasks Conversion
+  // ─────────────────────────────────────────────────────────────────
+
+  @override
+  List<ProjectTask> blueprintToTasks(
+    String projectId,
+    ParsedBlueprint blueprint,
+  ) {
+    final tasks = <ProjectTask>[];
+    var sortOrder = 0;
+
+    for (final day in blueprint.days) {
+      for (final task in day.tasks) {
+        tasks.add(
+          ProjectTask(
+            id: '', // Generated by database
+            projectId: projectId,
+            dayNumber: day.dayNumber,
+            title: task.title,
+            description: task.description,
+            sortOrder: sortOrder++,
+            estimatedMinutes: task.estimatedMinutes,
+            status: ProjectTaskStatus.pending,
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
+    }
+
+    return tasks;
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Private: JSON Extraction
+  // ─────────────────────────────────────────────────────────────────
+
+  /// Strips markdown fences and extracts the first JSON object from text.
+  ///
+  /// Handles:
+  /// - ```json\n{...}\n```
+  /// - ```\n{...}\n```
+  /// - Plain {…} (possibly preceded by explanation text)
+  String? _extractJson(String raw) {
+    var text = raw.trim();
+
+    // Remove markdown code fences
+    // Match ```json or ``` at start, ``` at end
+    final fencePattern = RegExp(
+      r'```(?:json)?\s*\n?([\s\S]*?)\n?\s*```',
+      multiLine: true,
+    );
+    final fenceMatch = fencePattern.firstMatch(text);
+    if (fenceMatch != null) {
+      text = fenceMatch.group(1)!.trim();
+    }
+
+    // Find first { and last } to extract JSON object
+    final firstBrace = text.indexOf('{');
+    final lastBrace = text.lastIndexOf('}');
+
+    if (firstBrace == -1 || lastBrace == -1 || lastBrace <= firstBrace) {
+      return null;
+    }
+
+    return text.substring(firstBrace, lastBrace + 1);
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Private: Title Extraction
+  // ─────────────────────────────────────────────────────────────────
+
+  String _extractTitle(Map<String, dynamic> json, List<ParseIssue> issues) {
+    final raw = json['title'];
+    if (raw == null || (raw is String && raw.trim().isEmpty)) {
+      issues.add(
+        const ParseIssue(
+          severity: ParseIssueSeverity.warning,
+          field: 'title',
+          message: 'Missing title, using default.',
+        ),
+      );
+      return 'Untitled Blueprint';
+    }
+    return (raw as String).trim();
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Private: Days Extraction
+  // ─────────────────────────────────────────────────────────────────
+
+  List<DayPlan> _extractDays(
+    Map<String, dynamic> json,
+    List<ParseIssue> issues, {
+    int? durationDays,
+  }) {
+    final rawDays = json['days'];
+    if (rawDays == null || rawDays is! List || rawDays.isEmpty) {
+      issues.add(
+        const ParseIssue(
+          severity: ParseIssueSeverity.error,
+          field: 'days',
+          message: 'Missing or empty "days" array.',
+        ),
+      );
+      return [];
+    }
+
+    final days = <DayPlan>[];
+
+    for (var i = 0; i < rawDays.length; i++) {
+      final rawDay = rawDays[i];
+      if (rawDay is! Map<String, dynamic>) {
+        issues.add(
+          ParseIssue(
+            severity: ParseIssueSeverity.warning,
+            field: 'days[$i]',
+            message: 'Invalid day entry, skipping.',
+          ),
+        );
+        continue;
+      }
+
+      final day = _parseDay(rawDay, i, issues, durationDays: durationDays);
+      if (day != null) {
+        days.add(day);
+      }
+    }
+
+    if (days.isEmpty) {
+      issues.add(
+        const ParseIssue(
+          severity: ParseIssueSeverity.error,
+          field: 'days',
+          message: 'No valid days could be parsed.',
+        ),
+      );
+    }
+
+    return days;
+  }
+
+  DayPlan? _parseDay(
+    Map<String, dynamic> rawDay,
+    int index,
+    List<ParseIssue> issues, {
+    int? durationDays,
+  }) {
+    // Day number: use provided or fallback to index+1
+    var dayNumber = _toInt(rawDay['day_number']) ?? (index + 1);
+    if (durationDays != null) {
+      dayNumber = dayNumber.clamp(1, durationDays);
+    }
+
+    // Title
+    final title = _toString(rawDay['title'])?.trim();
+    if (title == null || title.isEmpty) {
+      issues.add(
+        ParseIssue(
+          severity: ParseIssueSeverity.warning,
+          field: 'days[$index].title',
+          message: 'Missing day title, using default.',
+        ),
+      );
+    }
+    final dayTitle = (title != null && title.isNotEmpty)
+        ? title
+        : 'Day $dayNumber';
+
+    // Estimated minutes (day level)
+    var estimatedMinutes = _toInt(rawDay['estimated_minutes']) ?? 0;
+    estimatedMinutes = estimatedMinutes.clamp(1, 480);
+
+    // Tasks
+    final rawTasks = rawDay['tasks'];
+    if (rawTasks == null || rawTasks is! List || rawTasks.isEmpty) {
+      issues.add(
+        ParseIssue(
+          severity: ParseIssueSeverity.warning,
+          field: 'days[$index].tasks',
+          message: 'Missing or empty tasks array, skipping day.',
+        ),
+      );
+      return null;
+    }
+
+    final tasks = <BlueprintTask>[];
+    for (var t = 0; t < rawTasks.length; t++) {
+      final rawTask = rawTasks[t];
+      if (rawTask is! Map<String, dynamic>) continue;
+
+      final task = _parseTask(rawTask, index, t, issues);
+      if (task != null) {
+        tasks.add(task);
+      }
+    }
+
+    if (tasks.isEmpty) {
+      issues.add(
+        ParseIssue(
+          severity: ParseIssueSeverity.warning,
+          field: 'days[$index].tasks',
+          message: 'No valid tasks parsed for this day, skipping.',
+        ),
+      );
+      return null;
+    }
+
+    // Recalculate estimated minutes from tasks if day-level is missing
+    final taskMinutesSum = tasks.fold<int>(
+      0,
+      (sum, task) => sum + task.estimatedMinutes,
+    );
+    if (estimatedMinutes <= 1 && taskMinutesSum > 0) {
+      estimatedMinutes = taskMinutesSum;
+    }
+
+    return DayPlan(
+      dayNumber: dayNumber,
+      title: dayTitle,
+      tasks: tasks,
+      estimatedMinutes: estimatedMinutes,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Private: Task Parsing
+  // ─────────────────────────────────────────────────────────────────
+
+  BlueprintTask? _parseTask(
+    Map<String, dynamic> rawTask,
+    int dayIndex,
+    int taskIndex,
+    List<ParseIssue> issues,
+  ) {
+    // Title (required)
+    final title = _toString(rawTask['title'])?.trim();
+    if (title == null || title.isEmpty) {
+      issues.add(
+        ParseIssue(
+          severity: ParseIssueSeverity.warning,
+          field: 'days[$dayIndex].tasks[$taskIndex].title',
+          message: 'Missing task title, skipping task.',
+        ),
+      );
+      return null;
+    }
+
+    // Description (optional, default empty)
+    final description = (_toString(rawTask['description']) ?? '').trim();
+
+    // Estimated minutes (clamp 1–480)
+    var estimatedMinutes = _toInt(rawTask['estimated_minutes']) ?? 30;
+    estimatedMinutes = estimatedMinutes.clamp(1, 480);
+
+    // Todos (fallback to empty list)
+    final rawTodos = rawTask['todos'];
+    final todos = <String>[];
+    if (rawTodos is List) {
+      for (final todo in rawTodos) {
+        final todoStr = _toString(todo)?.trim();
+        if (todoStr != null && todoStr.isNotEmpty) {
+          todos.add(todoStr);
+        }
+      }
+    }
+    // No warning for missing todos — fallback is acceptable
+
+    return BlueprintTask(
+      title: title,
+      description: description,
+      estimatedMinutes: estimatedMinutes,
+      todos: todos,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Private: Deduplication
+  // ─────────────────────────────────────────────────────────────────
+
+  /// Deduplicates tasks within a day by title (case-insensitive).
+  /// Merges todos from duplicates into the first occurrence.
+  DayPlan _deduplicateTasks(DayPlan day) {
+    final seen = <String, int>{}; // lowercase title → index in result
+    final result = <BlueprintTask>[];
+
+    for (final task in day.tasks) {
+      final key = task.title.toLowerCase();
+      if (seen.containsKey(key)) {
+        // Merge todos into existing task
+        final existingIndex = seen[key]!;
+        final existing = result[existingIndex];
+        final mergedTodos = [...existing.todos, ...task.todos];
+        result[existingIndex] = BlueprintTask(
+          title: existing.title,
+          description: existing.description,
+          estimatedMinutes: existing.estimatedMinutes,
+          todos: mergedTodos,
+        );
+      } else {
+        seen[key] = result.length;
+        result.add(task);
+      }
+    }
+
+    if (result.length == day.tasks.length) return day;
+
+    return DayPlan(
+      dayNumber: day.dayNumber,
+      title: day.title,
+      tasks: result,
+      estimatedMinutes: day.estimatedMinutes,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Private: Type Helpers
+  // ─────────────────────────────────────────────────────────────────
+
+  int? _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  String? _toString(dynamic value) {
+    if (value is String) return value;
+    if (value != null) return value.toString();
+    return null;
+  }
+}

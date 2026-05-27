@@ -3,6 +3,7 @@ import 'package:chronyx/features/ai_coach/domain/entities/ai_insight.dart';
 import 'package:chronyx/features/ai_coach/domain/repositories/ai_repository.dart';
 import 'package:chronyx/features/analytics/presentation/providers/analytics_providers.dart';
 import 'package:chronyx/features/goals/presentation/providers/goals_providers.dart';
+import 'package:chronyx/features/project_planner/presentation/providers/project_planner_providers.dart';
 import 'package:chronyx/features/time_tracking/presentation/providers/time_tracking_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,6 +12,7 @@ final aiRepositoryProvider = Provider<AIRepository>((ref) {
     ref.watch(analyticsRepositoryProvider),
     ref.watch(goalsRepositoryProvider),
     ref.watch(timeTrackingRepositoryProvider),
+    ref.watch(projectRepositoryProvider),
   );
 });
 

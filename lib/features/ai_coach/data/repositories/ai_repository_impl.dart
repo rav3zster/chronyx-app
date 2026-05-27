@@ -3,14 +3,23 @@ import 'package:chronyx/features/ai_coach/domain/entities/ai_insight.dart';
 import 'package:chronyx/features/ai_coach/domain/repositories/ai_repository.dart';
 import 'package:chronyx/features/analytics/domain/repositories/analytics_repository.dart';
 import 'package:chronyx/features/goals/domain/repositories/goals_repository.dart';
+import 'package:chronyx/features/project_planner/domain/entities/project_health.dart';
+import 'package:chronyx/features/project_planner/domain/entities/project_task.dart';
+import 'package:chronyx/features/project_planner/domain/repositories/project_repository.dart';
 import 'package:chronyx/features/time_tracking/domain/repositories/time_tracking_repository.dart';
 
 class AIRepositoryImpl implements AIRepository {
-  AIRepositoryImpl(this._analyticsRepo, this._goalsRepo, this._timeRepo);
+  AIRepositoryImpl(
+    this._analyticsRepo,
+    this._goalsRepo,
+    this._timeRepo, [
+    this._projectRepo,
+  ]);
 
   final AnalyticsRepository _analyticsRepo;
   final GoalsRepository _goalsRepo;
   final TimeTrackingRepository _timeRepo;
+  final ProjectRepository? _projectRepo;
 
   @override
   Future<List<AIInsight>> generateInsights() async {
@@ -24,29 +33,35 @@ class AIRepositoryImpl implements AIRepository {
       // ── Productivity score ─────────────────────────────────────────────
       final score = summary.productivityScore;
       if (score >= 70) {
-        insights.add(AIInsight(
-          id: 'prod_score_high',
-          message:
-              '🚀 Your productivity score this week is ${score.toStringAsFixed(0)}%! You\'re crushing it.',
-          type: AIInsightType.info,
-          meta: {'score': score},
-        ));
+        insights.add(
+          AIInsight(
+            id: 'prod_score_high',
+            message:
+                '🚀 Your productivity score this week is ${score.toStringAsFixed(0)}%! You\'re crushing it.',
+            type: AIInsightType.info,
+            meta: {'score': score},
+          ),
+        );
       } else if (score >= 40) {
-        insights.add(AIInsight(
-          id: 'prod_score_mid',
-          message:
-              '📊 Productivity score: ${score.toStringAsFixed(0)}%. Good progress — try replacing one distraction session with a productive one.',
-          type: AIInsightType.suggestion,
-          meta: {'score': score},
-        ));
+        insights.add(
+          AIInsight(
+            id: 'prod_score_mid',
+            message:
+                '📊 Productivity score: ${score.toStringAsFixed(0)}%. Good progress — try replacing one distraction session with a productive one.',
+            type: AIInsightType.suggestion,
+            meta: {'score': score},
+          ),
+        );
       } else if (sessions.isNotEmpty) {
-        insights.add(AIInsight(
-          id: 'prod_score_low',
-          message:
-              '⚠️ Productivity score: ${score.toStringAsFixed(0)}%. Most of your tracked time is not in "Productive" or "Learning" categories.',
-          type: AIInsightType.warning,
-          meta: {'score': score},
-        ));
+        insights.add(
+          AIInsight(
+            id: 'prod_score_low',
+            message:
+                '⚠️ Productivity score: ${score.toStringAsFixed(0)}%. Most of your tracked time is not in "Productive" or "Learning" categories.',
+            type: AIInsightType.warning,
+            meta: {'score': score},
+          ),
+        );
       }
 
       // ── Distraction warning ────────────────────────────────────────────
@@ -54,76 +69,90 @@ class AIRepositoryImpl implements AIRepository {
       final totalWeekly = summary.totalMinutesWeekly;
       if (totalWeekly > 0 && distractionMins / totalWeekly > 0.25) {
         final pct = (distractionMins / totalWeekly * 100).toStringAsFixed(0);
-        insights.add(AIInsight(
-          id: 'distraction_warning',
-          message:
-              '🌀 $pct% of your tracked time this week was tagged as Distraction. Consider using Focus mode to stay on track.',
-          type: AIInsightType.warning,
-          meta: {'distractionMins': distractionMins},
-        ));
+        insights.add(
+          AIInsight(
+            id: 'distraction_warning',
+            message:
+                '🌀 $pct% of your tracked time this week was tagged as Distraction. Consider using Focus mode to stay on track.',
+            type: AIInsightType.warning,
+            meta: {'distractionMins': distractionMins},
+          ),
+        );
       }
 
       // ── Break balance ──────────────────────────────────────────────────
       final breakMins = summary.categoryBreakdown['break'] ?? 0;
       if (totalWeekly > 60 && breakMins / totalWeekly < 0.08) {
-        insights.add(AIInsight(
-          id: 'break_suggestion',
-          message:
-              '☕ You\'re barely taking breaks — only ${breakMins}m this week. Short breaks improve focus. Try the 25/5 Pomodoro rhythm.',
-          type: AIInsightType.suggestion,
-        ));
+        insights.add(
+          AIInsight(
+            id: 'break_suggestion',
+            message:
+                '☕ You\'re barely taking breaks — only ${breakMins}m this week. Short breaks improve focus. Try the 25/5 Pomodoro rhythm.',
+            type: AIInsightType.suggestion,
+          ),
+        );
       }
 
       // ── Peak hour ─────────────────────────────────────────────────────
       final peak = summary.peakHour;
-      insights.add(AIInsight(
-        id: 'peak_hour',
-        message:
-            '⏰ Your most productive hour is ${_formatHour(peak)}. Schedule your hardest tasks during this time.',
-        type: AIInsightType.info,
-        meta: {'peakHour': peak},
-      ));
+      insights.add(
+        AIInsight(
+          id: 'peak_hour',
+          message:
+              '⏰ Your most productive hour is ${_formatHour(peak)}. Schedule your hardest tasks during this time.',
+          type: AIInsightType.info,
+          meta: {'peakHour': peak},
+        ),
+      );
 
       // ── Top task ──────────────────────────────────────────────────────
       if (summary.topTasks.isNotEmpty) {
         final top = summary.topTasks.first;
         final hrs = (top.value / 60).toStringAsFixed(1);
-        insights.add(AIInsight(
-          id: 'top_task',
-          message:
-              '📌 You spent ${hrs}h on "${top.key}" this week — your top task.',
-          type: AIInsightType.info,
-          meta: {'task': top.key, 'minutes': top.value},
-        ));
+        insights.add(
+          AIInsight(
+            id: 'top_task',
+            message:
+                '📌 You spent ${hrs}h on "${top.key}" this week — your top task.',
+            type: AIInsightType.info,
+            meta: {'task': top.key, 'minutes': top.value},
+          ),
+        );
       }
 
       // ── Goals insights ────────────────────────────────────────────────
       for (final g in goals) {
         final rate = g.percentCompleted;
         if (rate >= 100) {
-          insights.add(AIInsight(
-            id: 'goal_${g.goal.id}_success',
-            message:
-                '🏆 Goal "${g.goal.title}" completed at ${rate.toStringAsFixed(0)}%! Great discipline.',
-            type: AIInsightType.info,
-            meta: {'goalId': g.goal.id},
-          ));
+          insights.add(
+            AIInsight(
+              id: 'goal_${g.goal.id}_success',
+              message:
+                  '🏆 Goal "${g.goal.title}" completed at ${rate.toStringAsFixed(0)}%! Great discipline.',
+              type: AIInsightType.info,
+              meta: {'goalId': g.goal.id},
+            ),
+          );
         } else if (rate >= 60) {
-          insights.add(AIInsight(
-            id: 'goal_${g.goal.id}_on_track',
-            message:
-                '✅ "${g.goal.title}" is ${rate.toStringAsFixed(0)}% complete with a ${g.currentStreak}-day streak. Stay consistent!',
-            type: AIInsightType.suggestion,
-            meta: {'goalId': g.goal.id},
-          ));
+          insights.add(
+            AIInsight(
+              id: 'goal_${g.goal.id}_on_track',
+              message:
+                  '✅ "${g.goal.title}" is ${rate.toStringAsFixed(0)}% complete with a ${g.currentStreak}-day streak. Stay consistent!',
+              type: AIInsightType.suggestion,
+              meta: {'goalId': g.goal.id},
+            ),
+          );
         } else if (rate > 0) {
-          insights.add(AIInsight(
-            id: 'goal_${g.goal.id}_behind',
-            message:
-                '📉 "${g.goal.title}" is only ${rate.toStringAsFixed(0)}% complete. ${g.goal.dailyTargetMinutes}min/day will get you back on track.',
-            type: AIInsightType.warning,
-            meta: {'goalId': g.goal.id},
-          ));
+          insights.add(
+            AIInsight(
+              id: 'goal_${g.goal.id}_behind',
+              message:
+                  '📉 "${g.goal.title}" is only ${rate.toStringAsFixed(0)}% complete. ${g.goal.dailyTargetMinutes}min/day will get you back on track.',
+              type: AIInsightType.warning,
+              meta: {'goalId': g.goal.id},
+            ),
+          );
         }
       }
 
@@ -137,27 +166,101 @@ class AIRepositoryImpl implements AIRepository {
         final tip = avg < 20
             ? 'Consider longer focus blocks for deeper work.'
             : avg > 90
-                ? 'Very long sessions! Make sure to take breaks.'
-                : 'Great session length for focused work.';
-        insights.add(AIInsight(
-          id: 'avg_session',
-          message: '⌛ Average session: ${avg}min. $tip',
-          type: AIInsightType.info,
-          meta: {'avgMinutes': avg},
-        ));
+            ? 'Very long sessions! Make sure to take breaks.'
+            : 'Great session length for focused work.';
+        insights.add(
+          AIInsight(
+            id: 'avg_session',
+            message: '⌛ Average session: ${avg}min. $tip',
+            type: AIInsightType.info,
+            meta: {'avgMinutes': avg},
+          ),
+        );
+      }
+
+      // ── Blueprint/Roadmap insights ────────────────────────────────────
+      if (_projectRepo != null) {
+        try {
+          final projects = await _projectRepo.fetchProjects();
+          for (final project in projects.take(3)) {
+            final tasks = await _projectRepo.fetchProjectTasks(project.id);
+            final completedCount = tasks
+                .where((t) => t.status == ProjectTaskStatus.completed)
+                .length;
+            final totalCount = tasks.length;
+            if (totalCount == 0) continue;
+
+            final health = ProjectHealth.calculate(
+              createdAt: project.createdAt,
+              durationDays: project.durationDays,
+              completedTasks: completedCount,
+              totalTasks: totalCount,
+            );
+
+            if (health.status == ProjectHealthStatus.behind) {
+              final behind = health.daysDelta.abs();
+              insights.add(
+                AIInsight(
+                  id: 'project_${project.id}_behind',
+                  message:
+                      '🔴 You\'re ~$behind days behind on "${project.title}". '
+                      'Consider reducing daily workload or extending the deadline.',
+                  type: AIInsightType.warning,
+                  meta: {'projectId': project.id, 'daysBehind': behind},
+                ),
+              );
+            } else if (health.status == ProjectHealthStatus.slightlyBehind) {
+              insights.add(
+                AIInsight(
+                  id: 'project_${project.id}_slightly_behind',
+                  message:
+                      '⚠️ "${project.title}" is slightly behind schedule '
+                      '(${health.completionPercent.toStringAsFixed(0)}% done, '
+                      'expected ${health.expectedPercent.toStringAsFixed(0)}%). '
+                      'A focused session today can close the gap.',
+                  type: AIInsightType.suggestion,
+                  meta: {'projectId': project.id},
+                ),
+              );
+            } else if (health.status == ProjectHealthStatus.ahead) {
+              insights.add(
+                AIInsight(
+                  id: 'project_${project.id}_ahead',
+                  message:
+                      '🚀 "${project.title}" is ahead of schedule! '
+                      '${health.completionPercent.toStringAsFixed(0)}% complete. Keep the momentum.',
+                  type: AIInsightType.info,
+                  meta: {'projectId': project.id},
+                ),
+              );
+            }
+          }
+        } catch (_) {
+          // Non-critical — skip blueprint insights if fetch fails
+        }
       }
 
       // ── No data yet ────────────────────────────────────────────────────
-      if (sessions.isEmpty) {
-        insights.add(AIInsight(
-          id: 'no_data',
-          message:
-              '👋 Start tracking time to unlock personalized insights. Use the Time Tracking tab to begin your first session.',
-          type: AIInsightType.info,
-        ));
+      if (sessions.isEmpty && insights.isEmpty) {
+        insights.add(
+          AIInsight(
+            id: 'no_data',
+            message:
+                '👋 Start tracking time to unlock personalized insights. Use the Time Tracking tab to begin your first session.',
+            type: AIInsightType.info,
+          ),
+        );
       }
 
-      return insights;
+      // Deduplicate by ID and cap at 8 insights max
+      final seen = <String>{};
+      final deduped = <AIInsight>[];
+      for (final insight in insights) {
+        if (seen.add(insight.id)) {
+          deduped.add(insight);
+        }
+      }
+      return deduped.take(8).toList();
     } on Exception {
       throw const UnknownException();
     }

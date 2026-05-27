@@ -1,6 +1,8 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
+import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/widgets/glass_card.dart';
 import 'package:chronyx/features/analytics/presentation/providers/analytics_providers.dart';
+import 'package:chronyx/features/project_planner/presentation/providers/project_planner_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -28,8 +30,8 @@ class WrappedPage extends ConsumerWidget {
           final scoreColor = score >= 70
               ? const Color(0xFF22D3A6)
               : score >= 40
-                  ? scheme.primary
-                  : scheme.error;
+              ? scheme.primary
+              : scheme.error;
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(
@@ -51,8 +53,7 @@ class WrappedPage extends ConsumerWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius:
-                      BorderRadius.circular(AppSpacing.radiusXxl),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,8 +199,9 @@ class WrappedPage extends ConsumerWidget {
                       padding: const EdgeInsets.all(AppSpacing.sm),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFBBC05).withValues(alpha: 0.15),
-                        borderRadius:
-                            BorderRadius.circular(AppSpacing.radiusSm),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusSm,
+                        ),
                       ),
                       child: const Icon(
                         Icons.local_fire_department_rounded,
@@ -242,9 +244,12 @@ class WrappedPage extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(AppSpacing.sm),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF22D3A6).withValues(alpha: 0.15),
-                          borderRadius:
-                              BorderRadius.circular(AppSpacing.radiusSm),
+                          color: const Color(
+                            0xFF22D3A6,
+                          ).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                         child: const Icon(
                           Icons.emoji_events_rounded,
@@ -274,10 +279,24 @@ class WrappedPage extends ConsumerWidget {
                     ],
                   ),
                 ),
+
+              // Blueprint roadmap stats
+              _BlueprintWrappedCard(),
             ],
           );
         },
-        error: (err, _) => Center(child: Text(err.toString())),
+        error: (err, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Text(
+              ErrorMessageMapper.fromError(err),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
@@ -379,16 +398,13 @@ class _CategoryPieRow extends StatelessWidget {
                 flex: 2,
                 child: Text(
                   label,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurface,
-                  ),
+                  style: textTheme.bodySmall?.copyWith(color: scheme.onSurface),
                 ),
               ),
               Expanded(
                 flex: 3,
                 child: ClipRRect(
-                  borderRadius:
-                      BorderRadius.circular(AppSpacing.radiusFull),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                   child: LinearProgressIndicator(
                     value: pct,
                     backgroundColor: scheme.surfaceContainerHighest,
@@ -409,6 +425,70 @@ class _CategoryPieRow extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+class _BlueprintWrappedCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final projectsAsync = ref.watch(projectsProvider);
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return projectsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (projects) {
+        if (projects.isEmpty) return const SizedBox.shrink();
+
+        final activeCount = projects
+            .where((p) => p.status.jsonKey == 'active')
+            .length;
+
+        return Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.md),
+          child: GlassCard(
+            useBlur: false,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  child: Icon(
+                    Icons.map_rounded,
+                    color: scheme.primary,
+                    size: AppSpacing.iconLg,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Roadmaps',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      '$activeCount active blueprint${activeCount != 1 ? 's' : ''}',
+                      style: textTheme.titleMedium?.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

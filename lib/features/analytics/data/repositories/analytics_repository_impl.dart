@@ -40,8 +40,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           if (_isSameMonth(day, now)) totalMonthly += mins;
 
           final int weekday = day.weekday;
-          weekdayMinutes.update(
-              weekday, (v) => v + mins, ifAbsent: () => mins);
+          weekdayMinutes.update(weekday, (v) => v + mins, ifAbsent: () => mins);
 
           // Daily offset for last 7 days (0=today, 6=6 days ago)
           final int dayOffset = now
@@ -49,24 +48,35 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
               .inDays;
           if (dayOffset >= 0 && dayOffset < 7) {
             dailyMinutesMap.update(
-                dayOffset, (v) => v + mins, ifAbsent: () => mins);
+              dayOffset,
+              (v) => v + mins,
+              ifAbsent: () => mins,
+            );
           }
         }
 
         final int totalMins = splits.values.fold(0, (a, b) => a + b);
         taskMinutes.update(
-            e.taskName.isEmpty ? 'Unnamed' : e.taskName, (v) => v + totalMins,
-            ifAbsent: () => totalMins);
+          e.taskName.isEmpty ? 'Unnamed' : e.taskName,
+          (v) => v + totalMins,
+          ifAbsent: () => totalMins,
+        );
 
         final int hour = e.startedAt.toLocal().hour;
-        hourMinutes.update(hour, (v) => v + totalMins,
-            ifAbsent: () => totalMins);
+        hourMinutes.update(
+          hour,
+          (v) => v + totalMins,
+          ifAbsent: () => totalMins,
+        );
 
         // Category breakdown (weekly)
         if (_isSameWeek(e.startedAt.toLocal(), now)) {
           final key = e.category.jsonKey;
-          categoryMinutes.update(key, (v) => v + totalMins,
-              ifAbsent: () => totalMins);
+          categoryMinutes.update(
+            key,
+            (v) => v + totalMins,
+            ifAbsent: () => totalMins,
+          );
         }
       }
 
@@ -78,15 +88,15 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       final peakHour = hourMinutes.entries.isEmpty
           ? 9
           : hourMinutes.entries
-              .reduce((a, b) => a.value >= b.value ? a : b)
-              .key;
+                .reduce((a, b) => a.value >= b.value ? a : b)
+                .key;
 
       // Most active day
       final mostActiveDayIndex = weekdayMinutes.entries.isEmpty
           ? now.weekday
           : weekdayMinutes.entries
-              .reduce((a, b) => a.value >= b.value ? a : b)
-              .key;
+                .reduce((a, b) => a.value >= b.value ? a : b)
+                .key;
       const weekdayNames = [
         'Monday',
         'Tuesday',
@@ -100,17 +110,20 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
 
       // Goal performance
       final int goalsTotal = goalsProgress.length;
-      final int goalsSucceeded =
-          goalsProgress.where((g) => g.percentCompleted >= 100).length;
+      final int goalsSucceeded = goalsProgress
+          .where((g) => g.percentCompleted >= 100)
+          .length;
       final goalPerformance = {
         'total': goalsTotal,
         'succeeded': goalsSucceeded,
-        'successRate':
-            goalsTotal == 0 ? 0.0 : (goalsSucceeded / goalsTotal) * 100,
+        'successRate': goalsTotal == 0
+            ? 0.0
+            : (goalsSucceeded / goalsTotal) * 100,
       };
 
       // Productivity score: (productive + learning) / total * 100
-      final int productiveMinutes = (categoryMinutes['productive'] ?? 0) +
+      final int productiveMinutes =
+          (categoryMinutes['productive'] ?? 0) +
           (categoryMinutes['learning'] ?? 0);
       final double productivityScore = totalWeekly == 0
           ? 0.0
@@ -128,6 +141,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
         categoryBreakdown: categoryMinutes,
         dailyMinutes: dailyMinutesMap,
       );
+    } on AppException {
+      rethrow;
     } on Exception {
       throw const UnknownException();
     }
@@ -160,11 +175,9 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
 
     DateTime cursor = start;
     while (cursor.isBefore(end)) {
-      final DateTime dayStart =
-          DateTime(cursor.year, cursor.month, cursor.day);
+      final DateTime dayStart = DateTime(cursor.year, cursor.month, cursor.day);
       final DateTime nextMidnight = dayStart.add(const Duration(days: 1));
-      final DateTime chunkEnd =
-          nextMidnight.isBefore(end) ? nextMidnight : end;
+      final DateTime chunkEnd = nextMidnight.isBefore(end) ? nextMidnight : end;
       final int mins = chunkEnd.difference(cursor).inMinutes;
       final DateTime key = DateTime(cursor.year, cursor.month, cursor.day);
       if (mins > 0) {

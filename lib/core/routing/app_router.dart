@@ -8,6 +8,8 @@ import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart'
 import 'package:chronyx/features/goals/presentation/pages/create_goal_page.dart';
 import 'package:chronyx/features/goals/presentation/pages/goal_detail_page.dart';
 import 'package:chronyx/features/goals/presentation/pages/goals_page.dart';
+import 'package:chronyx/features/project_planner/presentation/pages/blueprint_wizard_page.dart';
+import 'package:chronyx/features/project_planner/presentation/pages/project_detail_page.dart';
 import 'package:chronyx/features/settings/presentation/pages/settings_page.dart';
 import 'package:chronyx/features/time_tracking/presentation/pages/time_tracking_page.dart';
 import 'package:flutter/material.dart';
@@ -105,6 +107,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.settings,
         name: 'settings',
         builder: (context, state) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.blueprint,
+        name: 'blueprint',
+        builder: (context, state) => const BlueprintWizardPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.projectDetail,
+        name: 'projectDetail',
+        builder: (context, state) {
+          final projectId = state.pathParameters['projectId']!;
+          return ProjectDetailPage(projectId: projectId);
+        },
       ),
     ],
   );

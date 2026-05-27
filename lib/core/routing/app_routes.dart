@@ -15,4 +15,6 @@ class AppRoutes {
   static const String goalDetail = '/goals/:goalId';
   static const String aiCoach = '/ai-coach';
   static const String settings = '/settings';
+  static const String blueprint = '/blueprint';
+  static const String projectDetail = '/project/:projectId';
 }

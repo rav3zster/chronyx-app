@@ -443,7 +443,9 @@ class _LoadingPanel extends StatelessWidget {
 }
 
 class _EmptyPanel extends StatelessWidget {
-  const _EmptyPanel();
+  const _EmptyPanel({this.onTap});
+
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -452,6 +454,8 @@ class _EmptyPanel extends StatelessWidget {
 
     return SceneCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
+      onTap: onTap,
+      glow: scheme.primary,
       child: Row(
         children: [
           Container(
@@ -461,14 +465,14 @@ class _EmptyPanel extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  scheme.primary.withValues(alpha: 0.22),
+                  scheme.primary.withValues(alpha: 0.30),
                   scheme.primary.withValues(alpha: 0.0),
                 ],
               ),
             ),
             child: Icon(
               Icons.auto_graph_rounded,
-              size: 26,
+              size: 28,
               color: scheme.primary,
             ),
           ),
@@ -494,6 +498,8 @@ class _EmptyPanel extends StatelessWidget {
               ],
             ),
           ),
+          if (onTap != null)
+            Icon(Icons.chevron_right_rounded, color: scheme.primary, size: 24),
         ],
       ),
     );

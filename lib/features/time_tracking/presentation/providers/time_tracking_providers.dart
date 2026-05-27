@@ -39,10 +39,7 @@ final focusStatsProvider = NotifierProvider<FocusStatsNotifier, FocusStats>(
 );
 
 class FocusStats {
-  const FocusStats({
-    this.focusedSeconds = 0,
-    this.awaySeconds = 0,
-  });
+  const FocusStats({this.focusedSeconds = 0, this.awaySeconds = 0});
 
   final int focusedSeconds;
   final int awaySeconds;
@@ -163,13 +160,15 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
     });
   }
 
-  Future<void> stopSession({required String sessionId}) async {
+  Future<TimeEntry?> stopSession({required String sessionId}) async {
+    TimeEntry? finished;
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      await _repository.stopSession(sessionId: sessionId);
+      finished = await _repository.stopSession(sessionId: sessionId);
       final entries = await _repository.fetchTimeEntries();
       _startTickerIfNeeded(entries);
       return entries;
     });
+    return finished;
   }
 }

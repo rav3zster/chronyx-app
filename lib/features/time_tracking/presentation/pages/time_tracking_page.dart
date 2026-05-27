@@ -5,6 +5,7 @@ import 'package:chronyx/core/widgets/glass_card.dart';
 import 'package:chronyx/core/widgets/input_field.dart';
 import 'package:chronyx/core/widgets/primary_button.dart';
 import 'package:chronyx/core/widgets/settings_icon_button.dart';
+import 'package:chronyx/features/life_insights/presentation/pages/session_celebration_sheet.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
 import 'package:chronyx/features/time_tracking/presentation/providers/time_tracking_providers.dart';
 import 'package:chronyx/features/time_tracking/presentation/widgets/time_entry_card.dart';
@@ -48,7 +49,11 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
   }
 
   Future<void> _stopSession(String id) async {
-    await ref.read(timeEntriesProvider.notifier).stopSession(sessionId: id);
+    final finished = await ref
+        .read(timeEntriesProvider.notifier)
+        .stopSession(sessionId: id);
+    if (!mounted || finished == null) return;
+    await showSessionCelebration(context, justFinished: finished);
   }
 
   @override

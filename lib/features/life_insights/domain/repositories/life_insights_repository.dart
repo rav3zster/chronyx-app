@@ -2,6 +2,8 @@ import 'package:chronyx/features/life_insights/domain/entities/insight_window.da
 import 'package:chronyx/features/life_insights/domain/entities/greeting.dart';
 import 'package:chronyx/features/life_insights/domain/entities/life_report.dart';
 import 'package:chronyx/features/life_insights/domain/entities/life_snapshot.dart';
+import 'package:chronyx/features/life_insights/domain/entities/session_celebration.dart';
+import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
 
 /// Repository for computing life insights from existing app data.
 ///
@@ -15,4 +17,7 @@ abstract class LifeInsightsRepository {
 
   /// Contextual dashboard greeting based on time of day + recent behavior.
   Future<Greeting> fetchGreeting({required String displayName});
+
+  /// Build a celebration moment for the session that just finished.
+  Future<SessionCelebration> buildCelebration(TimeEntry justFinished);
 }

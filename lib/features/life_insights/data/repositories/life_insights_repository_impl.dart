@@ -8,6 +8,7 @@ import 'package:chronyx/features/life_insights/domain/entities/life_balance.dart
 import 'package:chronyx/features/life_insights/domain/entities/life_report.dart';
 import 'package:chronyx/features/life_insights/domain/entities/life_snapshot.dart';
 import 'package:chronyx/features/life_insights/domain/entities/mood.dart';
+import 'package:chronyx/features/life_insights/domain/entities/session_celebration.dart';
 import 'package:chronyx/features/life_insights/domain/entities/time_allocation.dart';
 import 'package:chronyx/features/life_insights/domain/entities/weekly_win.dart';
 import 'package:chronyx/features/life_insights/domain/repositories/life_insights_repository.dart';
@@ -1190,6 +1191,126 @@ class LifeInsightsRepositoryImpl implements LifeInsightsRepository {
       name: displayName,
       message: message,
       glyph: glyph,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Session celebration — composed at the moment a session ends
+  // ─────────────────────────────────────────────────────────────────────
+
+  @override
+  Future<SessionCelebration> buildCelebration(TimeEntry justFinished) async {
+    final entries = await _safeFetchEntries();
+    final now = DateTime.now();
+    final completed = entries.where((e) => !e.isActive).toList();
+    final justMins = justFinished.duration.inMinutes;
+
+    // Today minutes (including just-finished if we received it via fetch,
+    // otherwise we add it explicitly).
+    final today = DateTime(now.year, now.month, now.day);
+    var todayMinutes = 0;
+    for (final e in completed) {
+      final s = e.startedAt.toLocal();
+      if (DateTime(s.year, s.month, s.day) == today) {
+        todayMinutes += e.duration.inMinutes;
+      }
+    }
+    if (!completed.any((e) => e.id == justFinished.id)) {
+      todayMinutes += justMins;
+    }
+
+    // Week minutes (last 7 days)
+    final weekCutoff = now.subtract(const Duration(days: 7));
+    var weekMinutes = 0;
+    for (final e in completed) {
+      if (e.startedAt.isAfter(weekCutoff)) {
+        weekMinutes += e.duration.inMinutes;
+      }
+    }
+    if (!completed.any((e) => e.id == justFinished.id)) {
+      weekMinutes += justMins;
+    }
+
+    // Streak: count consecutive days with at least one session, ending today.
+    final daySet = <DateTime>{};
+    for (final e in completed) {
+      final s = e.startedAt.toLocal();
+      daySet.add(DateTime(s.year, s.month, s.day));
+    }
+    daySet.add(today);
+    var streak = 0;
+    var cursor = today;
+    while (daySet.contains(cursor)) {
+      streak++;
+      cursor = cursor.subtract(const Duration(days: 1));
+      if (streak > 365) break;
+    }
+
+    // Personal best (longest single session ever)
+    var personalBest = true;
+    for (final e in completed) {
+      if (e.id == justFinished.id) continue;
+      if (e.duration.inMinutes >= justMins) {
+        personalBest = false;
+        break;
+      }
+    }
+    if (justMins < 10) personalBest = false; // don't celebrate tiny sessions
+
+    // Momentum delta vs previous 7 days
+    final previousCutoff = now.subtract(const Duration(days: 14));
+    var previousWeek = 0;
+    for (final e in completed) {
+      if (e.startedAt.isAfter(previousCutoff) &&
+          !e.startedAt.isAfter(weekCutoff)) {
+        previousWeek += e.duration.inMinutes;
+      }
+    }
+    double? momentumDelta;
+    if (previousWeek > 0) {
+      momentumDelta = ((weekMinutes - previousWeek) / previousWeek) * 100;
+    } else if (weekMinutes > 0) {
+      momentumDelta = 100.0;
+    }
+
+    // Headline + glyph
+    String headline;
+    String glyph;
+    if (personalBest && justMins >= 30) {
+      headline = 'New personal best';
+      glyph = '🏆';
+    } else if (justMins >= 90) {
+      headline = 'Marathon session';
+      glyph = '🎯';
+    } else if (justMins >= 50) {
+      headline = 'Deep work completed';
+      glyph = '✨';
+    } else if (streak >= 5) {
+      headline = '$streak-day streak — keep it alive';
+      glyph = '🔥';
+    } else if (justFinished.category == TaskCategory.learning) {
+      headline = 'Learning logged';
+      glyph = '📚';
+    } else if (justFinished.category == TaskCategory.productive) {
+      headline = 'Productive session done';
+      glyph = '🚀';
+    } else if (justMins >= 20) {
+      headline = 'Session complete';
+      glyph = '✓';
+    } else {
+      headline = 'Quick check-in done';
+      glyph = '✨';
+    }
+
+    return SessionCelebration(
+      session: justFinished,
+      headline: headline,
+      glyph: glyph,
+      streakDays: streak,
+      todayMinutes: todayMinutes,
+      weekMinutes: weekMinutes,
+      momentumDeltaPercent: momentumDelta,
+      isPersonalBest: personalBest && justMins >= 30,
     );
   }
 }

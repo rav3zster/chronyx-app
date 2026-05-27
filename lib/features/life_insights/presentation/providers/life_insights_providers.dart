@@ -5,6 +5,7 @@ import 'package:chronyx/features/life_insights/domain/entities/greeting.dart';
 import 'package:chronyx/features/life_insights/domain/entities/insight_window.dart';
 import 'package:chronyx/features/life_insights/domain/entities/life_report.dart';
 import 'package:chronyx/features/life_insights/domain/entities/life_snapshot.dart';
+import 'package:chronyx/features/life_insights/domain/entities/today_focus.dart';
 import 'package:chronyx/features/life_insights/domain/repositories/life_insights_repository.dart';
 import 'package:chronyx/features/project_planner/presentation/providers/project_planner_providers.dart';
 import 'package:chronyx/features/time_tracking/presentation/providers/time_tracking_providers.dart';
@@ -60,4 +61,12 @@ final greetingProvider = FutureProvider<Greeting>((ref) async {
   return ref
       .watch(lifeInsightsRepositoryProvider)
       .fetchGreeting(displayName: name);
+});
+
+/// Dashboard Hero state — picks one of five Today Focus variants from data.
+final todayFocusProvider = FutureProvider<TodayFocus>((ref) async {
+  // Re-evaluate when projects or sessions change so the hero stays in sync.
+  ref.watch(projectsProvider);
+  ref.watch(timeEntriesProvider);
+  return ref.watch(lifeInsightsRepositoryProvider).fetchTodayFocus();
 });

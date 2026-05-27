@@ -1,9 +1,8 @@
-import 'package:chronyx/core/constants/app_spacing.dart';
+﻿import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:chronyx/core/theme/design_tokens.dart';
 import 'package:chronyx/core/widgets/metric_tile.dart';
-import 'package:chronyx/core/widgets/progress_ring.dart';
 import 'package:chronyx/core/widgets/scene_card.dart';
 import 'package:chronyx/core/widgets/section_header.dart';
 import 'package:chronyx/core/widgets/settings_icon_button.dart';
@@ -11,6 +10,7 @@ import 'package:chronyx/features/analytics/presentation/providers/analytics_prov
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/life_insights/presentation/providers/life_insights_providers.dart';
 import 'package:chronyx/features/life_insights/presentation/widgets/life_insights_panel.dart';
+import 'package:chronyx/features/life_insights/presentation/widgets/today_focus_hero.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project_task.dart';
 import 'package:chronyx/features/project_planner/presentation/providers/project_planner_providers.dart';
 import 'package:chronyx/features/project_planner/presentation/providers/todays_roadmap_provider.dart';
@@ -26,7 +26,7 @@ class DashboardPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
 
-    // No nested Scaffold — the shell (in app_router.dart) provides one.
+    // No nested Scaffold â€” the shell (in app_router.dart) provides one.
     // Render content directly so the floating bottom nav stays visible.
     return Stack(
       children: [
@@ -74,7 +74,7 @@ class _DashboardContent extends StatelessWidget {
             AppSpacing.md,
             0,
           ),
-          sliver: SliverToBoxAdapter(child: _HeroFocusCard()),
+          sliver: SliverToBoxAdapter(child: TodayFocusHero()),
         ),
         const SliverPadding(
           padding: EdgeInsets.fromLTRB(
@@ -124,9 +124,9 @@ class _DashboardContent extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Ambient backdrop — soft brand-colored radial glow at top
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ambient backdrop â€” soft brand-colored radial glow at top
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _AmbientBackdrop extends StatelessWidget {
   const _AmbientBackdrop();
@@ -153,9 +153,9 @@ class _AmbientBackdrop extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Greeting header
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _GreetingHeader extends ConsumerWidget {
   const _GreetingHeader({required this.user});
@@ -180,7 +180,7 @@ class _GreetingHeader extends ConsumerWidget {
     final salutation = greeting?.salutation ?? _fallbackSalutation();
     final name = greeting?.name ?? _fallbackName;
     final message = greeting?.message ?? "Let's make today count.";
-    final glyph = greeting?.glyph ?? '✨';
+    final glyph = greeting?.glyph ?? 'âœ¨';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
@@ -242,360 +242,10 @@ class _GreetingHeader extends ConsumerWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hero focus card — today's most important roadmap
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _HeroFocusCard extends ConsumerWidget {
-  const _HeroFocusCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final roadmapAsync = ref.watch(todaysRoadmapProvider);
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return roadmapAsync.when(
-      loading: () => const _HeroSkeleton(),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (roadmap) {
-        if (roadmap == null || roadmap.tasks.isEmpty) {
-          return _HeroEmpty();
-        }
-
-        // Resolve project for additional metadata
-        final projectsAsync = ref.watch(projectsProvider);
-        final project = projectsAsync.valueOrNull
-            ?.where((p) => p.id == roadmap.projectId)
-            .firstOrNull;
-
-        final daysElapsed = project == null
-            ? roadmap.tasks.first.dayNumber
-            : DateTime.now().difference(project.createdAt).inDays + 1;
-        final totalDays = project?.durationDays ?? 0;
-        final dayProgress = totalDays > 0 ? daysElapsed / totalDays : 0.0;
-        final taskProgress = roadmap.totalCount == 0
-            ? 0.0
-            : roadmap.completedCount / roadmap.totalCount;
-
-        // Pick the next pending task (or first if all done)
-        final nextTask = roadmap.tasks.firstWhere(
-          (t) => t.status != ProjectTaskStatus.completed,
-          orElse: () => roadmap.tasks.first,
-        );
-
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
-            boxShadow: DesignTokens.glow(scheme.primary),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
-            child: Stack(
-              children: [
-                // Aurora gradient backdrop
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          scheme.primary.withValues(alpha: 0.30),
-                          scheme.secondary.withValues(alpha: 0.20),
-                          scheme.tertiary.withValues(alpha: 0.10),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                  ),
-                ),
-                // Glass overlay
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: scheme.surface.withValues(alpha: 0.60),
-                    ),
-                  ),
-                ),
-                // Content
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: scheme.primary.withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(
-                                AppSpacing.radiusFull,
-                              ),
-                            ),
-                            child: Text(
-                              'TODAY\'S FOCUS',
-                              style: textTheme.labelSmall?.copyWith(
-                                color: scheme.primary,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          if (totalDays > 0)
-                            Text(
-                              'Day $daysElapsed / $totalDays',
-                              style: textTheme.labelSmall?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          ProgressRing(
-                            progress: totalDays > 0
-                                ? dayProgress
-                                : taskProgress,
-                            size: 84,
-                            strokeWidth: 7,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '${((totalDays > 0 ? dayProgress : taskProgress) * 100).round()}%',
-                                  style: textTheme.titleMedium?.copyWith(
-                                    color: scheme.onSurface,
-                                    fontWeight: FontWeight.w800,
-                                    height: 1.0,
-                                  ),
-                                ),
-                                Text(
-                                  'complete',
-                                  style: textTheme.labelSmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                    fontSize: 9,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  roadmap.projectTitle,
-                                  style: textTheme.titleLarge?.copyWith(
-                                    color: scheme.onSurface,
-                                    fontWeight: FontWeight.w700,
-                                    height: 1.2,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(
-                                  'NEXT UP',
-                                  style: textTheme.labelSmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                    letterSpacing: 1.2,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  nextTask.title,
-                                  style: textTheme.bodyMedium?.copyWith(
-                                    color: scheme.onSurface,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      _StartFocusButton(
-                        onTap: () =>
-                            context.push('/project/${roadmap.projectId}'),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _HeroEmpty extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return SceneCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      glow: scheme.primary,
-      onTap: () => context.push(AppRoutes.blueprint),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              gradient: DesignTokens.brandGradient,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              boxShadow: DesignTokens.glow(scheme.primary),
-            ),
-            child: const Icon(
-              Icons.auto_awesome_rounded,
-              color: Colors.white,
-              size: 26,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Create your first roadmap',
-                  style: textTheme.titleMedium?.copyWith(
-                    color: scheme.onSurface,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'AI-generated daily plans for your goals.',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(Icons.chevron_right_rounded, color: scheme.primary, size: 24),
-        ],
-      ),
-    );
-  }
-}
-
-class _StartFocusButton extends StatefulWidget {
-  const _StartFocusButton({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  State<_StartFocusButton> createState() => _StartFocusButtonState();
-}
-
-class _StartFocusButtonState extends State<_StartFocusButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
-    vsync: this,
-    duration: DesignTokens.motionFast,
-    lowerBound: 0,
-    upperBound: 0.04,
-  );
-  late final Animation<double> _scale = Tween<double>(
-    begin: 1.0,
-    end: 0.96,
-  ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return GestureDetector(
-      onTapDown: (_) => _ctrl.forward(),
-      onTapUp: (_) => _ctrl.reverse(),
-      onTapCancel: () => _ctrl.reverse(),
-      onTap: widget.onTap,
-      child: ScaleTransition(
-        scale: _scale,
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            gradient: DesignTokens.brandGradient,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-            boxShadow: [
-              BoxShadow(
-                color: scheme.primary.withValues(alpha: 0.40),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.play_arrow_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Text(
-                'Start Focus Session',
-                style: textTheme.labelLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroSkeleton extends StatelessWidget {
-  const _HeroSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      height: 220,
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Today's metrics — 4 premium tiles
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Today's metrics â€” 4 premium tiles
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TodaysMetrics extends ConsumerWidget {
   const _TodaysMetrics();
@@ -680,9 +330,9 @@ class _TodaysMetrics extends ConsumerWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Today's roadmap — timeline of today's tasks
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Today's roadmap â€” timeline of today's tasks
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TodaysRoadmap extends ConsumerWidget {
   const _TodaysRoadmap();
@@ -841,9 +491,9 @@ class _TimelineRow extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Recent projects
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _RecentProjects extends ConsumerWidget {
   const _RecentProjects();
@@ -958,7 +608,7 @@ class _RecentProjects extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
-                              '${project.durationDays} days · ${project.difficulty.label}',
+                              '${project.durationDays} days Â· ${project.difficulty.label}',
                               style: textTheme.bodySmall?.copyWith(
                                 color: scheme.onSurfaceVariant,
                               ),
@@ -981,9 +631,9 @@ class _RecentProjects extends ConsumerWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Loading + Error states
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _DashboardSkeleton extends StatelessWidget {
   const _DashboardSkeleton();

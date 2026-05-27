@@ -1,4 +1,5 @@
 import 'package:chronyx/core/errors/app_exception.dart';
+import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:chronyx/features/goals/domain/entities/goal.dart';
 import 'package:chronyx/features/goals/domain/repositories/goals_repository.dart';
 import 'package:chronyx/features/life_insights/domain/entities/focus_pattern.dart';
@@ -10,6 +11,7 @@ import 'package:chronyx/features/life_insights/domain/entities/life_snapshot.dar
 import 'package:chronyx/features/life_insights/domain/entities/mood.dart';
 import 'package:chronyx/features/life_insights/domain/entities/session_celebration.dart';
 import 'package:chronyx/features/life_insights/domain/entities/time_allocation.dart';
+import 'package:chronyx/features/life_insights/domain/entities/today_focus.dart';
 import 'package:chronyx/features/life_insights/domain/entities/weekly_win.dart';
 import 'package:chronyx/features/life_insights/domain/repositories/life_insights_repository.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project.dart';
@@ -1311,6 +1313,196 @@ class LifeInsightsRepositoryImpl implements LifeInsightsRepository {
       weekMinutes: weekMinutes,
       momentumDeltaPercent: momentumDelta,
       isPersonalBest: personalBest && justMins >= 30,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Today Focus — picks one of five Hero variants from real data
+  // ─────────────────────────────────────────────────────────────────────
+
+  @override
+  Future<TodayFocus> fetchTodayFocus() async {
+    final entries = await _safeFetchEntries();
+    final projects = await _safeFetchProjectsList();
+    final bundles = await _safeFetchProjects();
+    final goals = await _safeFetchGoals();
+
+    // Recent activity for momentum & streak
+    final now = DateTime.now();
+    final completed = entries.where((e) => !e.isActive).toList();
+    final daysActiveSet = <DateTime>{};
+    for (final e in completed) {
+      final s = e.startedAt.toLocal();
+      daysActiveSet.add(DateTime(s.year, s.month, s.day));
+    }
+    var streak = 0;
+    var cursor = DateTime(now.year, now.month, now.day);
+    while (daysActiveSet.contains(cursor)) {
+      streak++;
+      cursor = cursor.subtract(const Duration(days: 1));
+      if (streak > 365) break;
+    }
+
+    // ── State 1: NEWCOMER (no projects, no goals, no sessions) ──
+    if (completed.isEmpty && projects.isEmpty && goals.isEmpty) {
+      return _newcomerFocus();
+    }
+
+    // ── State 2: NO ROADMAP (has activity but no active project) ──
+    final activeProjects = projects
+        .where((p) => p.status == ProjectStatus.active)
+        .toList();
+    if (activeProjects.isEmpty) {
+      return _noRoadmapFocus();
+    }
+
+    // ── Project context for active/behind/flowing ──
+    final project = activeProjects.first;
+    final bundle = bundles.firstWhere(
+      (b) => b.id == project.id,
+      orElse: () =>
+          _ProjectBundle(id: project.id, title: project.title, tasks: const []),
+    );
+    return _activeProjectFocus(project, bundle, completed, streak);
+  }
+
+  TodayFocus _activeProjectFocus(
+    Project project,
+    _ProjectBundle bundle,
+    List<TimeEntry> completedEntries,
+    int streak,
+  ) {
+    final now = DateTime.now();
+    final daysElapsed = now.difference(project.createdAt).inDays + 1;
+    final dayNumber = daysElapsed.clamp(1, project.durationDays);
+    final totalDays = project.durationDays;
+
+    final todayTasks = bundle.tasks
+        .where((t) => t.dayNumber == dayNumber)
+        .toList();
+    final completionPercent = todayTasks.isEmpty
+        ? 0.0
+        : todayTasks
+                  .where((t) => t.status == ProjectTaskStatus.completed)
+                  .length /
+              todayTasks.length;
+
+    final topTask = todayTasks.firstWhere(
+      (t) => t.status != ProjectTaskStatus.completed,
+      orElse: () => todayTasks.isNotEmpty
+          ? todayTasks.first
+          : (bundle.tasks.isNotEmpty
+                ? bundle.tasks.first
+                : _placeholderTask(project)),
+    );
+
+    final recommended = (topTask.estimatedMinutes ?? project.dailyTimeMinutes)
+        .clamp(15, 180);
+
+    final expectedDayProgress = totalDays == 0 ? 0.0 : dayNumber / totalDays;
+    final actualOverallCompletion = bundle.tasks.isEmpty
+        ? 0.0
+        : bundle.tasks
+                  .where((t) => t.status == ProjectTaskStatus.completed)
+                  .length /
+              bundle.tasks.length;
+    final isBehind = actualOverallCompletion < expectedDayProgress - 0.15;
+    final isFlowing = streak >= 3 && actualOverallCompletion >= 0.40;
+
+    final kind = isBehind
+        ? TodayFocusKind.behind
+        : isFlowing
+        ? TodayFocusKind.flowing
+        : TodayFocusKind.active;
+
+    final mood = switch (kind) {
+      TodayFocusKind.behind => InsightMood.cooling,
+      TodayFocusKind.flowing => InsightMood.rising,
+      _ => InsightMood.steady,
+    };
+
+    final (headline, subhead, glyph) = _activeCopy(kind, project, streak);
+
+    return TodayFocus(
+      kind: kind,
+      mood: mood,
+      glyph: glyph,
+      headline: headline,
+      subhead: subhead,
+      ctaLabel: kind == TodayFocusKind.behind
+          ? 'Catch up'
+          : 'Start Focus Session',
+      ctaRoute: '/project/${project.id}',
+      project: project,
+      dayNumber: dayNumber,
+      totalDays: totalDays,
+      completionPercent: completionPercent,
+      topTask: todayTasks.isEmpty ? null : topTask,
+      recommendedMinutes: recommended,
+      streakDays: streak,
+    );
+  }
+
+  ProjectTask _placeholderTask(Project project) {
+    return ProjectTask(
+      id: 'placeholder',
+      projectId: project.id,
+      dayNumber: 1,
+      title: 'Open your roadmap',
+      description: '',
+      sortOrder: 0,
+      status: ProjectTaskStatus.pending,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  (String, String, String) _activeCopy(
+    TodayFocusKind kind,
+    Project project,
+    int streak,
+  ) {
+    return switch (kind) {
+      TodayFocusKind.behind => (
+        'Momentum slipped a little',
+        'Let\'s rebuild rhythm. One focused session brings it back.',
+        '🌒',
+      ),
+      TodayFocusKind.flowing => (
+        streak >= 7 ? 'You\'re in flow' : 'Momentum looks strong',
+        streak >= 3
+            ? '$streak-day streak. Keep it alive.'
+            : 'You\'re building a strong rhythm.',
+        '🔥',
+      ),
+      _ => (
+        'Today\'s mission',
+        'Keep moving. ${project.title} needs you today.',
+        '⚡',
+      ),
+    };
+  }
+
+  TodayFocus _newcomerFocus() {
+    return const TodayFocus(
+      kind: TodayFocusKind.newcomer,
+      mood: InsightMood.newcomer,
+      glyph: '🌅',
+      headline: 'Your story starts here',
+      subhead: 'Set a goal, plan a roadmap, or start your first focus session.',
+      ctaLabel: 'Create Blueprint',
+      ctaRoute: AppRoutes.blueprint,
+    );
+  }
+
+  TodayFocus _noRoadmapFocus() {
+    return const TodayFocus(
+      kind: TodayFocusKind.noRoadmap,
+      mood: InsightMood.steady,
+      glyph: '✨',
+      headline: 'Your next chapter starts here',
+      subhead: 'Turn a goal into a daily roadmap with AI.',
+      ctaLabel: 'Create Blueprint',
+      ctaRoute: AppRoutes.blueprint,
     );
   }
 }

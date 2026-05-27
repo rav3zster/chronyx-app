@@ -3,6 +3,7 @@ import 'package:chronyx/features/life_insights/domain/entities/greeting.dart';
 import 'package:chronyx/features/life_insights/domain/entities/life_report.dart';
 import 'package:chronyx/features/life_insights/domain/entities/life_snapshot.dart';
 import 'package:chronyx/features/life_insights/domain/entities/session_celebration.dart';
+import 'package:chronyx/features/life_insights/domain/entities/today_focus.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
 
 /// Repository for computing life insights from existing app data.
@@ -20,4 +21,8 @@ abstract class LifeInsightsRepository {
 
   /// Build a celebration moment for the session that just finished.
   Future<SessionCelebration> buildCelebration(TimeEntry justFinished);
+
+  /// Compute the dashboard Hero state — picks one of five variants
+  /// based on real activity data.
+  Future<TodayFocus> fetchTodayFocus();
 }

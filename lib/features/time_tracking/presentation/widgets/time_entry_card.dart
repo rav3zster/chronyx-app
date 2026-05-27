@@ -16,12 +16,12 @@ class TimeEntryCard extends StatelessWidget {
   final VoidCallback? onStopSession;
 
   static Color _colorForCategory(TaskCategory cat) => switch (cat) {
-        TaskCategory.productive => const Color(0xFF22D3A6),
-        TaskCategory.learning => const Color(0xFF818CF8),
-        TaskCategory.break_ => const Color(0xFFFBBC05),
-        TaskCategory.distraction => const Color(0xFFEA4335),
-        TaskCategory.other => const Color(0xFF94A3B8),
-      };
+    TaskCategory.productive => const Color(0xFF22D3A6),
+    TaskCategory.learning => const Color(0xFF818CF8),
+    TaskCategory.break_ => const Color(0xFFFBBC05),
+    TaskCategory.distraction => const Color(0xFFEA4335),
+    TaskCategory.other => const Color(0xFF94A3B8),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -65,8 +65,7 @@ class TimeEntryCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (entry.isActive)
-                      _PulsingDot(color: catColor),
+                    if (entry.isActive) _PulsingDot(color: catColor),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -100,8 +99,8 @@ class TimeEntryCard extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       entry.isActive
-                          ? duration
-                          : AppStrings.inProgress,
+                          ? '${AppStrings.inProgress} · $duration'
+                          : duration,
                       style: textTheme.bodySmall?.copyWith(
                         color: entry.isActive
                             ? catColor
@@ -167,9 +166,10 @@ class _PulsingDotState extends State<_PulsingDot>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _scale = Tween<double>(begin: 0.7, end: 1.3).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _scale = Tween<double>(
+      begin: 0.7,
+      end: 1.3,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override

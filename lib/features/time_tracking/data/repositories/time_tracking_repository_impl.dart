@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:chronyx/core/errors/app_exception.dart';
 import 'package:chronyx/features/time_tracking/data/datasources/time_tracking_remote_datasource.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
@@ -16,11 +14,10 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
     try {
       final models = await _remoteDataSource.fetchEntries();
       return models.map((model) => model.toEntity()).toList();
-    } on SocketException {
-      throw const NetworkException();
     } on PostgrestException {
       throw const ServerException();
-    } catch (_) {
+    } catch (e) {
+      if (_isNetworkError(e)) throw const NetworkException();
       throw const UnknownException();
     }
   }
@@ -36,11 +33,10 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
         category: category,
       );
       return model.toEntity();
-    } on SocketException {
-      throw const NetworkException();
     } on PostgrestException {
       throw const ServerException();
-    } catch (_) {
+    } catch (e) {
+      if (_isNetworkError(e)) throw const NetworkException();
       throw const UnknownException();
     }
   }
@@ -50,12 +46,19 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
     try {
       final model = await _remoteDataSource.stopSession(sessionId: sessionId);
       return model.toEntity();
-    } on SocketException {
-      throw const NetworkException();
     } on PostgrestException {
       throw const ServerException();
-    } catch (_) {
+    } catch (e) {
+      if (_isNetworkError(e)) throw const NetworkException();
       throw const UnknownException();
     }
+  }
+
+  bool _isNetworkError(Object e) {
+    final msg = e.toString().toLowerCase();
+    return msg.contains('socketexception') ||
+        msg.contains('network') ||
+        msg.contains('connection refused') ||
+        msg.contains('failed host lookup');
   }
 }

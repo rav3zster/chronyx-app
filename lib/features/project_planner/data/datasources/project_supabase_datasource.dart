@@ -22,17 +22,6 @@ class ProjectSupabaseDataSource implements ProjectRemoteDataSource {
   // Logging helpers
   // ─────────────────────────────────────────────────────────────────────
 
-  void _logSave(String table, Map<String, dynamic> payload) {
-    debugPrint('[Blueprint][save] table: $table');
-    debugPrint('[Blueprint][save] user_id: ${payload['user_id']}');
-    // Log payload without large fields to keep output readable
-    final preview = Map<String, dynamic>.from(payload)
-      ..remove('raw_blueprint_response')
-      ..remove('parsed_blueprint')
-      ..remove('generated_prompt');
-    debugPrint('[Blueprint][save] payload: $preview');
-  }
-
   void _logSuccess(String table, dynamic id) {
     debugPrint('[Blueprint][success] table: $table | id: $id');
   }
@@ -83,62 +72,49 @@ class ProjectSupabaseDataSource implements ProjectRemoteDataSource {
 
   @override
   Future<ProjectModel> createProject(Map<String, dynamic> data) async {
-    // ── Diagnostic: verify auth state before insert ──────────────────────
-    final currentUser = _client.auth.currentUser;
-    final session = _client.auth.currentSession;
-    debugPrint('[Blueprint] === createProject diagnostics ===');
-    debugPrint('[Blueprint] auth.currentUser?.id : ${currentUser?.id}');
-    debugPrint('[Blueprint] auth.currentUser?.email: ${currentUser?.email}');
-    debugPrint('[Blueprint] session is null       : ${session == null}');
-    if (session != null) {
-      debugPrint(
-        '[Blueprint] session?.accessToken  : ${session.accessToken.substring(0, 20)}...',
-      );
-      debugPrint('[Blueprint] session?.expiresAt    : ${session.expiresAt}');
-      final isExpired =
-          session.expiresAt != null &&
-          DateTime.fromMillisecondsSinceEpoch(
-            session.expiresAt! * 1000,
-          ).isBefore(DateTime.now());
-      debugPrint('[Blueprint] session expired       : $isExpired');
-    }
-    // ─────────────────────────────────────────────────────────────────────
-
-    // Guard: no session means the JWT won't be sent → RLS will reject insert.
-    if (session == null) {
-      debugPrint('[Blueprint] ABORT: no active session — RLS will deny insert');
-      throw const UnknownException(
-        'No active session. Please sign in again before saving.',
-      );
-    }
-
     final userId = _currentUserId;
     final insertData = {...data, 'user_id': userId};
 
-    // ── Diagnostic: verify user_id is in payload ─────────────────────────
-    debugPrint('[Blueprint] userId resolved       : $userId');
-    debugPrint('[Blueprint] payload user_id       : ${insertData['user_id']}');
-    debugPrint(
-      '[Blueprint] user_id match         : ${insertData['user_id'] == currentUser?.id}',
-    );
+    // ── Exact diagnostics as requested ───────────────────────────────────
+    final session = _client.auth.currentSession;
+    final user = _client.auth.currentUser;
+
+    debugPrint('====================');
+    debugPrint('[BLUEPRINT SAVE]');
+    debugPrint('Current user id: ${user?.id}');
+    debugPrint('Current user email: ${user?.email}');
+    debugPrint('Session exists: ${session != null}');
+    debugPrint('Access token exists: ${session?.accessToken != null}');
+    debugPrint('Refresh token exists: ${session?.refreshToken != null}');
+    debugPrint('JWT expired?: ${session?.isExpired}');
+    debugPrint('Payload before insert: $insertData');
+    debugPrint('Contains user_id: ${insertData['user_id']}');
+    debugPrint('====================');
     // ─────────────────────────────────────────────────────────────────────
 
-    _logSave(_projectsTable, insertData);
-
     try {
-      final List<dynamic> rows = await _client
-          .from(_projectsTable)
+      final response = await _client
+          .from('projects')
           .insert(insertData)
-          .select();
+          .select()
+          .single();
 
-      final model = ProjectModel.fromJson(rows.first as Map<String, dynamic>);
-      _logSuccess(_projectsTable, model.id);
-      return model;
+      debugPrint('[Blueprint] INSERT SUCCESS');
+      debugPrint(response.toString());
+
+      return ProjectModel.fromJson(response);
     } on PostgrestException catch (e, st) {
-      _logError(_projectsTable, e, st);
+      debugPrint('[Blueprint][PostgrestException]');
+      debugPrint('code: ${e.code}');
+      debugPrint('message: ${e.message}');
+      debugPrint('details: ${e.details}');
+      debugPrint('hint: ${e.hint}');
+      debugPrintStack(stackTrace: st);
       throw _mapPostgrest(e, _projectsTable);
     } catch (e, st) {
-      _logError(_projectsTable, e, st);
+      debugPrint('[Blueprint][Unknown]');
+      debugPrint(e.toString());
+      debugPrintStack(stackTrace: st);
       rethrow;
     }
   }

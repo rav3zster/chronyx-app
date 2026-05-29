@@ -3,6 +3,7 @@ import 'package:chronyx/features/project_planner/data/datasources/project_remote
 import 'package:chronyx/features/project_planner/domain/entities/project.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project_task.dart';
 import 'package:chronyx/features/project_planner/domain/repositories/project_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProjectRepositoryImpl implements ProjectRepository {
   ProjectRepositoryImpl(this._dataSource);
@@ -16,8 +17,12 @@ class ProjectRepositoryImpl implements ProjectRepository {
       return models.map((m) => m.toEntity()).toList();
     } on AppException {
       rethrow;
-    } on Exception {
-      throw const UnknownException('Failed to fetch projects');
+    } on PostgrestException catch (e) {
+      // Datasource already logged this — just rethrow as ServerException
+      // so the UI gets a readable message.
+      throw ServerException(e.message);
+    } on Exception catch (e) {
+      throw UnknownException('Failed to fetch projects: $e');
     }
   }
 
@@ -28,8 +33,10 @@ class ProjectRepositoryImpl implements ProjectRepository {
       return model.toEntity();
     } on AppException {
       rethrow;
-    } on Exception {
-      throw const UnknownException('Failed to fetch project');
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } on Exception catch (e) {
+      throw UnknownException('Failed to fetch project: $e');
     }
   }
 
@@ -62,8 +69,10 @@ class ProjectRepositoryImpl implements ProjectRepository {
       return model.toEntity();
     } on AppException {
       rethrow;
-    } on Exception {
-      throw const UnknownException('Failed to create project');
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } on Exception catch (e) {
+      throw UnknownException('Failed to create project: $e');
     }
   }
 
@@ -76,8 +85,10 @@ class ProjectRepositoryImpl implements ProjectRepository {
       await _dataSource.updateProjectStatus(projectId, status.jsonKey);
     } on AppException {
       rethrow;
-    } on Exception {
-      throw const UnknownException('Failed to update project status');
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } on Exception catch (e) {
+      throw UnknownException('Failed to update project status: $e');
     }
   }
 
@@ -87,8 +98,10 @@ class ProjectRepositoryImpl implements ProjectRepository {
       await _dataSource.deleteProject(projectId);
     } on AppException {
       rethrow;
-    } on Exception {
-      throw const UnknownException('Failed to delete project');
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } on Exception catch (e) {
+      throw UnknownException('Failed to delete project: $e');
     }
   }
 
@@ -99,8 +112,10 @@ class ProjectRepositoryImpl implements ProjectRepository {
       return models.map((m) => m.toEntity()).toList();
     } on AppException {
       rethrow;
-    } on Exception {
-      throw const UnknownException('Failed to fetch project tasks');
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } on Exception catch (e) {
+      throw UnknownException('Failed to fetch project tasks: $e');
     }
   }
 
@@ -120,14 +135,18 @@ class ProjectRepositoryImpl implements ProjectRepository {
               'sort_order': task.sortOrder,
               'estimated_minutes': task.estimatedMinutes,
               'status': task.status.jsonKey,
+              // todos is not in ProjectTask entity — omit here.
+              // The task model includes it when reading back from DB.
             },
           )
           .toList();
       await _dataSource.insertProjectTasks(jsonTasks);
     } on AppException {
       rethrow;
-    } on Exception {
-      throw const UnknownException('Failed to insert project tasks');
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } on Exception catch (e) {
+      throw UnknownException('Failed to insert project tasks: $e');
     }
   }
 
@@ -143,8 +162,10 @@ class ProjectRepositoryImpl implements ProjectRepository {
       );
     } on AppException {
       rethrow;
-    } on Exception {
-      throw const UnknownException('Failed to update task status');
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } on Exception catch (e) {
+      throw UnknownException('Failed to update task status: $e');
     }
   }
 
@@ -154,8 +175,10 @@ class ProjectRepositoryImpl implements ProjectRepository {
       await _dataSource.deleteTask(taskId);
     } on AppException {
       rethrow;
-    } on Exception {
-      throw const UnknownException('Failed to delete task');
+    } on PostgrestException catch (e) {
+      throw ServerException(e.message);
+    } on Exception catch (e) {
+      throw UnknownException('Failed to delete task: $e');
     }
   }
 }

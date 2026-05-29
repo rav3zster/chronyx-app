@@ -14,16 +14,16 @@ class AppTheme {
     const scheme = ColorScheme(
       brightness: Brightness.dark,
       primary: AppColors.indigo,
-      onPrimary: Color(0xFFF1F4FF),
-      primaryContainer: Color(0xFF1E2652),
+      onPrimary: Color(0xFFF0F4FF),
+      primaryContainer: Color(0xFF1A2050),
       onPrimaryContainer: Color(0xFFCDD5FF),
       secondary: AppColors.violet,
-      onSecondary: Color(0xFFF1F4FF),
-      secondaryContainer: Color(0xFF2D1F52),
+      onSecondary: Color(0xFFF0F4FF),
+      secondaryContainer: Color(0xFF261A4A),
       onSecondaryContainer: Color(0xFFDDD0FF),
       tertiary: AppColors.cyan,
       onTertiary: Color(0xFF001F26),
-      tertiaryContainer: Color(0xFF003640),
+      tertiaryContainer: Color(0xFF003040),
       onTertiaryContainer: Color(0xFFA8EEFF),
       error: AppColors.error,
       onError: Color(0xFF1A0010),
@@ -257,7 +257,10 @@ class AppTheme {
         indicatorColor: scheme.primary.withValues(alpha: 0.18),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return IconThemeData(color: scheme.primary, size: AppSpacing.iconLg);
+            return IconThemeData(
+              color: scheme.primary,
+              size: AppSpacing.iconLg,
+            );
           }
           return IconThemeData(
             color: scheme.onSurfaceVariant,
@@ -271,9 +274,7 @@ class AppTheme {
               fontWeight: FontWeight.w600,
             );
           }
-          return textTheme.labelSmall?.copyWith(
-            color: scheme.onSurfaceVariant,
-          );
+          return textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant);
         }),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -344,9 +345,7 @@ class AppTheme {
       // ── Input Decoration ─────────────────────────────────────────────────
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark
-            ? AppColors.darkSurface2
-            : AppColors.lightSurface2,
+        fillColor: isDark ? AppColors.darkSurface2 : AppColors.lightSurface2,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.md,
@@ -384,8 +383,9 @@ class AppTheme {
 
       // ── Snackbar ─────────────────────────────────────────────────────────
       snackBarTheme: SnackBarThemeData(
-        backgroundColor:
-            isDark ? AppColors.darkSurface3 : AppColors.darkSurface,
+        backgroundColor: isDark
+            ? AppColors.darkSurface3
+            : AppColors.darkSurface,
         contentTextStyle: textTheme.bodyMedium?.copyWith(
           color: AppColors.textPrimaryDark,
         ),

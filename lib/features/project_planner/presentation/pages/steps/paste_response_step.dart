@@ -21,12 +21,26 @@ class _PasteResponseStepState extends ConsumerState<PasteResponseStep> {
     super.initState();
     final current = ref.read(blueprintWizardProvider).rawBlueprintResponse;
     _responseController = TextEditingController(text: current ?? '');
+    _responseController.addListener(_onTextChanged);
   }
 
   @override
   void dispose() {
+    _responseController.removeListener(_onTextChanged);
     _responseController.dispose();
     super.dispose();
+  }
+
+  void _onTextChanged() {
+    // Clear any previous error when the user edits the field.
+    final wizardState = ref.read(blueprintWizardProvider);
+    if (wizardState.errorMessage != null) {
+      ref
+          .read(blueprintWizardProvider.notifier)
+          .setRawResponse(_responseController.text);
+    }
+    // Trigger rebuild for live status chip.
+    setState(() {});
   }
 
   void _onValidateAndContinue() {
@@ -38,12 +52,25 @@ class _PasteResponseStepState extends ConsumerState<PasteResponseStep> {
     }
   }
 
+  void _onCleanResponse() {
+    final notifier = ref.read(blueprintWizardProvider.notifier);
+    final cleaned = notifier.cleanResponse(_responseController.text);
+    _responseController.text = cleaned;
+    _responseController.selection = TextSelection.collapsed(
+      offset: cleaned.length,
+    );
+    notifier.setRawResponse(cleaned);
+  }
+
   @override
   Widget build(BuildContext context) {
     final wizardState = ref.watch(blueprintWizardProvider);
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final text = _responseController.text;
+    final hasText = text.trim().isNotEmpty;
     final hasError = wizardState.errorMessage != null;
+    final status = _detectStatus(text);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -132,16 +159,43 @@ class _PasteResponseStepState extends ConsumerState<PasteResponseStep> {
               ),
               contentPadding: const EdgeInsets.all(AppSpacing.md),
             ),
-            onChanged: (_) {
-              // Clear error when user edits
-              if (hasError) {
-                ref
-                    .read(blueprintWizardProvider.notifier)
-                    .setRawResponse(_responseController.text);
-              }
-            },
           ),
         ),
+
+        const SizedBox(height: AppSpacing.sm),
+
+        // ── Live status chip + Clean button ──────────────────────────────
+        if (hasText)
+          Row(
+            children: [
+              _StatusChip(status: status),
+              const Spacer(),
+              // "Clean Response" button — strips markdown, extracts JSON
+              TextButton.icon(
+                onPressed: _onCleanResponse,
+                icon: Icon(
+                  Icons.auto_fix_high_rounded,
+                  size: 14,
+                  color: scheme.primary,
+                ),
+                label: Text(
+                  'Clean Response',
+                  style: textTheme.labelSmall?.copyWith(
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
 
         // ── Error Display ────────────────────────────────────────────────
         if (hasError) ...[
@@ -154,12 +208,12 @@ class _PasteResponseStepState extends ConsumerState<PasteResponseStep> {
 
         const SizedBox(height: AppSpacing.lg),
 
-        // ── Validate Button ──────────────────────────────────────────────
+        // ── Validate Button — always enabled when text exists ────────────
         PrimaryButton(
           label: 'Validate & Continue',
-          onPressed: _responseController.text.trim().isNotEmpty
-              ? _onValidateAndContinue
-              : null,
+          // Button is enabled whenever there is text — validation happens
+          // on click, not by disabling the button.
+          onPressed: hasText ? _onValidateAndContinue : null,
           icon: const Icon(
             Icons.check_circle_outline_rounded,
             color: Colors.white,
@@ -167,6 +221,91 @@ class _PasteResponseStepState extends ConsumerState<PasteResponseStep> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Lightweight pre-flight check on the raw text — runs locally without
+  /// invoking the full parser. Used only for the live status chip.
+  _PasteStatus _detectStatus(String text) {
+    if (text.trim().isEmpty) return _PasteStatus.empty;
+
+    final t = text.trim();
+    final hasOpenBrace = t.contains('{');
+    final hasCloseBrace = t.contains('}');
+    final hasDays = t.contains('"days"') || t.contains("'days'");
+    final hasTitle = t.contains('"title"') || t.contains("'title'");
+
+    if (!hasOpenBrace) return _PasteStatus.invalid;
+    if (!hasCloseBrace) return _PasteStatus.incomplete;
+    if (!hasDays) return _PasteStatus.incomplete;
+    if (!hasTitle) return _PasteStatus.incomplete;
+    return _PasteStatus.ready;
+  }
+}
+
+// ── Status enum ───────────────────────────────────────────────────────────────
+
+enum _PasteStatus { empty, ready, incomplete, invalid }
+
+// ── Status chip ───────────────────────────────────────────────────────────────
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
+  final _PasteStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final (icon, label, color) = switch (status) {
+      _PasteStatus.ready => (
+        Icons.check_circle_rounded,
+        'Ready to validate',
+        const Color(0xFF22D3A6),
+      ),
+      _PasteStatus.incomplete => (
+        Icons.warning_amber_rounded,
+        'Looks incomplete',
+        const Color(0xFFF59E0B),
+      ),
+      _PasteStatus.invalid => (
+        Icons.cancel_rounded,
+        'Invalid format',
+        scheme.error,
+      ),
+      _PasteStatus.empty => (
+        Icons.circle_outlined,
+        'Waiting for input',
+        scheme.onSurfaceVariant,
+      ),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+        border: Border.all(color: color.withValues(alpha: 0.30)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -184,17 +323,28 @@ class _ErrorPanel extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    // Count recovered tasks from warnings (days with tasks that parsed OK)
+    final recoveredDays = issues
+        .where(
+          (i) =>
+              i.severity == ParseIssueSeverity.warning &&
+              i.field.startsWith('days['),
+        )
+        .length;
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: scheme.error.withValues(alpha: 0.08),
+        color: scheme.error.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: scheme.error.withValues(alpha: 0.3)),
+        border: Border.all(color: scheme.error.withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Main error message ─────────────────────────────────────────
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
                 Icons.error_outline_rounded,
@@ -203,23 +353,39 @@ class _ErrorPanel extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: Text(
-                  message,
-                  style: textTheme.titleSmall?.copyWith(
-                    color: scheme.error,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _friendlyTitle(message),
+                      style: textTheme.titleSmall?.copyWith(
+                        color: scheme.error,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      message,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurface.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
+
+          // ── Field-level issues ─────────────────────────────────────────
           if (issues.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Divider(color: scheme.error.withValues(alpha: 0.15), height: 1),
             const SizedBox(height: AppSpacing.sm),
             ...issues
                 .take(5)
                 .map(
                   (issue) => Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.only(bottom: 4),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -227,17 +393,18 @@ class _ErrorPanel extends StatelessWidget {
                           issue.severity == ParseIssueSeverity.error
                               ? Icons.close_rounded
                               : Icons.warning_amber_rounded,
-                          size: 14,
+                          size: 13,
                           color: issue.severity == ParseIssueSeverity.error
                               ? scheme.error
-                              : scheme.tertiary,
+                              : const Color(0xFFF59E0B),
                         ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             '${issue.field}: ${issue.message}',
                             style: textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurface.withValues(alpha: 0.8),
+                              color: scheme.onSurface.withValues(alpha: 0.75),
+                              height: 1.35,
                             ),
                           ),
                         ),
@@ -246,19 +413,121 @@ class _ErrorPanel extends StatelessWidget {
                   ),
                 ),
             if (issues.length > 5)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.xs),
-                child: Text(
-                  '...and ${issues.length - 5} more issues',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontStyle: FontStyle.italic,
-                  ),
+              Text(
+                '...and ${issues.length - 5} more issues',
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
                 ),
               ),
           ],
+
+          // ── Recovery hint ──────────────────────────────────────────────
+          if (recoveredDays > 0) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 6,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF22D3A6).withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.auto_fix_high_rounded,
+                    size: 13,
+                    color: Color(0xFF22D3A6),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'We recovered $recoveredDays valid day${recoveredDays == 1 ? '' : 's'} from your roadmap. '
+                      'Try "Clean Response" to fix the rest.',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFF22D3A6),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // ── Suggestions ────────────────────────────────────────────────
+          const SizedBox(height: AppSpacing.sm),
+          _SuggestionRow(message: message),
         ],
       ),
     );
+  }
+
+  String _friendlyTitle(String message) {
+    final lower = message.toLowerCase();
+    if (lower.contains('empty')) return 'Empty response';
+    if (lower.contains('malformed') || lower.contains('json parse')) {
+      return 'Invalid JSON format';
+    }
+    if (lower.contains('no json') || lower.contains('could not find')) {
+      return 'No roadmap found';
+    }
+    if (lower.contains('days')) return 'Missing roadmap structure';
+    if (lower.contains('truncated')) return 'Response appears truncated';
+    return "We couldn't understand the AI response";
+  }
+}
+
+// ── Suggestion row ────────────────────────────────────────────────────────────
+
+class _SuggestionRow extends StatelessWidget {
+  const _SuggestionRow({required this.message});
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final suggestion = _suggest(message);
+    if (suggestion == null) return const SizedBox.shrink();
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.lightbulb_outline_rounded, size: 13, color: scheme.primary),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            suggestion,
+            style: textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String? _suggest(String message) {
+    final lower = message.toLowerCase();
+    if (lower.contains('empty')) {
+      return 'Make sure you copied the full response from your AI tool.';
+    }
+    if (lower.contains('malformed') || lower.contains('json parse')) {
+      return 'Try the "Clean Response" button — it strips markdown and extracts the JSON automatically.';
+    }
+    if (lower.contains('no json') || lower.contains('could not find')) {
+      return 'The AI may have replied with text instead of JSON. Ask it to "respond with only valid JSON, no explanation."';
+    }
+    if (lower.contains('days')) {
+      return 'The response is missing the "days" array. Ask the AI to regenerate using the exact prompt format.';
+    }
+    if (lower.contains('truncated')) {
+      return 'The response may have been cut off. Ask the AI to continue or regenerate a shorter roadmap.';
+    }
+    return 'Try the "Clean Response" button, or go back and regenerate the prompt.';
   }
 }

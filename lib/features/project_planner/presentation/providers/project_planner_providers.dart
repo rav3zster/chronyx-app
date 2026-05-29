@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:chronyx/core/errors/app_exception.dart';
 import 'package:chronyx/core/providers/supabase_provider.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/project_planner/data/datasources/project_remote_datasource.dart';
@@ -12,6 +13,7 @@ import 'package:chronyx/features/project_planner/domain/entities/project.dart';
 import 'package:chronyx/features/project_planner/domain/entities/prompt_template.dart';
 import 'package:chronyx/features/project_planner/domain/repositories/blueprint_parser.dart';
 import 'package:chronyx/features/project_planner/domain/repositories/project_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ---------------------------------------------------------------------------
@@ -256,9 +258,46 @@ class BlueprintWizardNotifier extends Notifier<BlueprintWizardState> {
       state = state.clearError();
       return true;
     } on BlueprintParseException catch (e) {
+      // Debug log — helps diagnose AI response issues during development.
+      debugPrint('[BlueprintParser] reason: ${e.message}');
+      for (final issue in e.issues) {
+        debugPrint(
+          '[BlueprintParser]   field: ${issue.field} | '
+          '${issue.severity.name}: ${issue.message}',
+        );
+      }
       state = state.copyWith(errorMessage: e.message, parseWarnings: e.issues);
       return false;
     }
+  }
+
+  /// Strips markdown fences, explanatory text, and extracts the first
+  /// valid JSON object from the raw response. Mirrors the parser's own
+  /// extraction logic so the user can see the cleaned result before
+  /// validating.
+  ///
+  /// Returns the cleaned text, or the original if nothing was extracted.
+  String cleanResponse(String raw) {
+    var text = raw.trim();
+
+    // Remove markdown code fences
+    final fencePattern = RegExp(
+      r'```(?:json)?\s*\n?([\s\S]*?)\n?\s*```',
+      multiLine: true,
+    );
+    final fenceMatch = fencePattern.firstMatch(text);
+    if (fenceMatch != null) {
+      text = fenceMatch.group(1)!.trim();
+    }
+
+    // Extract first { → last }
+    final firstBrace = text.indexOf('{');
+    final lastBrace = text.lastIndexOf('}');
+    if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+      text = text.substring(firstBrace, lastBrace + 1);
+    }
+
+    return text;
   }
 
   // ── Step 4: Blueprint Review (editing) ──────────────────────────────────
@@ -411,9 +450,14 @@ class BlueprintWizardNotifier extends Notifier<BlueprintWizardState> {
           // Best-effort rollback — don't mask original error
         }
       }
+      // Surface the real error message — never show "Instance of '...'"
+      final message = e is AppException
+          ? e.message
+          : e.toString().replaceAll("Instance of '", '').replaceAll("'", '');
+      debugPrint('[Blueprint][saveBlueprint] error: $e');
       state = state.copyWith(
         isGenerating: false,
-        errorMessage: 'Failed to save: $e',
+        errorMessage: 'Save failed: $message',
       );
       return null;
     }

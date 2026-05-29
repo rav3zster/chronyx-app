@@ -42,9 +42,16 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
     } catch (error) {
       if (!mounted) return;
       final message = ErrorMessageMapper.fromError(error);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      // Hide any existing snackbar so we don't stack duplicates when the
+      // list section already shows the same error.
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 

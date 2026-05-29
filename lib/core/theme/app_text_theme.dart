@@ -10,12 +10,16 @@ class AppTextTheme {
   /// Returns a complete [TextTheme] using Inter + Outfit from Google Fonts.
   /// [displayColor] — used for large display / headline text
   /// [bodyColor]    — used for body / label / caption text
+  /// [displayFont]  — Google Font family for display/headline/title text
+  /// [bodyFont]     — Google Font family for body/label text
   static TextTheme build({
     required Color displayColor,
     required Color bodyColor,
+    String displayFont = 'Outfit',
+    String bodyFont = 'Inter',
   }) {
-    final display = GoogleFonts.outfit(color: displayColor);
-    final body = GoogleFonts.inter(color: bodyColor);
+    final display = GoogleFonts.getFont(displayFont, color: displayColor);
+    final body = GoogleFonts.getFont(bodyFont, color: bodyColor);
 
     return TextTheme(
       // Display
@@ -119,12 +123,12 @@ class AppTextTheme {
   // ── Convenience getters ────────────────────────────────────────────────────
 
   static TextTheme get dark => build(
-        displayColor: AppColors.textPrimaryDark,
-        bodyColor: AppColors.textSecondaryDark,
-      );
+    displayColor: AppColors.textPrimaryDark,
+    bodyColor: AppColors.textSecondaryDark,
+  );
 
   static TextTheme get light => build(
-        displayColor: AppColors.textPrimaryLight,
-        bodyColor: AppColors.textSecondaryLight,
-      );
+    displayColor: AppColors.textPrimaryLight,
+    bodyColor: AppColors.textSecondaryLight,
+  );
 }

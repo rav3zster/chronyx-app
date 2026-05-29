@@ -1,5 +1,5 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
-import 'package:chronyx/core/widgets/scene_card.dart';
+import 'package:chronyx/core/theme/scheme_x.dart';
 import 'package:chronyx/core/widgets/section_header.dart';
 import 'package:chronyx/features/life_insights/domain/entities/life_balance.dart';
 import 'package:chronyx/features/life_insights/presentation/widgets/balance_radar.dart';
@@ -20,10 +20,17 @@ class BalanceSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SectionHeader(eyebrow: 'Balance', title: 'Life balance radar'),
-        SceneCard(
+        Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.lg,
+          ),
+          decoration: BoxDecoration(
+            color: scheme.elevatedCard,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.6),
+            ),
           ),
           child: Column(
             children: [
@@ -89,7 +96,7 @@ class _Commentary extends StatelessWidget {
               vertical: AppSpacing.sm,
             ),
             decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              color: scheme.elevatedCardInner,
               borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             ),
             child: Row(

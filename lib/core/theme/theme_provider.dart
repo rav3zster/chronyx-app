@@ -9,7 +9,11 @@ enum AppThemeVariant {
   lightClean('Light Clean', Icons.light_mode_rounded),
   violetDream('Violet Dream', Icons.auto_awesome_rounded),
   midnightOcean('Midnight Ocean', Icons.water_rounded),
-  sunsetAmber('Sunset Amber', Icons.wb_sunny_rounded);
+  sunsetAmber('Sunset Amber', Icons.wb_sunny_rounded),
+  warmCream('Warm Cream', Icons.local_cafe_outlined),
+  graphiteBlue('Graphite Blue', Icons.bolt_outlined),
+  forestSage('Forest Sage', Icons.eco_outlined),
+  noirRust('Noir Rust', Icons.local_fire_department_outlined);
 
   const AppThemeVariant(this.label, this.icon);
   final String label;
@@ -37,5 +41,9 @@ final resolvedThemeProvider = Provider<ThemeData>((ref) {
     AppThemeVariant.violetDream => AppTheme.accent,
     AppThemeVariant.midnightOcean => AppTheme.ocean,
     AppThemeVariant.sunsetAmber => AppTheme.amber,
+    AppThemeVariant.warmCream => AppTheme.warmCream,
+    AppThemeVariant.graphiteBlue => AppTheme.graphiteBlue,
+    AppThemeVariant.forestSage => AppTheme.forestSage,
+    AppThemeVariant.noirRust => AppTheme.noirRust,
   };
 });

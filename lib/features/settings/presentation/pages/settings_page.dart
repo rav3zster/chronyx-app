@@ -157,6 +157,26 @@ class _ThemeCardState extends State<_ThemeCard>
         AppColors.amberBackground,
         AppColors.amberPrimary,
       ),
+      AppThemeVariant.warmCream => (
+        AppColors.creamGradient,
+        AppColors.creamBg,
+        AppColors.creamGold,
+      ),
+      AppThemeVariant.graphiteBlue => (
+        AppColors.graphiteGradient,
+        AppColors.graphiteBg,
+        AppColors.graphiteBlueBright,
+      ),
+      AppThemeVariant.forestSage => (
+        AppColors.sageGradient,
+        AppColors.sageBg,
+        AppColors.sageGreen,
+      ),
+      AppThemeVariant.noirRust => (
+        AppColors.noirGradient,
+        AppColors.noirBg,
+        AppColors.noirRust,
+      ),
     };
   }
 

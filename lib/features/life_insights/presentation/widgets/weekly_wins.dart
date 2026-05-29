@@ -1,4 +1,5 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
+import 'package:chronyx/core/theme/scheme_x.dart';
 import 'package:chronyx/core/widgets/section_header.dart';
 import 'package:chronyx/features/life_insights/domain/entities/weekly_win.dart';
 import 'package:flutter/material.dart';
@@ -45,25 +46,9 @@ class _WinCard extends StatelessWidget {
       width: 200,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.primary.withValues(alpha: 0.18),
-            scheme.secondary.withValues(alpha: 0.10),
-          ],
-        ),
+        color: scheme.elevatedCard,
         borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(
-              alpha: scheme.brightness == Brightness.dark ? 0.3 : 0.06,
-            ),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,7 +60,7 @@ class _WinCard extends StatelessWidget {
                 height: 36,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: scheme.surface.withValues(alpha: 0.4),
+                  color: scheme.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Text(win.emoji, style: const TextStyle(fontSize: 18)),

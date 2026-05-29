@@ -263,8 +263,191 @@ class AppTheme {
     );
   }
 
-  // ── Shared builder ─────────────────────────────────────────────────────────
+  // ── Warm Cream (HTML T1 — light, gold, DM Sans) ────────────────────────────
 
+  static ThemeData get warmCream {
+    const scheme = ColorScheme(
+      brightness: Brightness.light,
+      primary: AppColors.creamGold,
+      onPrimary: AppColors.creamHero,
+      primaryContainer: Color(0xFFE3D2AE),
+      onPrimaryContainer: AppColors.creamHero,
+      secondary: AppColors.creamGoldDeep,
+      onSecondary: AppColors.creamHero,
+      secondaryContainer: Color(0xFFE3D2AE),
+      onSecondaryContainer: AppColors.creamHero,
+      tertiary: AppColors.creamGold,
+      onTertiary: AppColors.creamHero,
+      tertiaryContainer: Color(0xFFE3D2AE),
+      onTertiaryContainer: AppColors.creamHero,
+      error: Color(0xFFB23A20),
+      onError: Color(0xFFFFFFFF),
+      errorContainer: Color(0xFFFFDAD2),
+      onErrorContainer: Color(0xFF410001),
+      surface: AppColors.creamSurface,
+      onSurface: AppColors.creamTextPrimary,
+      surfaceContainerHighest: AppColors.creamSurface,
+      onSurfaceVariant: AppColors.creamTextSecondary,
+      outline: Color(0xFFD8D0C2),
+      outlineVariant: AppColors.creamTrack,
+      inverseSurface: AppColors.creamHero,
+      onInverseSurface: AppColors.creamBg,
+      inversePrimary: AppColors.creamGold,
+      shadow: Color(0xFF000000),
+      scrim: Color(0xFF000000),
+    );
+    return _buildTheme(
+      scheme: scheme,
+      textTheme: AppTextTheme.build(
+        displayColor: AppColors.creamTextPrimary,
+        bodyColor: AppColors.creamTextSecondary,
+        displayFont: 'DM Sans',
+        bodyFont: 'DM Sans',
+      ),
+      scaffoldBg: AppColors.creamBg,
+      systemOverlayStyle: SystemUiOverlayStyle.dark,
+    );
+  }
+
+  // ── Graphite Blue (HTML T2 — dark, electric blue, DM Sans) ─────────────────
+
+  static ThemeData get graphiteBlue {
+    const scheme = ColorScheme(
+      brightness: Brightness.dark,
+      primary: AppColors.graphiteBlue,
+      onPrimary: Color(0xFFFFFFFF),
+      primaryContainer: Color(0xFF1A1A2E),
+      onPrimaryContainer: Color(0xFFC0C8E0),
+      secondary: AppColors.graphiteBlueBright,
+      onSecondary: Color(0xFF00102E),
+      secondaryContainer: Color(0xFF16213E),
+      onSecondaryContainer: Color(0xFFC0C8E0),
+      tertiary: AppColors.graphiteBlueBright,
+      onTertiary: Color(0xFF00102E),
+      tertiaryContainer: Color(0xFF16213E),
+      onTertiaryContainer: Color(0xFFC0C8E0),
+      error: Color(0xFFE06A6A),
+      onError: Color(0xFF1A0000),
+      errorContainer: Color(0xFF4C1A1A),
+      onErrorContainer: Color(0xFFFFD9D9),
+      surface: AppColors.graphiteSurface,
+      onSurface: AppColors.graphiteTextPrimary,
+      surfaceContainerHighest: AppColors.graphiteSurface,
+      onSurfaceVariant: AppColors.graphiteTextSecondary,
+      outline: AppColors.graphiteBorder,
+      outlineVariant: AppColors.graphiteBorder,
+      inverseSurface: AppColors.graphiteHero,
+      onInverseSurface: Color(0xFFC0C8E0),
+      inversePrimary: AppColors.graphiteBlueBright,
+      shadow: Color(0xFF000000),
+      scrim: Color(0xFF000000),
+    );
+    return _buildTheme(
+      scheme: scheme,
+      textTheme: AppTextTheme.build(
+        displayColor: AppColors.graphiteTextPrimary,
+        bodyColor: AppColors.graphiteTextSecondary,
+        displayFont: 'DM Sans',
+        bodyFont: 'DM Sans',
+      ),
+      scaffoldBg: AppColors.graphiteBg,
+      systemOverlayStyle: SystemUiOverlayStyle.light,
+    );
+  }
+
+  // ── Forest Sage (HTML T3 — light, sage green, DM Sans) ─────────────────────
+
+  static ThemeData get forestSage {
+    const scheme = ColorScheme(
+      brightness: Brightness.light,
+      primary: AppColors.sageGreen,
+      onPrimary: Color(0xFFFFFFFF),
+      primaryContainer: Color(0xFFD2E3CC),
+      onPrimaryContainer: AppColors.sageHero,
+      secondary: AppColors.sageGreenBright,
+      onSecondary: Color(0xFFFFFFFF),
+      secondaryContainer: Color(0xFFD2E3CC),
+      onSecondaryContainer: AppColors.sageHero,
+      tertiary: AppColors.sageGreen,
+      onTertiary: Color(0xFFFFFFFF),
+      tertiaryContainer: Color(0xFFD2E3CC),
+      onTertiaryContainer: AppColors.sageHero,
+      error: Color(0xFF9A3018),
+      onError: Color(0xFFFFFFFF),
+      errorContainer: Color(0xFFFFDAD2),
+      onErrorContainer: Color(0xFF410001),
+      surface: AppColors.sageSurface,
+      onSurface: AppColors.sageTextPrimary,
+      surfaceContainerHighest: AppColors.sageSurface,
+      onSurfaceVariant: AppColors.sageTextSecondary,
+      outline: Color(0xFFCAD2C4),
+      outlineVariant: AppColors.sageTrack,
+      inverseSurface: AppColors.sageHero,
+      onInverseSurface: Color(0xFFB8C8B0),
+      inversePrimary: AppColors.sageGreenBright,
+      shadow: Color(0xFF000000),
+      scrim: Color(0xFF000000),
+    );
+    return _buildTheme(
+      scheme: scheme,
+      textTheme: AppTextTheme.build(
+        displayColor: AppColors.sageTextPrimary,
+        bodyColor: AppColors.sageTextSecondary,
+        displayFont: 'DM Sans',
+        bodyFont: 'DM Sans',
+      ),
+      scaffoldBg: AppColors.sageBg,
+      systemOverlayStyle: SystemUiOverlayStyle.dark,
+    );
+  }
+
+  // ── Noir Rust (HTML T4 — dark, rust orange, Playfair + DM Sans) ────────────
+
+  static ThemeData get noirRust {
+    const scheme = ColorScheme(
+      brightness: Brightness.dark,
+      primary: AppColors.noirRust,
+      onPrimary: Color(0xFFFFFFFF),
+      primaryContainer: Color(0xFF3A1C0A),
+      onPrimaryContainer: Color(0xFFFFD9C0),
+      secondary: AppColors.noirRustBright,
+      onSecondary: Color(0xFF2A1000),
+      secondaryContainer: Color(0xFF3A1C0A),
+      onSecondaryContainer: Color(0xFFFFD9C0),
+      tertiary: AppColors.noirRustBright,
+      onTertiary: Color(0xFF2A1000),
+      tertiaryContainer: Color(0xFF3A1C0A),
+      onTertiaryContainer: Color(0xFFFFD9C0),
+      error: Color(0xFFE0703A),
+      onError: Color(0xFF1A0500),
+      errorContainer: Color(0xFF4A1A0A),
+      onErrorContainer: Color(0xFFFFDBC8),
+      surface: AppColors.noirSurface,
+      onSurface: AppColors.noirTextPrimary,
+      surfaceContainerHighest: AppColors.noirSurface,
+      onSurfaceVariant: AppColors.noirTextSecondary,
+      outline: AppColors.noirBorder,
+      outlineVariant: AppColors.noirBorder,
+      inverseSurface: AppColors.noirHero,
+      onInverseSurface: Color(0xFFC0B0A8),
+      inversePrimary: AppColors.noirRustBright,
+      shadow: Color(0xFF000000),
+      scrim: Color(0xFF000000),
+    );
+    return _buildTheme(
+      scheme: scheme,
+      textTheme: AppTextTheme.build(
+        displayColor: AppColors.noirTextPrimary,
+        bodyColor: AppColors.noirTextSecondary,
+        displayFont: 'Playfair Display',
+        bodyFont: 'DM Sans',
+      ),
+      scaffoldBg: AppColors.noirBg,
+      systemOverlayStyle: SystemUiOverlayStyle.light,
+    );
+  }
+
+  // ── Shared builder ─────────────────────────────────────────────────────────
   static ThemeData _buildTheme({
     required ColorScheme scheme,
     required TextTheme textTheme,

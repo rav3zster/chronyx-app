@@ -90,6 +90,59 @@ class AppColors {
 
   /// Warm text muted
   static const Color warmTextMuted = Color(0xFFB0A090);
+
+  // ── HTML redesign palettes (4 new themes) ─────────────────────────────────
+
+  // T1 — Warm Cream (light, gold)
+  static const Color creamBg = Color(0xFFF5F0E8);
+  static const Color creamSurface = Color(0xFFEDE8DE);
+  static const Color creamTrack = Color(0xFFDDD8CE);
+  static const Color creamHero = Color(0xFF1A1510);
+  static const Color creamGold = Color(0xFFC8A96E);
+  static const Color creamGoldDeep = Color(0xFFB08D5B);
+  static const Color creamTextPrimary = Color(0xFF1A1510);
+  static const Color creamTextSecondary = Color(0xFF9A8E80);
+
+  // T2 — Graphite Blue (dark, electric blue)
+  static const Color graphiteBg = Color(0xFF141417);
+  static const Color graphiteBase = Color(0xFF0F0F12);
+  static const Color graphiteSurface = Color(0xFF1A1A22);
+  static const Color graphiteHero = Color(0xFF1A1A2E);
+  static const Color graphiteBlue = Color(0xFF3B5BDB);
+  static const Color graphiteBlueBright = Color(0xFF4C83FF);
+  static const Color graphiteTextPrimary = Color(0xFFE8E8F0);
+  static const Color graphiteTextSecondary = Color(0xFF6A6A80);
+  static const Color graphiteBorder = Color(0xFF22222E);
+
+  // T3 — Forest Sage (light, green)
+  static const Color sageBg = Color(0xFFF2F5F0);
+  static const Color sageSurface = Color(0xFFEAEDE7);
+  static const Color sageTrack = Color(0xFFDDE3DA);
+  static const Color sageHero = Color(0xFF1E2B1A);
+  static const Color sageGreen = Color(0xFF4A9438);
+  static const Color sageGreenBright = Color(0xFF6AAA54);
+  static const Color sageTextPrimary = Color(0xFF1A2218);
+  static const Color sageTextSecondary = Color(0xFF8A9A82);
+
+  // T4 — Noir Rust (dark, rust orange)
+  static const Color noirBg = Color(0xFF111010);
+  static const Color noirBase = Color(0xFF0C0B0B);
+  static const Color noirSurface = Color(0xFF1A1816);
+  static const Color noirHero = Color(0xFF1E1A17);
+  static const Color noirRust = Color(0xFFC85A20);
+  static const Color noirRustBright = Color(0xFFD8703A);
+  static const Color noirTextPrimary = Color(0xFFF0ECE8);
+  static const Color noirTextSecondary = Color(0xFF6A6260);
+  static const Color noirBorder = Color(0xFF252220);
+
+  // Theme swatch gradients for the settings picker
+  static const List<Color> creamGradient = [creamGold, Color(0xFFD8C29A)];
+  static const List<Color> graphiteGradient = [
+    graphiteBlue,
+    graphiteBlueBright,
+  ];
+  static const List<Color> sageGradient = [sageGreen, sageGreenBright];
+  static const List<Color> noirGradient = [noirRust, noirRustBright];
   static const List<Color> brandGradient = [indigo, violet];
   static const List<Color> oceanGradient = [oceanPrimary, Color(0xFF38BDF8)];
   static const List<Color> amberGradient = [amberPrimary, Color(0xFFFF8C42)];

@@ -98,6 +98,7 @@ class _Greeting extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final greeting = ref.watch(greetingProvider).valueOrNull;
     final salutation = greeting?.salutation ?? _salutation();
     final name = greeting?.name ?? _name;
@@ -112,7 +113,7 @@ class _Greeting extends ConsumerWidget {
             children: [
               Text(
                 '$salutation, $name',
-                style: TextStyle(
+                style: textTheme.headlineMedium?.copyWith(
                   color: scheme.onSurface,
                   fontSize: 26,
                   fontWeight: FontWeight.w700,
@@ -123,7 +124,7 @@ class _Greeting extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 message,
-                style: TextStyle(
+                style: textTheme.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
@@ -158,6 +159,7 @@ class _HeroCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final projects = ref.watch(projectsProvider).valueOrNull ?? [];
     final hasProject = projects.isNotEmpty;
 
@@ -172,7 +174,7 @@ class _HeroCard extends ConsumerWidget {
         children: [
           Text(
             'NEXT CHAPTER',
-            style: TextStyle(
+            style: textTheme.labelSmall?.copyWith(
               color: scheme.onInverseSurface.withValues(alpha: 0.55),
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -184,7 +186,7 @@ class _HeroCard extends ConsumerWidget {
             hasProject
                 ? projects.first.title
                 : 'Turn a goal into a daily\nroadmap — start here.',
-            style: TextStyle(
+            style: textTheme.titleLarge?.copyWith(
               color: scheme.onInverseSurface,
               fontSize: 22,
               fontWeight: FontWeight.w700,
@@ -215,7 +217,7 @@ class _HeroCard extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Text(
                     hasProject ? 'Continue Roadmap' : 'Create Blueprint',
-                    style: TextStyle(
+                    style: textTheme.labelLarge?.copyWith(
                       color: scheme.onPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -326,6 +328,7 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: BoxDecoration(
@@ -341,7 +344,7 @@ class _MetricCard extends StatelessWidget {
               AnimatedCounter(
                 value: value,
                 fractionDigits: fractionDigits,
-                style: TextStyle(
+                style: textTheme.displaySmall?.copyWith(
                   color: scheme.onSurface,
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
@@ -354,7 +357,7 @@ class _MetricCard extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 3),
                   child: Text(
                     unit,
-                    style: TextStyle(
+                    style: textTheme.titleMedium?.copyWith(
                       color: scheme.onSurface,
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -367,7 +370,7 @@ class _MetricCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(
+            style: textTheme.labelSmall?.copyWith(
               color: scheme.onSurfaceVariant,
               fontSize: 10,
               fontWeight: FontWeight.w600,
@@ -391,6 +394,7 @@ class _ThisWeek extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final analytics = ref.watch(analyticsProvider);
     final snapshot = ref.watch(lifeSnapshotProvider).valueOrNull;
 
@@ -445,7 +449,7 @@ class _ThisWeek extends ConsumerWidget {
                     child: Center(
                       child: Text(
                         '${weekHours.toStringAsFixed(1)}h',
-                        style: TextStyle(
+                        style: textTheme.labelLarge?.copyWith(
                           color: scheme.onSurface,
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -464,7 +468,7 @@ class _ThisWeek extends ConsumerWidget {
                         topActivity != null
                             ? '${(progress * 100).round()}% on $topActivity'
                             : headline,
-                        style: TextStyle(
+                        style: textTheme.titleMedium?.copyWith(
                           color: scheme.onSurface,
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -476,7 +480,7 @@ class _ThisWeek extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         insightText,
-                        style: TextStyle(
+                        style: textTheme.bodyMedium?.copyWith(
                           color: scheme.onSurfaceVariant,
                           fontSize: 13,
                           fontWeight: FontWeight.w400,
@@ -569,7 +573,7 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: TextStyle(
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
         color: Theme.of(context).colorScheme.onSurfaceVariant,
         fontSize: 11,
         fontWeight: FontWeight.w600,

@@ -2,7 +2,7 @@ import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/constants/app_strings.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/widgets/app_error_view.dart';
-import 'package:chronyx/core/widgets/settings_icon_button.dart';
+import 'package:chronyx/core/widgets/page_header.dart';
 import 'package:chronyx/features/life_insights/presentation/pages/session_celebration_sheet.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
 import 'package:chronyx/features/time_tracking/presentation/providers/time_tracking_providers.dart';
@@ -155,24 +155,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Text(
-            AppStrings.timeTrackingTitle,
-            style: textTheme.headlineMedium?.copyWith(
-              color: scheme.onSurface,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ),
-        const SettingsIconButton(),
-      ],
-    );
+    return const PageHeader(title: AppStrings.timeTrackingTitle);
   }
 }
 

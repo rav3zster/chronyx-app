@@ -1,6 +1,7 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/theme/design_tokens.dart';
+import 'package:chronyx/core/theme/scheme_x.dart';
 import 'package:chronyx/core/widgets/scene_card.dart';
 import 'package:chronyx/core/widgets/section_header.dart';
 import 'package:chronyx/core/widgets/state_view.dart';
@@ -252,19 +253,9 @@ class _HeroInsight extends StatelessWidget {
     final momentum = report.reflection.momentum;
     final mood = report.mood;
 
-    // Accent + gradient derive from the active theme so the card matches
-    // whatever palette is selected (gold in Warm, indigo in Cosmic Dark, …).
+    // Accent derives from the active theme so the card matches whatever
+    // palette is selected (gold in Warm, indigo in Cosmic Dark, …).
     final accent = scheme.primary;
-    final heroGradient = LinearGradient(
-      colors: [
-        scheme.primary.withValues(alpha: 0.55),
-        scheme.secondary.withValues(alpha: 0.45),
-        scheme.tertiary.withValues(alpha: 0.40),
-      ],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      stops: const [0.0, 0.55, 1.0],
-    );
 
     final momentumColor = switch (momentum) {
       TrendDirection.up => DesignTokens.accentMint,
@@ -273,143 +264,106 @@ class _HeroInsight extends StatelessWidget {
     };
 
     return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
+        color: scheme.elevatedCard,
         borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
-        boxShadow: [
-          BoxShadow(
-            color: accent.withValues(alpha: 0.40),
-            blurRadius: 48,
-            spreadRadius: -10,
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                ),
+                child: Text(
+                  'THIS ${report.window.label.toUpperCase()}',
+                  style: textTheme.labelSmall?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.4,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(mood.glyph, style: const TextStyle(fontSize: 18)),
+              ),
+            ],
           ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.30),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+          const SizedBox(height: AppSpacing.lg),
+          // Emotional headline — the WOW line.
+          Text(
+            report.heroEmotion,
+            style: textTheme.headlineSmall?.copyWith(
+              color: scheme.onSurface,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.6,
+              height: 1.12,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            report.snapshot.smartHeadline,
+            style: textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          // Stats row with subtle dividers
+          Row(
+            children: [
+              Expanded(
+                child: _HeroStat(
+                  label: 'TRACKED',
+                  value: '${hoursStr}h',
+                  accent: accent,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 36,
+                color: scheme.outlineVariant.withValues(alpha: 0.4),
+              ),
+              Expanded(
+                child: _HeroStat(
+                  label: 'CONSISTENCY',
+                  value: '$consistency%',
+                  accent: DesignTokens.accentMint,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 36,
+                color: scheme.outlineVariant.withValues(alpha: 0.4),
+              ),
+              Expanded(
+                child: _HeroStat(
+                  label: 'MOMENTUM',
+                  value: momentum.arrow,
+                  accent: momentumColor,
+                ),
+              ),
+            ],
           ),
         ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 800),
-                curve: Curves.easeOutCubic,
-                decoration: BoxDecoration(gradient: heroGradient),
-              ),
-            ),
-            Positioned.fill(
-              child: Container(color: scheme.surface.withValues(alpha: 0.62)),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusFull,
-                          ),
-                        ),
-                        child: Text(
-                          'THIS ${report.window.label.toUpperCase()}',
-                          style: textTheme.labelSmall?.copyWith(
-                            color: accent,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.4,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        width: 36,
-                        height: 36,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: scheme.surface.withValues(alpha: 0.5),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: accent.withValues(alpha: 0.4),
-                          ),
-                        ),
-                        child: Text(
-                          mood.glyph,
-                          style: const TextStyle(fontSize: 18),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  // Emotional headline — the WOW line.
-                  Text(
-                    report.heroEmotion,
-                    style: textTheme.headlineSmall?.copyWith(
-                      color: scheme.onSurface,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.6,
-                      height: 1.12,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    report.snapshot.smartHeadline,
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  // Stats row with mood-tinted dividers
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _HeroStat(
-                          label: 'TRACKED',
-                          value: '${hoursStr}h',
-                          accent: accent,
-                        ),
-                      ),
-                      Container(
-                        width: 1,
-                        height: 36,
-                        color: scheme.outlineVariant.withValues(alpha: 0.3),
-                      ),
-                      Expanded(
-                        child: _HeroStat(
-                          label: 'CONSISTENCY',
-                          value: '$consistency%',
-                          accent: DesignTokens.accentMint,
-                        ),
-                      ),
-                      Container(
-                        width: 1,
-                        height: 36,
-                        color: scheme.outlineVariant.withValues(alpha: 0.3),
-                      ),
-                      Expanded(
-                        child: _HeroStat(
-                          label: 'MOMENTUM',
-                          value: momentum.arrow,
-                          accent: momentumColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

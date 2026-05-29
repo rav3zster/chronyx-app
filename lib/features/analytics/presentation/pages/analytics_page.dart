@@ -3,13 +3,15 @@ import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:chronyx/core/widgets/glass_card.dart';
-import 'package:chronyx/core/widgets/settings_icon_button.dart';
+import 'package:chronyx/core/widgets/page_header.dart';
 import 'package:chronyx/core/widgets/state_view.dart';
 import 'package:chronyx/features/analytics/domain/entities/analytics_summary.dart';
 import 'package:chronyx/features/analytics/presentation/providers/analytics_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+const _kPad = 20.0;
 
 class AnalyticsPage extends ConsumerWidget {
   const AnalyticsPage({super.key});
@@ -18,32 +20,40 @@ class AnalyticsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(analyticsProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analytics'),
-        actions: const [
-          SettingsIconButton(),
-          SizedBox(width: AppSpacing.xs),
-        ],
-      ),
-      body: state.when(
-        data: (summary) {
-          if (summary == null) {
-            return StateView.empty(
-              icon: Icons.analytics_outlined,
-              title: 'No analytics yet',
-              message: 'Track a few sessions to unlock your insights.',
-              actionLabel: 'Track time',
-              onAction: () => context.go(AppRoutes.timeTracking),
-            );
-          }
-          return _AnalyticsBody(summary: summary);
-        },
-        error: (err, _) => StateView.error(
-          message: ErrorMessageMapper.fromError(err),
-          onRetry: () => ref.read(analyticsProvider.notifier).refresh(),
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(_kPad, 12, _kPad, 16),
+              child: PageHeader(title: 'Analytics'),
+            ),
+            Expanded(
+              child: state.when(
+                data: (summary) {
+                  if (summary == null) {
+                    return StateView.empty(
+                      icon: Icons.analytics_outlined,
+                      title: 'No analytics yet',
+                      message: 'Track a few sessions to unlock your insights.',
+                      actionLabel: 'Track time',
+                      onAction: () => context.go(AppRoutes.timeTracking),
+                    );
+                  }
+                  return _AnalyticsBody(summary: summary);
+                },
+                error: (err, _) => StateView.error(
+                  message: ErrorMessageMapper.fromError(err),
+                  onRetry: () => ref.read(analyticsProvider.notifier).refresh(),
+                ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          ],
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
   }
@@ -55,14 +65,10 @@ class _AnalyticsBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.sm,
-        AppSpacing.md,
-        // Extra bottom padding so floating nav doesn't overlap content.
-        120,
-      ),
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(_kPad, 0, _kPad, 120 + bottomInset),
       children: [
         // ── Productivity Score ───────────────────────────────────────────
         _ProductivityScoreCard(score: summary.productivityScore),

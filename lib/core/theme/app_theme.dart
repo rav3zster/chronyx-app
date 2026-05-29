@@ -8,6 +8,50 @@ import 'package:flutter/services.dart';
 class AppTheme {
   const AppTheme._();
 
+  // ── Warm (reference design — cream/gold, light) ───────────────────────────
+
+  static ThemeData get warm {
+    const scheme = ColorScheme(
+      brightness: Brightness.light,
+      primary: AppColors.warmGold,
+      onPrimary: AppColors.warmHero,
+      primaryContainer: Color(0xFFEDD9A3),
+      onPrimaryContainer: AppColors.warmHero,
+      secondary: AppColors.warmGold,
+      onSecondary: AppColors.warmHero,
+      secondaryContainer: Color(0xFFEDD9A3),
+      onSecondaryContainer: AppColors.warmHero,
+      tertiary: AppColors.warmGold,
+      onTertiary: AppColors.warmHero,
+      tertiaryContainer: Color(0xFFEDD9A3),
+      onTertiaryContainer: AppColors.warmHero,
+      error: Color(0xFFB00020),
+      onError: Color(0xFFFFFFFF),
+      errorContainer: Color(0xFFFFDAD6),
+      onErrorContainer: Color(0xFF410002),
+      surface: AppColors.warmSurface,
+      onSurface: AppColors.warmTextPrimary,
+      surfaceContainerHighest: AppColors.warmSurface2,
+      onSurfaceVariant: AppColors.warmTextSecondary,
+      outline: Color(0xFFD4C9B8),
+      outlineVariant: Color(0xFFE0D8CC),
+      inverseSurface: AppColors.warmHero,
+      onInverseSurface: Color(0xFFF2EDE4),
+      inversePrimary: AppColors.warmGold,
+      shadow: Color(0xFF000000),
+      scrim: Color(0xFF000000),
+    );
+    return _buildTheme(
+      scheme: scheme,
+      textTheme: AppTextTheme.build(
+        displayColor: AppColors.warmTextPrimary,
+        bodyColor: AppColors.warmTextSecondary,
+      ),
+      scaffoldBg: AppColors.warmBackground,
+      systemOverlayStyle: SystemUiOverlayStyle.dark,
+    );
+  }
+
   // ── Dark (Cosmic Dark — default, premium) ──────────────────────────────────
 
   static ThemeData get dark {

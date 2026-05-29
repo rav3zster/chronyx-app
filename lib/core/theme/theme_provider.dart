@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// All available visual themes for Chronyx.
 enum AppThemeVariant {
+  warmMinimal('Warm Minimal', Icons.wb_sunny_outlined),
   cosmicDark('Cosmic Dark', Icons.dark_mode_rounded),
   lightClean('Light Clean', Icons.light_mode_rounded),
   violetDream('Violet Dream', Icons.auto_awesome_rounded),
@@ -16,13 +17,13 @@ enum AppThemeVariant {
 }
 
 class ThemeNotifier extends StateNotifier<AppThemeVariant> {
-  ThemeNotifier() : super(AppThemeVariant.cosmicDark);
+  // Warm Minimal is now the default — matches the reference design.
+  ThemeNotifier() : super(AppThemeVariant.warmMinimal);
 
   void setTheme(AppThemeVariant variant) => state = variant;
 }
 
-final themeProvider =
-    StateNotifierProvider<ThemeNotifier, AppThemeVariant>(
+final themeProvider = StateNotifierProvider<ThemeNotifier, AppThemeVariant>(
   (ref) => ThemeNotifier(),
 );
 
@@ -30,6 +31,7 @@ final themeProvider =
 final resolvedThemeProvider = Provider<ThemeData>((ref) {
   final variant = ref.watch(themeProvider);
   return switch (variant) {
+    AppThemeVariant.warmMinimal => AppTheme.warm,
     AppThemeVariant.cosmicDark => AppTheme.dark,
     AppThemeVariant.lightClean => AppTheme.light,
     AppThemeVariant.violetDream => AppTheme.accent,

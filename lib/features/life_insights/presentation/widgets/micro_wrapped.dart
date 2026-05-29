@@ -17,6 +17,7 @@ class MicroWrapped extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final r = report.reflection;
+    final accent = scheme.primary;
 
     final entries = [
       _Entry('01', 'Focused', r.focusedFormatted),
@@ -41,86 +42,77 @@ class MicroWrapped extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
-            gradient: report.mood.heroGradient,
+            color: scheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
-            boxShadow: [
-              BoxShadow(
-                color: report.mood.accent.withValues(alpha: 0.30),
-                blurRadius: 40,
-                spreadRadius: -10,
-              ),
-            ],
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.6),
+            ),
           ),
-          child: Stack(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: scheme.surface.withValues(alpha: 0.78),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
-                  ),
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        report.mood.glyph,
-                        style: const TextStyle(fontSize: 28),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          'Your story',
-                          style: textTheme.titleLarge?.copyWith(
-                            color: scheme.onSurface,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: report.mood.accent.withValues(alpha: 0.20),
-                          borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusFull,
-                          ),
-                        ),
-                        child: Text(
-                          report.window.label.toUpperCase(),
-                          style: textTheme.labelSmall?.copyWith(
-                            color: report.mood.accent,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.4,
-                            fontSize: 9,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  for (var i = 0; i < entries.length; i++) ...[
-                    _WrappedEntry(
-                      entry: entries[i],
-                      accent: report.mood.accent,
+                  Container(
+                    width: 34,
+                    height: 34,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                     ),
-                    if (i != entries.length - 1)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Container(
-                          height: 1,
-                          color: scheme.outlineVariant.withValues(alpha: 0.3),
-                        ),
+                    child: Icon(
+                      Icons.auto_stories_outlined,
+                      size: 18,
+                      color: accent,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Your story',
+                      style: textTheme.titleLarge?.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
                       ),
-                  ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.radiusFull,
+                      ),
+                    ),
+                    child: Text(
+                      report.window.label.toUpperCase(),
+                      style: textTheme.labelSmall?.copyWith(
+                        color: accent,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.4,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ),
                 ],
               ),
+              const SizedBox(height: AppSpacing.lg),
+              for (var i = 0; i < entries.length; i++) ...[
+                _WrappedEntry(entry: entries[i], accent: accent),
+                if (i != entries.length - 1)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Container(
+                      height: 1,
+                      color: scheme.outlineVariant.withValues(alpha: 0.3),
+                    ),
+                  ),
+              ],
             ],
           ),
         ),

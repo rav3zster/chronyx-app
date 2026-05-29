@@ -27,7 +27,9 @@ class GoalsPage extends ConsumerWidget {
       // Lift FAB above the floating bottom nav (height 64 + 12 margin + safe area).
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 76),
+        padding: EdgeInsets.only(
+          bottom: 76 + MediaQuery.of(context).padding.bottom,
+        ),
         child: FloatingActionButton.extended(
           onPressed: state.isLoading
               ? null

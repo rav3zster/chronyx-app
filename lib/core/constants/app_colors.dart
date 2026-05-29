@@ -63,7 +63,33 @@ class AppColors {
   static const Color amberSurface2 = Color(0xFF1C1704);
   static const Color amberSurface3 = Color(0xFF28200A);
 
-  // ── Gradient stops ─────────────────────────────────────────────────────────
+  // ── Warm (reference design) palette ──────────────────────────────────────
+  /// Warm cream — main background
+  static const Color warmBackground = Color(0xFFF2EDE4);
+
+  /// Warm card surface
+  static const Color warmSurface = Color(0xFFEDE8DF);
+
+  /// Warm elevated card
+  static const Color warmSurface2 = Color(0xFFE6E0D6);
+
+  /// Near-black hero card
+  static const Color warmHero = Color(0xFF1C1C14);
+
+  /// Warm gold — CTA, accent, ring
+  static const Color warmGold = Color(0xFFC9A84C);
+
+  /// Warm gold light — button fill
+  static const Color warmGoldLight = Color(0xFFD4B06A);
+
+  /// Warm text primary
+  static const Color warmTextPrimary = Color(0xFF1A1A14);
+
+  /// Warm text secondary / labels
+  static const Color warmTextSecondary = Color(0xFF8B7A5E);
+
+  /// Warm text muted
+  static const Color warmTextMuted = Color(0xFFB0A090);
   static const List<Color> brandGradient = [indigo, violet];
   static const List<Color> oceanGradient = [oceanPrimary, Color(0xFF38BDF8)];
   static const List<Color> amberGradient = [amberPrimary, Color(0xFFFF8C42)];

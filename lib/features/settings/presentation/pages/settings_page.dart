@@ -113,9 +113,10 @@ class _ThemeCardState extends State<_ThemeCard>
       vsync: this,
       duration: const Duration(milliseconds: 120),
     );
-    _scale = Tween<double>(begin: 1, end: 0.96).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
-    );
+    _scale = Tween<double>(
+      begin: 1,
+      end: 0.96,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   @override
@@ -126,31 +127,36 @@ class _ThemeCardState extends State<_ThemeCard>
 
   (List<Color>, Color, Color) _themeColors(AppThemeVariant v) {
     return switch (v) {
+      AppThemeVariant.warmMinimal => (
+        [AppColors.warmGold, AppColors.warmGoldLight],
+        AppColors.warmBackground,
+        AppColors.warmGold,
+      ),
       AppThemeVariant.cosmicDark => (
-          AppColors.brandGradient,
-          AppColors.darkBackground,
-          AppColors.indigo,
-        ),
+        AppColors.brandGradient,
+        AppColors.darkBackground,
+        AppColors.indigo,
+      ),
       AppThemeVariant.lightClean => (
-          AppColors.brandGradient,
-          AppColors.lightBackground,
-          AppColors.indigo,
-        ),
+        AppColors.brandGradient,
+        AppColors.lightBackground,
+        AppColors.indigo,
+      ),
       AppThemeVariant.violetDream => (
-          AppColors.violetGradient,
-          const Color(0xFF08050F),
-          AppColors.violet,
-        ),
+        AppColors.violetGradient,
+        const Color(0xFF08050F),
+        AppColors.violet,
+      ),
       AppThemeVariant.midnightOcean => (
-          AppColors.oceanGradient,
-          AppColors.oceanBackground,
-          AppColors.oceanPrimary,
-        ),
+        AppColors.oceanGradient,
+        AppColors.oceanBackground,
+        AppColors.oceanPrimary,
+      ),
       AppThemeVariant.sunsetAmber => (
-          AppColors.amberGradient,
-          AppColors.amberBackground,
-          AppColors.amberPrimary,
-        ),
+        AppColors.amberGradient,
+        AppColors.amberBackground,
+        AppColors.amberPrimary,
+      ),
     };
   }
 
@@ -175,9 +181,7 @@ class _ThemeCardState extends State<_ThemeCard>
             color: scheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
             border: Border.all(
-              color: widget.isSelected
-                  ? accentColor
-                  : scheme.outlineVariant,
+              color: widget.isSelected ? accentColor : scheme.outlineVariant,
               width: widget.isSelected ? 2 : 1,
             ),
             boxShadow: widget.isSelected
@@ -293,9 +297,7 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Divider(color: scheme.outlineVariant, height: 1),
-        ),
+        Expanded(child: Divider(color: scheme.outlineVariant, height: 1)),
       ],
     );
   }

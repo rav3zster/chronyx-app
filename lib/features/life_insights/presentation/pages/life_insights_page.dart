@@ -57,7 +57,7 @@ class _Backdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = mood.ambient;
+    final scheme = Theme.of(context).colorScheme;
     return IgnorePointer(
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 800),
@@ -67,9 +67,9 @@ class _Backdrop extends StatelessWidget {
             center: const Alignment(0, -1.1),
             radius: 1.4,
             colors: [
-              colors.start.withValues(alpha: 0.22),
-              colors.mid.withValues(alpha: 0.10),
-              colors.end,
+              scheme.primary.withValues(alpha: 0.22),
+              scheme.secondary.withValues(alpha: 0.10),
+              Colors.transparent,
             ],
             stops: const [0.0, 0.4, 1.0],
           ),
@@ -252,6 +252,20 @@ class _HeroInsight extends StatelessWidget {
     final momentum = report.reflection.momentum;
     final mood = report.mood;
 
+    // Accent + gradient derive from the active theme so the card matches
+    // whatever palette is selected (gold in Warm, indigo in Cosmic Dark, …).
+    final accent = scheme.primary;
+    final heroGradient = LinearGradient(
+      colors: [
+        scheme.primary.withValues(alpha: 0.55),
+        scheme.secondary.withValues(alpha: 0.45),
+        scheme.tertiary.withValues(alpha: 0.40),
+      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      stops: const [0.0, 0.55, 1.0],
+    );
+
     final momentumColor = switch (momentum) {
       TrendDirection.up => DesignTokens.accentMint,
       TrendDirection.down => scheme.error,
@@ -263,7 +277,7 @@ class _HeroInsight extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
         boxShadow: [
           BoxShadow(
-            color: mood.accent.withValues(alpha: 0.40),
+            color: accent.withValues(alpha: 0.40),
             blurRadius: 48,
             spreadRadius: -10,
           ),
@@ -282,7 +296,7 @@ class _HeroInsight extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 800),
                 curve: Curves.easeOutCubic,
-                decoration: BoxDecoration(gradient: mood.heroGradient),
+                decoration: BoxDecoration(gradient: heroGradient),
               ),
             ),
             Positioned.fill(
@@ -301,7 +315,7 @@ class _HeroInsight extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: mood.accent.withValues(alpha: 0.20),
+                          color: accent.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(
                             AppSpacing.radiusFull,
                           ),
@@ -309,7 +323,7 @@ class _HeroInsight extends StatelessWidget {
                         child: Text(
                           'THIS ${report.window.label.toUpperCase()}',
                           style: textTheme.labelSmall?.copyWith(
-                            color: mood.accent,
+                            color: accent,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 1.4,
                             fontSize: 10,
@@ -325,7 +339,7 @@ class _HeroInsight extends StatelessWidget {
                           color: scheme.surface.withValues(alpha: 0.5),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: mood.accent.withValues(alpha: 0.4),
+                            color: accent.withValues(alpha: 0.4),
                           ),
                         ),
                         child: Text(
@@ -362,7 +376,7 @@ class _HeroInsight extends StatelessWidget {
                         child: _HeroStat(
                           label: 'TRACKED',
                           value: '${hoursStr}h',
-                          accent: mood.accent,
+                          accent: accent,
                         ),
                       ),
                       Container(
@@ -1012,22 +1026,22 @@ class _WeeklyReflection extends StatelessWidget {
               _ReflectionRow(
                 label: 'Focused',
                 value: r.focusedFormatted,
-                emoji: '⏱',
+                icon: Icons.timer_outlined,
               ),
               _ReflectionRow(
                 label: 'Top activity',
                 value: r.topActivityLabel,
-                emoji: '🔥',
+                icon: Icons.local_fire_department_outlined,
               ),
               _ReflectionRow(
                 label: 'Peak hour',
                 value: _formatHour(r.peakHour),
-                emoji: '⚡',
+                icon: Icons.bolt_outlined,
               ),
               _ReflectionRow(
                 label: 'Consistency',
                 value: '${r.consistencyPercent.round()}%',
-                emoji: '📊',
+                icon: Icons.insights_outlined,
               ),
               _ReflectionRow(
                 label: 'Momentum',
@@ -1036,10 +1050,10 @@ class _WeeklyReflection extends StatelessWidget {
                   TrendDirection.down => 'Slowing',
                   TrendDirection.flat => 'Steady',
                 },
-                emoji: switch (r.momentum) {
-                  TrendDirection.up => '📈',
-                  TrendDirection.down => '📉',
-                  TrendDirection.flat => '➡️',
+                icon: switch (r.momentum) {
+                  TrendDirection.up => Icons.trending_up_rounded,
+                  TrendDirection.down => Icons.trending_down_rounded,
+                  TrendDirection.flat => Icons.trending_flat_rounded,
                 },
                 isLast: true,
               ),
@@ -1072,13 +1086,13 @@ class _ReflectionRow extends StatelessWidget {
   const _ReflectionRow({
     required this.label,
     required this.value,
-    required this.emoji,
+    required this.icon,
     this.isLast = false,
   });
 
   final String label;
   final String value;
-  final String emoji;
+  final IconData icon;
   final bool isLast;
 
   @override
@@ -1089,7 +1103,7 @@ class _ReflectionRow extends StatelessWidget {
       padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacing.sm),
       child: Row(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 18)),
+          Icon(icon, size: 18, color: scheme.onSurfaceVariant),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(

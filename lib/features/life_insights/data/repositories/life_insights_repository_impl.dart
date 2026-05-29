@@ -853,27 +853,27 @@ class LifeInsightsRepositoryImpl implements LifeInsightsRepository {
     DominantFocus? dominant,
   ) {
     if (!snapshot.hasEnoughData) {
-      return '${mood.glyph} Your story starts here';
+      return 'Your story starts here';
     }
 
     // Prefer momentum-driven copy when there's clear directional change
     if (mood == InsightMood.rising) {
-      return '${mood.glyph} Your momentum is rising';
+      return 'Your momentum is rising';
     }
     if (mood == InsightMood.fading) {
-      return '${mood.glyph} Time to reignite';
+      return 'Time to reignite';
     }
     if (mood == InsightMood.cooling) {
-      return '${mood.glyph} Things are slowing — recover the rhythm';
+      return 'Things are slowing — recover the rhythm';
     }
 
     // Steady: highlight a specific superpower
     if (dominant != null && dominant.percentage >= 0.40) {
       final pct = (dominant.percentage * 100).round();
-      return '✨ ${dominant.label} took $pct% of your time';
+      return '${dominant.label} took $pct% of your time';
     }
 
-    return '⚡ ${pattern.peakPeriod.label} is your superpower';
+    return '${pattern.peakPeriod.label} is your superpower';
   }
 
   // ─────────────────────────────────────────────────────────────────────

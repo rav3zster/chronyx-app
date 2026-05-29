@@ -44,7 +44,7 @@ class WindowSwitcher extends StatelessWidget {
                 child: Container(
                   margin: const EdgeInsets.all(0),
                   decoration: BoxDecoration(
-                    gradient: DesignTokens.brandGradient,
+                    color: scheme.primary,
                     borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                     boxShadow: [
                       BoxShadow(
@@ -68,7 +68,7 @@ class WindowSwitcher extends StatelessWidget {
                           duration: DesignTokens.motionFast,
                           style: textTheme.labelMedium!.copyWith(
                             color: isActive
-                                ? Colors.white
+                                ? scheme.onPrimary
                                 : scheme.onSurfaceVariant,
                             fontWeight: isActive
                                 ? FontWeight.w700

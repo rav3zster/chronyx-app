@@ -1,9 +1,6 @@
-import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/constants/app_strings.dart';
-import 'package:chronyx/core/widgets/glass_card.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class TimeEntryCard extends StatelessWidget {
   const TimeEntryCard({
@@ -27,122 +24,125 @@ class TimeEntryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final String startedAt = DateFormat.Hm().format(entry.startedAt.toLocal());
-    final String duration = _formatDuration(entry.duration);
-    final catColor = _colorForCategory(entry.category);
+    final duration = _formatDuration(entry.duration);
+    final accent = scheme.primary;
+    final dotColor = entry.isActive
+        ? accent
+        : _colorForCategory(entry.category);
 
-    return GlassCard(
-      useBlur: false,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      borderColor: entry.isActive ? catColor.withValues(alpha: 0.4) : null,
+    final subtitle = entry.isActive
+        ? '${entry.category.label} · ${AppStrings.inProgress}'
+        : '${entry.category.label} · $duration';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(20),
+        border: entry.isActive
+            ? Border.all(color: accent.withValues(alpha: 0.4))
+            : null,
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Category color bar
-          Container(
-            width: 3,
-            height: 48,
-            decoration: BoxDecoration(
-              color: catColor,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-            ),
+          // Status dot
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: entry.isActive
+                ? _PulsingDot(color: dotColor)
+                : Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: dotColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: 14),
+          // Task + meta
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        entry.taskName.isEmpty
-                            ? AppStrings.unknownTask
-                            : entry.taskName,
-                        style: textTheme.titleSmall?.copyWith(
-                          color: scheme.onSurface,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    if (entry.isActive) _PulsingDot(color: catColor),
-                  ],
+                Text(
+                  entry.taskName.isEmpty
+                      ? AppStrings.unknownTask
+                      : entry.taskName,
+                  style: textTheme.titleMedium?.copyWith(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      '${entry.category.emoji} ${entry.category.label}',
-                      style: textTheme.labelSmall?.copyWith(
-                        color: catColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      '  ·  $startedAt',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.timer_outlined,
-                      size: 13,
-                      color: entry.isActive
-                          ? catColor
-                          : scheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      entry.isActive
-                          ? '${AppStrings.inProgress} · $duration'
-                          : duration,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: entry.isActive
-                            ? catColor
-                            : scheme.onSurfaceVariant,
-                        fontWeight: entry.isActive
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          if (entry.isActive)
-            OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: 4,
+          const SizedBox(width: 12),
+          // Duration + live / stop
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _clock(entry.duration),
+                style: textTheme.titleLarge?.copyWith(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                side: BorderSide(color: scheme.error.withValues(alpha: 0.5)),
-                foregroundColor: scheme.error,
               ),
-              onPressed: onStopSession,
-              child: const Text(AppStrings.stopSession),
-            ),
+              const SizedBox(height: 2),
+              if (entry.isActive)
+                GestureDetector(
+                  onTap: onStopSession,
+                  child: Text(
+                    'Live',
+                    style: textTheme.labelSmall?.copyWith(
+                      color: scheme.error,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  /// Reference shows mm:ss (e.g. 17:48) — promotes to h:mm:ss past an hour.
+  String _clock(Duration value) {
+    final h = value.inHours;
+    final m = value.inMinutes.remainder(60);
+    final s = value.inSeconds.remainder(60);
+    if (h > 0) {
+      return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    }
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   String _formatDuration(Duration value) {
     final int hours = value.inHours;
     final int minutes = value.inMinutes.remainder(60);
     final int seconds = value.inSeconds.remainder(60);
-    final String hh = hours.toString().padLeft(2, '0');
-    final String mm = minutes.toString().padLeft(2, '0');
-    final String ss = seconds.toString().padLeft(2, '0');
-    return '$hh:$mm:$ss';
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 }
 

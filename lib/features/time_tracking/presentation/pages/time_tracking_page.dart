@@ -1,9 +1,7 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/constants/app_strings.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
-import 'package:chronyx/core/widgets/glass_card.dart';
-import 'package:chronyx/core/widgets/input_field.dart';
-import 'package:chronyx/core/widgets/primary_button.dart';
+import 'package:chronyx/core/widgets/app_error_view.dart';
 import 'package:chronyx/core/widgets/settings_icon_button.dart';
 import 'package:chronyx/features/life_insights/presentation/pages/session_celebration_sheet.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
@@ -11,7 +9,13 @@ import 'package:chronyx/features/time_tracking/presentation/providers/time_track
 import 'package:chronyx/features/time_tracking/presentation/widgets/time_entry_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:chronyx/core/widgets/app_error_view.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Layout tokens (sizing only — all colors come from the active theme so the
+// screen reacts to theme switching like the rest of the app).
+// ─────────────────────────────────────────────────────────────────────────────
+const _kRadius = 20.0;
+const _kPad = 20.0;
 
 class TimeTrackingPage extends ConsumerStatefulWidget {
   const TimeTrackingPage({super.key});
@@ -22,11 +26,13 @@ class TimeTrackingPage extends ConsumerStatefulWidget {
 
 class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
   final TextEditingController _taskController = TextEditingController();
+  final FocusNode _taskFocus = FocusNode();
   TaskCategory _selectedCategory = TaskCategory.productive;
 
   @override
   void dispose() {
     _taskController.dispose();
+    _taskFocus.dispose();
     super.dispose();
   }
 
@@ -39,11 +45,10 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
         category: _selectedCategory,
       );
       _taskController.clear();
+      _taskFocus.unfocus();
     } catch (error) {
       if (!mounted) return;
       final message = ErrorMessageMapper.fromError(error);
-      // Hide any existing snackbar so we don't stack duplicates when the
-      // list section already shows the same error.
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -67,106 +72,71 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
   Widget build(BuildContext context) {
     final timeEntriesState = ref.watch(timeEntriesProvider);
     final focusStats = ref.watch(focusStatsProvider);
-    final textTheme = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppStrings.timeTrackingTitle),
-        actions: const [
-          SettingsIconButton(),
-          SizedBox(width: AppSpacing.xs),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.sm,
-          AppSpacing.md,
-          AppSpacing.md,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            // ── Focus Ratio Banner ─────────────────────────────────────
-            _FocusRatioBanner(stats: focusStats),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Session Starter Card ───────────────────────────────────
-            GlassCard(
-              useBlur: false,
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'New Session',
-                    style: textTheme.titleSmall?.copyWith(
-                      color: scheme.onSurface,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  InputField(
-                    controller: _taskController,
-                    label: 'Task Name',
-                    hint: AppStrings.taskHint,
-                    prefixIcon: Icon(
-                      Icons.label_outline_rounded,
-                      color: scheme.onSurfaceVariant,
-                      size: AppSpacing.iconMd,
-                    ),
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _startSession(),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    'Category',
-                    style: textTheme.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  _CategoryChips(
-                    selected: _selectedCategory,
-                    onSelected: (c) => setState(() => _selectedCategory = c),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  PrimaryButton(
-                    label: AppStrings.startSession,
-                    onPressed: _startSession,
-                    isLoading: timeEntriesState.isLoading,
-                    icon: const Icon(
-                      Icons.play_arrow_rounded,
-                      color: Colors.white,
-                      size: AppSpacing.iconMd,
-                    ),
-                  ),
-                ],
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: SafeArea(
+        bottom: false,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // Header
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(_kPad, 12, _kPad, 0),
+              sliver: const SliverToBoxAdapter(child: _Header()),
+            ),
+            // Focus ratio banner
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(_kPad, 18, _kPad, 0),
+              sliver: SliverToBoxAdapter(
+                child: _FocusBanner(stats: focusStats),
               ),
             ),
-
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              AppStrings.sessionsHeader,
-              style: textTheme.titleSmall?.copyWith(
-                color: scheme.onSurface,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Expanded(
-              child: timeEntriesState.when(
-                data: (entries) =>
-                    _SessionList(entries: entries, onStopSession: _stopSession),
-                error: (error, _) => AppErrorView(
-                  message: ErrorMessageMapper.fromError(error),
-                  onRetry: () =>
-                      ref.read(timeEntriesProvider.notifier).refreshEntries(),
+            // New session card
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(_kPad, 16, _kPad, 0),
+              sliver: SliverToBoxAdapter(
+                child: _NewSessionCard(
+                  controller: _taskController,
+                  focusNode: _taskFocus,
+                  selected: _selectedCategory,
+                  isLoading: timeEntriesState.isLoading,
+                  onSelectCategory: (c) =>
+                      setState(() => _selectedCategory = c),
+                  onStart: _startSession,
                 ),
-                loading: () => const Center(child: CircularProgressIndicator()),
+              ),
+            ),
+            // Sessions header
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(_kPad, 28, _kPad, 0),
+              sliver: SliverToBoxAdapter(
+                child: _Label(AppStrings.sessionsHeader),
+              ),
+            ),
+            // Sessions list
+            timeEntriesState.when(
+              data: (entries) => _SessionSliver(
+                entries: entries,
+                onStopSession: _stopSession,
+                bottomInset: bottomInset,
+              ),
+              error: (error, _) => SliverPadding(
+                padding: const EdgeInsets.fromLTRB(_kPad, 40, _kPad, 0),
+                sliver: SliverToBoxAdapter(
+                  child: AppErrorView(
+                    message: ErrorMessageMapper.fromError(error),
+                    onRetry: () =>
+                        ref.read(timeEntriesProvider.notifier).refreshEntries(),
+                  ),
+                ),
+              ),
+              loading: () => const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 48),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
               ),
             ),
           ],
@@ -176,10 +146,42 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
   }
 }
 
-// ── Focus Ratio Banner ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Header — large title + settings
+// ─────────────────────────────────────────────────────────────────────────────
 
-class _FocusRatioBanner extends StatelessWidget {
-  const _FocusRatioBanner({required this.stats});
+class _Header extends StatelessWidget {
+  const _Header();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Text(
+            AppStrings.timeTrackingTitle,
+            style: textTheme.headlineMedium?.copyWith(
+              color: scheme.onSurface,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ),
+        const SettingsIconButton(),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Focus ratio banner — left accent bar, percentage, focused/away
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FocusBanner extends StatelessWidget {
+  const _FocusBanner({required this.stats});
   final FocusStats stats;
 
   @override
@@ -188,41 +190,42 @@ class _FocusRatioBanner extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final ratio = stats.focusRatio;
     final pct = (ratio * 100).toStringAsFixed(0);
-    final color = ratio >= 0.8
+    final accent = ratio >= 0.8
         ? const Color(0xFF22D3A6)
         : (ratio >= 0.5 ? scheme.primary : scheme.error);
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(_kRadius),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.center_focus_strong_rounded,
-            color: color,
-            size: AppSpacing.iconMd,
+          Container(
+            width: 4,
+            height: 38,
+            decoration: BoxDecoration(
+              color: accent,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+            ),
           ),
-          const SizedBox(width: AppSpacing.sm),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Tab Focus: $pct%',
+                  'TAB FOCUS · $pct%',
                   style: textTheme.labelMedium?.copyWith(
-                    color: color,
+                    color: accent,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  '${_fmt(stats.focusedSeconds)} focused · ${_fmt(stats.awaySeconds)} away this session',
+                  '${_fmt(stats.focusedSeconds)} focused · ${_fmt(stats.awaySeconds)} away',
                   style: textTheme.bodySmall?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
@@ -242,113 +245,292 @@ class _FocusRatioBanner extends StatelessWidget {
   }
 }
 
-// ── Category Chips ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// New session card — task input, category chips, gold start button
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _NewSessionCard extends StatelessWidget {
+  const _NewSessionCard({
+    required this.controller,
+    required this.focusNode,
+    required this.selected,
+    required this.isLoading,
+    required this.onSelectCategory,
+    required this.onStart,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final TaskCategory selected;
+  final bool isLoading;
+  final ValueChanged<TaskCategory> onSelectCategory;
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(_kRadius),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'NEW SESSION',
+            style: textTheme.labelMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'TASK',
+            style: textTheme.labelSmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Task input
+          Container(
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: scheme.outlineVariant),
+            ),
+            child: TextField(
+              controller: controller,
+              focusNode: focusNode,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => onStart(),
+              style: textTheme.bodyLarge?.copyWith(color: scheme.onSurface),
+              decoration: InputDecoration(
+                hintText: AppStrings.taskHint,
+                hintStyle: textTheme.bodyLarge?.copyWith(
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'CATEGORY',
+            style: textTheme.labelSmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _CategoryChips(selected: selected, onSelected: onSelectCategory),
+          const SizedBox(height: 20),
+          _StartButton(isLoading: isLoading, onTap: onStart),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Start button — full-width gold pill
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _StartButton extends StatelessWidget {
+  const _StartButton({required this.isLoading, required this.onTap});
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      child: Container(
+        height: 54,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: scheme.primary,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+        ),
+        child: Center(
+          child: isLoading
+              ? SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    valueColor: AlwaysStoppedAnimation<Color>(scheme.onPrimary),
+                  ),
+                )
+              : Text(
+                  AppStrings.startSession,
+                  style: textTheme.titleMedium?.copyWith(
+                    color: scheme.onPrimary,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Category chips — selected = solid hero pill, unselected = subtle fill
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _CategoryChips extends StatelessWidget {
   const _CategoryChips({required this.selected, required this.onSelected});
   final TaskCategory selected;
   final ValueChanged<TaskCategory> onSelected;
 
-  Color _colorForCategory(TaskCategory cat) => switch (cat) {
-    TaskCategory.productive => const Color(0xFF22D3A6),
-    TaskCategory.learning => const Color(0xFF818CF8),
-    TaskCategory.break_ => const Color(0xFFFBBC05),
-    TaskCategory.distraction => const Color(0xFFEA4335),
-    TaskCategory.other => const Color(0xFF94A3B8),
-  };
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: TaskCategory.values
+          .where((c) => c != TaskCategory.distraction)
+          .map((cat) {
+            final isSelected = cat == selected;
+            return GestureDetector(
+              onTap: () => onSelected(cat),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected ? scheme.inverseSurface : scheme.surface,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                  border: Border.all(
+                    color: isSelected
+                        ? scheme.inverseSurface
+                        : scheme.outlineVariant,
+                  ),
+                ),
+                child: Text(
+                  cat.label.toUpperCase(),
+                  style: textTheme.labelMedium?.copyWith(
+                    color: isSelected
+                        ? scheme.onInverseSurface
+                        : scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            );
+          })
+          .toList(),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Section label — small caps, muted
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _Label extends StatelessWidget {
+  const _Label(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    return Text(
+      text.toUpperCase(),
+      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+        color: scheme.onSurfaceVariant,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 1.5,
+      ),
+    );
+  }
+}
 
-    return Wrap(
-      spacing: AppSpacing.xs,
-      runSpacing: AppSpacing.xs,
-      children: TaskCategory.values.map((cat) {
-        final isSelected = cat == selected;
-        final color = _colorForCategory(cat);
-        return GestureDetector(
-          onTap: () => onSelected(cat),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm + 2,
-              vertical: AppSpacing.xs,
-            ),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? color.withValues(alpha: 0.2)
-                  : Colors.transparent,
-              border: Border.all(
-                color: isSelected ? color : scheme.outlineVariant,
-                width: isSelected ? 1.5 : 1,
-              ),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-            ),
-            child: Row(
+// ─────────────────────────────────────────────────────────────────────────────
+// Session list (sliver)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SessionSliver extends StatelessWidget {
+  const _SessionSliver({
+    required this.entries,
+    required this.onStopSession,
+    required this.bottomInset,
+  });
+
+  final List<TimeEntry> entries;
+  final Future<void> Function(String id) onStopSession;
+  final double bottomInset;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    if (entries.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(_kPad, 48, _kPad, 0),
+          child: Center(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(cat.emoji, style: const TextStyle(fontSize: 13)),
-                const SizedBox(width: 4),
+                Icon(
+                  Icons.hourglass_empty_rounded,
+                  size: 44,
+                  color: scheme.onSurfaceVariant,
+                ),
+                const SizedBox(height: 14),
                 Text(
-                  cat.label,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: isSelected ? color : scheme.onSurfaceVariant,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  AppStrings.noSessionsYet,
+                  textAlign: TextAlign.center,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
           ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-// ── Session List ──────────────────────────────────────────────────────────────
-
-class _SessionList extends StatelessWidget {
-  const _SessionList({required this.entries, required this.onStopSession});
-
-  final List<TimeEntry> entries;
-  final Future<void> Function(String id) onStopSession;
-
-  @override
-  Widget build(BuildContext context) {
-    if (entries.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.hourglass_empty_rounded,
-              size: AppSpacing.iconXl * 1.5,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              AppStrings.noSessionsYet,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
         ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.only(bottom: 120),
-      itemCount: entries.length,
-      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (context, index) {
-        final entry = entries[index];
-        return TimeEntryCard(
-          entry: entry,
-          onStopSession: entry.isActive ? () => onStopSession(entry.id) : null,
-        );
-      },
+    return SliverPadding(
+      padding: EdgeInsets.fromLTRB(_kPad, 12, _kPad, 120 + bottomInset),
+      sliver: SliverList.separated(
+        itemCount: entries.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final entry = entries[index];
+          return TimeEntryCard(
+            entry: entry,
+            onStopSession: entry.isActive
+                ? () => onStopSession(entry.id)
+                : null,
+          );
+        },
+      ),
     );
   }
 }

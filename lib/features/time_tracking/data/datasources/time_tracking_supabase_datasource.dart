@@ -27,8 +27,10 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
         .limit(200);
 
     return rows
-        .map((dynamic json) =>
-            TimeEntryModel.fromJson(json as Map<String, dynamic>))
+        .map(
+          (dynamic json) =>
+              TimeEntryModel.fromJson(json as Map<String, dynamic>),
+        )
         .toList();
   }
 
@@ -36,33 +38,40 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
   Future<TimeEntryModel> startSession({
     required String taskName,
     required TaskCategory category,
+    String? projectTaskId,
   }) async {
     final String userId = _currentUserId;
     final DateTime now = DateTime.now().toUtc();
 
-    // Try inserting WITH category first. If the column doesn't exist yet
-    // (migration not run), fall back to inserting without it.
+    final base = <String, dynamic>{
+      'user_id': userId,
+      'task_name': taskName,
+      'start_time': now.toIso8601String(),
+    };
+
+    // Try inserting WITH category + project link first. If a column doesn't
+    // exist yet (migration not run), fall back to the minimal insert.
     try {
+      final fullInsert = <String, dynamic>{
+        ...base,
+        'category': category.jsonKey,
+      };
+      if (projectTaskId != null) {
+        fullInsert['project_task_id'] = projectTaskId;
+      }
       final List<dynamic> rows = await _supabaseClient
           .from(_tableName)
-          .insert(<String, dynamic>{
-            'user_id': userId,
-            'task_name': taskName,
-            'start_time': now.toIso8601String(),
-            'category': category.jsonKey,
-          })
+          .insert(fullInsert)
           .select();
       return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
     } on PostgrestException catch (e) {
-      // column "category" does not exist → retry without it
-      if (e.message.contains('category') || e.code == '42703') {
+      // Unknown column (category or project_task_id) → retry minimal insert.
+      if (e.code == '42703' ||
+          e.message.contains('category') ||
+          e.message.contains('project_task_id')) {
         final List<dynamic> rows = await _supabaseClient
             .from(_tableName)
-            .insert(<String, dynamic>{
-              'user_id': userId,
-              'task_name': taskName,
-              'start_time': now.toIso8601String(),
-            })
+            .insert(base)
             .select();
         return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
       }
@@ -76,9 +85,7 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
     final DateTime now = DateTime.now().toUtc();
     final List<dynamic> rows = await _supabaseClient
         .from(_tableName)
-        .update(<String, dynamic>{
-          'end_time': now.toIso8601String(),
-        })
+        .update(<String, dynamic>{'end_time': now.toIso8601String()})
         .eq('user_id', userId)
         .eq('id', sessionId)
         .select();

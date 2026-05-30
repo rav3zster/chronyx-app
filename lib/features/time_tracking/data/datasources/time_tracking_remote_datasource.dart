@@ -6,6 +6,7 @@ abstract class TimeTrackingRemoteDataSource {
   Future<TimeEntryModel> startSession({
     required String taskName,
     required TaskCategory category,
+    String? projectTaskId,
   });
   Future<TimeEntryModel> stopSession({required String sessionId});
 }

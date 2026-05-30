@@ -1,5 +1,6 @@
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
+import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/core/widgets/page_header.dart';
 import 'package:chronyx/core/widgets/state_view.dart';
 import 'package:chronyx/features/goals/presentation/providers/goals_providers.dart';
@@ -40,59 +41,61 @@ class GoalsPage extends ConsumerWidget {
         color: Theme.of(context).scaffoldBackgroundColor,
         child: SafeArea(
           bottom: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(_kPad, 12, _kPad, 16),
-                child: PageHeader(title: 'Goals'),
-              ),
-              Expanded(
-                child: state.when(
-                  data: (items) {
-                    if (items.isEmpty) {
-                      return StateView.empty(
-                        icon: Icons.flag_outlined,
-                        title: 'No goals yet',
-                        message:
-                            'Create a goal to build a streak and stay accountable.',
-                        actionLabel: 'Create goal',
-                        onAction: () => _createGoal(context, ref),
-                      );
-                    }
-                    return AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: ListView.separated(
-                        key: ValueKey('goals_list_${items.length}'),
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(
-                          _kPad,
-                          0,
-                          _kPad,
-                          140,
-                        ),
-                        itemCount: items.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final g = items[index];
-                          return GoalCard(
-                            progress: g,
-                            onTap: () => context.push('/goals/${g.goal.id}'),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                  error: (err, _) => StateView.error(
-                    message: ErrorMessageMapper.fromError(err),
-                    onRetry: () => ref.read(goalsProvider.notifier).refresh(),
-                  ),
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
+          child: ResponsiveCenter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(_kPad, 12, _kPad, 16),
+                  child: PageHeader(title: 'Goals'),
                 ),
-              ),
-            ],
+                Expanded(
+                  child: state.when(
+                    data: (items) {
+                      if (items.isEmpty) {
+                        return StateView.empty(
+                          icon: Icons.flag_outlined,
+                          title: 'No goals yet',
+                          message:
+                              'Create a goal to build a streak and stay accountable.',
+                          actionLabel: 'Create goal',
+                          onAction: () => _createGoal(context, ref),
+                        );
+                      }
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: ListView.separated(
+                          key: ValueKey('goals_list_${items.length}'),
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(
+                            _kPad,
+                            0,
+                            _kPad,
+                            140,
+                          ),
+                          itemCount: items.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final g = items[index];
+                            return GoalCard(
+                              progress: g,
+                              onTap: () => context.push('/goals/${g.goal.id}'),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                    error: (err, _) => StateView.error(
+                      message: ErrorMessageMapper.fromError(err),
+                      onRetry: () => ref.read(goalsProvider.notifier).refresh(),
+                    ),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

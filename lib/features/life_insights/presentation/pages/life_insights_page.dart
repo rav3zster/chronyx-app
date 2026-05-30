@@ -2,6 +2,7 @@ import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/theme/design_tokens.dart';
 import 'package:chronyx/core/theme/scheme_x.dart';
+import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/core/widgets/scene_card.dart';
 import 'package:chronyx/core/widgets/section_header.dart';
 import 'package:chronyx/core/widgets/state_view.dart';
@@ -105,48 +106,51 @@ class _ReportContent extends ConsumerWidget {
       _Predictions(report: report),
     ];
 
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.sm,
-            AppSpacing.md,
-            0,
-          ),
-          sliver: SliverToBoxAdapter(child: _TopBar()),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.md,
-            AppSpacing.md,
-            0,
-          ),
-          sliver: SliverToBoxAdapter(
-            child: WindowSwitcher(
-              value: report.window,
-              onChanged: (w) => ref.read(lifeWindowProvider.notifier).state = w,
-            ),
-          ),
-        ),
-        for (var i = 0; i < sections.length; i++)
+    return ResponsiveCenter(
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
           SliverPadding(
-            padding: EdgeInsets.fromLTRB(
+            padding: const EdgeInsets.fromLTRB(
               AppSpacing.md,
-              i == 0 ? AppSpacing.lg : AppSpacing.xl,
+              AppSpacing.sm,
               AppSpacing.md,
-              i == sections.length - 1 ? AppSpacing.xxl : 0,
+              0,
+            ),
+            sliver: SliverToBoxAdapter(child: _TopBar()),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              0,
             ),
             sliver: SliverToBoxAdapter(
-              child: FadeSlideIn(
-                delay: Duration(milliseconds: 60 * i),
-                child: sections[i],
+              child: WindowSwitcher(
+                value: report.window,
+                onChanged: (w) =>
+                    ref.read(lifeWindowProvider.notifier).state = w,
               ),
             ),
           ),
-      ],
+          for (var i = 0; i < sections.length; i++)
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                i == 0 ? AppSpacing.lg : AppSpacing.xl,
+                AppSpacing.md,
+                i == sections.length - 1 ? AppSpacing.xxl : 0,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: FadeSlideIn(
+                  delay: Duration(milliseconds: 60 * i),
+                  child: sections[i],
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -1095,7 +1099,7 @@ class _MiniSparkline extends StatelessWidget {
     final showLabels = points.length <= 14;
 
     return SizedBox(
-      height: 56,
+      height: 64,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -1104,6 +1108,7 @@ class _MiniSparkline extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TweenAnimationBuilder<double>(
@@ -1134,9 +1139,11 @@ class _MiniSparkline extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         points[i].label[0],
+                        maxLines: 1,
                         style: textTheme.labelSmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                           fontSize: 9,
+                          height: 1.0,
                         ),
                       ),
                     ],

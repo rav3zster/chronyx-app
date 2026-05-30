@@ -1,10 +1,14 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/constants/app_strings.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
+import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/core/widgets/app_error_view.dart';
 import 'package:chronyx/core/widgets/page_header.dart';
+import 'package:chronyx/features/analytics/presentation/providers/analytics_providers.dart';
 import 'package:chronyx/features/life_insights/presentation/pages/session_celebration_sheet.dart';
+import 'package:chronyx/features/project_planner/presentation/providers/project_planner_providers.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
+import 'package:chronyx/features/time_tracking/presentation/providers/session_prefill_provider.dart';
 import 'package:chronyx/features/time_tracking/presentation/providers/time_tracking_providers.dart';
 import 'package:chronyx/features/time_tracking/presentation/widgets/time_entry_card.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +33,9 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
   final FocusNode _taskFocus = FocusNode();
   TaskCategory _selectedCategory = TaskCategory.productive;
 
+  /// Project task this next session should be attributed to (from a prefill).
+  String? _pendingProjectTaskId;
+
   @override
   void dispose() {
     _taskController.dispose();
@@ -36,16 +43,35 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    // Apply a prefill that was set before this page was first built.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final prefill = ref.read(sessionPrefillProvider);
+      if (prefill != null) {
+        _taskController.text = prefill.taskName;
+        _pendingProjectTaskId = prefill.projectTaskId;
+        setState(() => _selectedCategory = prefill.category);
+        ref.read(sessionPrefillProvider.notifier).state = null;
+      }
+    });
+  }
+
   Future<void> _startSession() async {
     final notifier = ref.read(timeEntriesProvider.notifier);
     final taskName = _taskController.text.trim();
+    final linkedTaskId = _pendingProjectTaskId;
     try {
       await notifier.startSession(
         taskName: taskName,
         category: _selectedCategory,
+        projectTaskId: linkedTaskId,
       );
       _taskController.clear();
       _taskFocus.unfocus();
+      _pendingProjectTaskId = null; // consumed by this session
     } catch (error) {
       if (!mounted) return;
       final message = ErrorMessageMapper.fromError(error);
@@ -65,6 +91,29 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
         .read(timeEntriesProvider.notifier)
         .stopSession(sessionId: id);
     if (!mounted || finished == null) return;
+
+    // Close the execution loop: attribute the session to its project task.
+    final linkedTaskId = finished.projectTaskId;
+    if (linkedTaskId != null) {
+      final minutes = finished.duration.inMinutes;
+      if (minutes > 0) {
+        try {
+          await ref
+              .read(projectRepositoryProvider)
+              .attributeSessionMinutes(
+                projectTaskId: linkedTaskId,
+                minutes: minutes,
+              );
+          // Refresh the intelligence layer so the dashboard feels alive.
+          ref.read(projectsProvider.notifier).refresh();
+          ref.read(analyticsProvider.notifier).refresh();
+        } catch (_) {
+          // Attribution is best-effort; never block the celebration.
+        }
+      }
+    }
+
+    if (!mounted) return;
     await showSessionCelebration(context, justFinished: finished);
   }
 
@@ -74,72 +123,85 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
     final focusStats = ref.watch(focusStatsProvider);
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
+    // Consume a one-shot prefill handed off from a project's Today's Focus.
+    ref.listen<SessionPrefill?>(sessionPrefillProvider, (_, prefill) {
+      if (prefill == null) return;
+      _taskController.text = prefill.taskName;
+      _pendingProjectTaskId = prefill.projectTaskId;
+      setState(() => _selectedCategory = prefill.category);
+      // Clear so it doesn't re-apply on the next rebuild.
+      ref.read(sessionPrefillProvider.notifier).state = null;
+    });
+
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: SafeArea(
         bottom: false,
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // Header
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(_kPad, 12, _kPad, 0),
-              sliver: const SliverToBoxAdapter(child: _Header()),
-            ),
-            // Focus ratio banner
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(_kPad, 18, _kPad, 0),
-              sliver: SliverToBoxAdapter(
-                child: _FocusBanner(stats: focusStats),
+        child: ResponsiveCenter(
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // Header
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(_kPad, 12, _kPad, 0),
+                sliver: const SliverToBoxAdapter(child: _Header()),
               ),
-            ),
-            // New session card
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(_kPad, 16, _kPad, 0),
-              sliver: SliverToBoxAdapter(
-                child: _NewSessionCard(
-                  controller: _taskController,
-                  focusNode: _taskFocus,
-                  selected: _selectedCategory,
-                  isLoading: timeEntriesState.isLoading,
-                  onSelectCategory: (c) =>
-                      setState(() => _selectedCategory = c),
-                  onStart: _startSession,
+              // Focus ratio banner
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(_kPad, 18, _kPad, 0),
+                sliver: SliverToBoxAdapter(
+                  child: _FocusBanner(stats: focusStats),
                 ),
               ),
-            ),
-            // Sessions header
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(_kPad, 28, _kPad, 0),
-              sliver: SliverToBoxAdapter(
-                child: _Label(AppStrings.sessionsHeader),
-              ),
-            ),
-            // Sessions list
-            timeEntriesState.when(
-              data: (entries) => _SessionSliver(
-                entries: entries,
-                onStopSession: _stopSession,
-                bottomInset: bottomInset,
-              ),
-              error: (error, _) => SliverPadding(
-                padding: const EdgeInsets.fromLTRB(_kPad, 40, _kPad, 0),
+              // New session card
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(_kPad, 16, _kPad, 0),
                 sliver: SliverToBoxAdapter(
-                  child: AppErrorView(
-                    message: ErrorMessageMapper.fromError(error),
-                    onRetry: () =>
-                        ref.read(timeEntriesProvider.notifier).refreshEntries(),
+                  child: _NewSessionCard(
+                    controller: _taskController,
+                    focusNode: _taskFocus,
+                    selected: _selectedCategory,
+                    isLoading: timeEntriesState.isLoading,
+                    onSelectCategory: (c) =>
+                        setState(() => _selectedCategory = c),
+                    onStart: _startSession,
                   ),
                 ),
               ),
-              loading: () => const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.only(top: 48),
-                  child: Center(child: CircularProgressIndicator()),
+              // Sessions header
+              const SliverPadding(
+                padding: EdgeInsets.fromLTRB(_kPad, 28, _kPad, 0),
+                sliver: SliverToBoxAdapter(
+                  child: _Label(AppStrings.sessionsHeader),
                 ),
               ),
-            ),
-          ],
+              // Sessions list
+              timeEntriesState.when(
+                data: (entries) => _SessionSliver(
+                  entries: entries,
+                  onStopSession: _stopSession,
+                  bottomInset: bottomInset,
+                ),
+                error: (error, _) => SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(_kPad, 40, _kPad, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: AppErrorView(
+                      message: ErrorMessageMapper.fromError(error),
+                      onRetry: () => ref
+                          .read(timeEntriesProvider.notifier)
+                          .refreshEntries(),
+                    ),
+                  ),
+                ),
+                loading: () => const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 48),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

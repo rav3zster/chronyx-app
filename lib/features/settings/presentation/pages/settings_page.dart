@@ -1,6 +1,7 @@
 import 'package:chronyx/core/constants/app_colors.dart';
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/theme/theme_provider.dart';
+import 'package:chronyx/core/utils/responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,35 +22,37 @@ class SettingsPage extends ConsumerWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.lg,
-        ),
-        children: [
-          // ── Theme Section ─────────────────────────────────────────────────
-          _SectionHeader(label: 'Appearance'),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Choose your theme',
-            style: textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
+      body: ResponsiveCenter(
+        child: ListView(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.lg,
           ),
-          const SizedBox(height: AppSpacing.md),
-          _ThemeGrid(currentVariant: currentVariant),
+          children: [
+            // ── Theme Section ───────────────────────────────────────────────
+            _SectionHeader(label: 'Appearance'),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Choose your theme',
+              style: textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _ThemeGrid(currentVariant: currentVariant),
 
-          const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.xl),
 
-          // ── About Section ──────────────────────────────────────────────────
-          _SectionHeader(label: 'About'),
-          const SizedBox(height: AppSpacing.sm),
-          _InfoRow(label: 'App', value: 'Chronyx'),
-          _InfoRow(label: 'Version', value: '1.0.0'),
-          _InfoRow(label: 'Build', value: 'Release 1'),
+            // ── About Section ────────────────────────────────────────────────
+            _SectionHeader(label: 'About'),
+            const SizedBox(height: AppSpacing.sm),
+            _InfoRow(label: 'App', value: 'Chronyx'),
+            _InfoRow(label: 'Version', value: '1.0.0'),
+            _InfoRow(label: 'Build', value: 'Release 1'),
 
-          const SizedBox(height: AppSpacing.xl),
-        ],
+            const SizedBox(height: AppSpacing.xl),
+          ],
+        ),
       ),
     );
   }
@@ -63,11 +66,19 @@ class _ThemeGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // More columns on wider screens so theme cards stay a sensible size on
+    // tablets/iPads instead of stretching to two giant cards.
+    final width = MediaQuery.sizeOf(context).width;
+    final crossAxisCount = width >= 900
+        ? 4
+        : width >= 600
+        ? 3
+        : 2;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
         mainAxisSpacing: AppSpacing.sm,
         crossAxisSpacing: AppSpacing.sm,
         childAspectRatio: 1.5,

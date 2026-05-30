@@ -29,11 +29,13 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
   Future<TimeEntry> startSession({
     required String taskName,
     required TaskCategory category,
+    String? projectTaskId,
   }) async {
     try {
       final model = await _remoteDataSource.startSession(
         taskName: taskName,
         category: category,
+        projectTaskId: projectTaskId,
       );
       return model.toEntity();
     } on PostgrestException catch (e, st) {

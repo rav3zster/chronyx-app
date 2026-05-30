@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
+import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/core/widgets/glass_card.dart';
 import 'package:chronyx/core/widgets/page_header.dart';
 import 'package:chronyx/core/widgets/state_view.dart';
@@ -24,35 +25,40 @@ class AnalyticsPage extends ConsumerWidget {
       color: Theme.of(context).scaffoldBackgroundColor,
       child: SafeArea(
         bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(_kPad, 12, _kPad, 16),
-              child: PageHeader(title: 'Analytics'),
-            ),
-            Expanded(
-              child: state.when(
-                data: (summary) {
-                  if (summary == null) {
-                    return StateView.empty(
-                      icon: Icons.analytics_outlined,
-                      title: 'No analytics yet',
-                      message: 'Track a few sessions to unlock your insights.',
-                      actionLabel: 'Track time',
-                      onAction: () => context.go(AppRoutes.timeTracking),
-                    );
-                  }
-                  return _AnalyticsBody(summary: summary);
-                },
-                error: (err, _) => StateView.error(
-                  message: ErrorMessageMapper.fromError(err),
-                  onRetry: () => ref.read(analyticsProvider.notifier).refresh(),
-                ),
-                loading: () => const Center(child: CircularProgressIndicator()),
+        child: ResponsiveCenter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(_kPad, 12, _kPad, 16),
+                child: PageHeader(title: 'Analytics'),
               ),
-            ),
-          ],
+              Expanded(
+                child: state.when(
+                  data: (summary) {
+                    if (summary == null) {
+                      return StateView.empty(
+                        icon: Icons.analytics_outlined,
+                        title: 'No analytics yet',
+                        message:
+                            'Track a few sessions to unlock your insights.',
+                        actionLabel: 'Track time',
+                        onAction: () => context.go(AppRoutes.timeTracking),
+                      );
+                    }
+                    return _AnalyticsBody(summary: summary);
+                  },
+                  error: (err, _) => StateView.error(
+                    message: ErrorMessageMapper.fromError(err),
+                    onRetry: () =>
+                        ref.read(analyticsProvider.notifier).refresh(),
+                  ),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -10,6 +10,8 @@ import 'package:chronyx/features/project_planner/data/repositories/blueprint_par
 import 'package:chronyx/features/project_planner/data/repositories/project_repository_impl.dart';
 import 'package:chronyx/features/project_planner/domain/entities/blueprint_parse_exception.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project.dart';
+import 'package:chronyx/features/project_planner/domain/entities/project_progress.dart';
+import 'package:chronyx/features/project_planner/domain/entities/project_task.dart';
 import 'package:chronyx/features/project_planner/domain/entities/prompt_template.dart';
 import 'package:chronyx/features/project_planner/domain/repositories/blueprint_parser.dart';
 import 'package:chronyx/features/project_planner/domain/repositories/project_repository.dart';
@@ -27,7 +29,10 @@ final projectRemoteDataSourceProvider = Provider<ProjectRemoteDataSource>((
 });
 
 final projectRepositoryProvider = Provider<ProjectRepository>((ref) {
-  return ProjectRepositoryImpl(ref.watch(projectRemoteDataSourceProvider));
+  return ProjectRepositoryImpl(
+    ref.watch(projectRemoteDataSourceProvider),
+    ref.watch(blueprintParserProvider),
+  );
 });
 
 final blueprintParserProvider = Provider<BlueprintParser>((ref) {
@@ -59,6 +64,123 @@ class ProjectsNotifier extends AsyncNotifier<List<Project>> {
     state = await AsyncValue.guard(_repository.fetchProjects);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Project lifecycle controller — turns the dashboard into a living system.
+//
+// Orchestrates: task toggle → recompute progress → auto-transition
+// (draft→active on first completion, active→completed when all done) →
+// persist → let the UI invalidate the detail provider so the hero/streak/
+// momentum update instantly. Pure progress math lives in [ProjectProgress].
+// ---------------------------------------------------------------------------
+
+class ProjectLifecycleController {
+  ProjectLifecycleController(this._repo);
+  final ProjectRepository _repo;
+
+  /// Toggle a task and reconcile project status + progress in one flow.
+  /// Returns the (possibly changed) project status so the UI can react
+  /// (e.g. route to the completion experience).
+  Future<ProjectStatus> toggleTask({
+    required Project project,
+    required List<ProjectTask> tasks,
+    required ProjectTask task,
+  }) async {
+    final markComplete = task.status != ProjectTaskStatus.completed;
+    final nextStatus = markComplete
+        ? ProjectTaskStatus.completed
+        : ProjectTaskStatus.pending;
+
+    // 1. Persist the task change.
+    await _repo.updateTaskStatus(task.id, nextStatus);
+
+    // 2. Recompute progress from the optimistic next task list.
+    final nextTasks = tasks
+        .map(
+          (t) => t.id == task.id
+              ? ProjectTask(
+                  id: t.id,
+                  projectId: t.projectId,
+                  dayNumber: t.dayNumber,
+                  title: t.title,
+                  description: t.description,
+                  sortOrder: t.sortOrder,
+                  estimatedMinutes: t.estimatedMinutes,
+                  status: nextStatus,
+                  createdAt: t.createdAt,
+                  completedAt: markComplete ? DateTime.now() : null,
+                )
+              : t,
+        )
+        .toList();
+    final progress = ProjectProgress.fromTasks(nextTasks);
+
+    // 3. Decide status transition.
+    var resolvedStatus = project.status;
+
+    // draft → active on first meaningful completion.
+    if (project.status == ProjectStatus.draft && progress.completedTasks > 0) {
+      resolvedStatus = ProjectStatus.active;
+      await _repo.applyLifecycle(
+        project.id,
+        ProjectStatus.active,
+        extraFields: {'started_at': DateTime.now().toUtc().toIso8601String()},
+      );
+    }
+    // active → completed when everything is done.
+    else if (progress.allComplete &&
+        (project.status == ProjectStatus.active ||
+            project.status == ProjectStatus.draft)) {
+      resolvedStatus = ProjectStatus.completed;
+      await _repo.applyLifecycle(project.id, ProjectStatus.completed);
+    }
+    // completed → active if a task was reopened.
+    else if (project.status == ProjectStatus.completed &&
+        !progress.allComplete) {
+      resolvedStatus = ProjectStatus.active;
+      await _repo.applyLifecycle(project.id, ProjectStatus.active);
+    }
+
+    // 4. Persist derived counters (always, so the hero stays honest).
+    await _repo.saveProgress(
+      project.id,
+      completionPercentage: progress.completionPercentage,
+      completedTasks: progress.completedTasks,
+      completedDays: progress.completedDays,
+      streakDays: progress.currentStreak,
+    );
+
+    return resolvedStatus;
+  }
+
+  Future<void> pause(String projectId) =>
+      _repo.applyLifecycle(projectId, ProjectStatus.paused);
+
+  Future<void> resume(String projectId) =>
+      _repo.applyLifecycle(projectId, ProjectStatus.active);
+
+  Future<void> archive(String projectId) =>
+      _repo.applyLifecycle(projectId, ProjectStatus.archived);
+
+  Future<void> restore(String projectId) =>
+      _repo.applyLifecycle(projectId, ProjectStatus.active);
+
+  /// Mark draft → active when a focus session starts against the project.
+  Future<void> markStartedIfDraft(Project project) async {
+    if (project.status != ProjectStatus.draft) return;
+    await _repo.applyLifecycle(
+      project.id,
+      ProjectStatus.active,
+      extraFields: {'started_at': DateTime.now().toUtc().toIso8601String()},
+    );
+  }
+}
+
+final projectLifecycleControllerProvider = Provider<ProjectLifecycleController>(
+  (ref) {
+    return ProjectLifecycleController(ref.watch(projectRepositoryProvider));
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Blueprint Wizard State

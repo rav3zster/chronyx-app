@@ -1,4 +1,5 @@
 import 'package:chronyx/core/routing/app_routes.dart';
+import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/features/analytics/presentation/pages/analytics_page.dart';
 import 'package:chronyx/features/analytics/presentation/pages/wrapped_page.dart';
 import 'package:chronyx/features/ai_coach/presentation/pages/ai_coach_page.dart';
@@ -179,37 +180,41 @@ class _MainShell extends StatelessWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Container(
-            height: 64,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? scheme.surface.withValues(alpha: 0.85)
-                  : Colors.white.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: 0.8),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
+          child: ResponsiveCenter(
+            maxWidth: Breakpoints.maxNav,
+            heightFactor: 1,
+            child: Container(
+              height: 64,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? scheme.surface.withValues(alpha: 0.85)
+                    : Colors.white.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.8),
+                  width: 1,
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(_items.length, (i) {
-                final isActive = i == index;
-                return Expanded(
-                  child: _NavPill(
-                    item: _items[i],
-                    isActive: isActive,
-                    onTap: () => _onSelect(context, i),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
                   ),
-                );
-              }),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(_items.length, (i) {
+                  final isActive = i == index;
+                  return Expanded(
+                    child: _NavPill(
+                      item: _items[i],
+                      isActive: isActive,
+                      onTap: () => _onSelect(context, i),
+                    ),
+                  );
+                }),
+              ),
             ),
           ),
         ),

@@ -144,6 +144,7 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
   Future<void> startSession({
     required String taskName,
     required TaskCategory category,
+    String? projectTaskId,
   }) async {
     final currentEntries = state.value ?? <TimeEntry>[];
     final hasActiveSession = currentEntries.any((entry) => entry.isActive);
@@ -153,7 +154,11 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
 
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      await _repository.startSession(taskName: taskName, category: category);
+      await _repository.startSession(
+        taskName: taskName,
+        category: category,
+        projectTaskId: projectTaskId,
+      );
       final entries = await _repository.fetchTimeEntries();
       _startTickerIfNeeded(entries);
       return entries;

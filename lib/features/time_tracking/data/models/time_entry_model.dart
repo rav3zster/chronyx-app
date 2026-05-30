@@ -8,6 +8,7 @@ class TimeEntryModel {
     required this.startTime,
     required this.endTime,
     this.category = TaskCategory.other,
+    this.projectTaskId,
   });
 
   final String id;
@@ -16,6 +17,7 @@ class TimeEntryModel {
   final DateTime startTime;
   final DateTime? endTime;
   final TaskCategory category;
+  final String? projectTaskId;
 
   factory TimeEntryModel.fromJson(Map<String, dynamic> json) {
     return TimeEntryModel(
@@ -27,6 +29,7 @@ class TimeEntryModel {
           ? null
           : DateTime.parse(json['end_time'] as String),
       category: TaskCategory.fromJson(json['category'] as String?),
+      projectTaskId: json['project_task_id'] as String?,
     );
   }
 
@@ -38,6 +41,7 @@ class TimeEntryModel {
       'start_time': startTime.toIso8601String(),
       'end_time': endTime?.toIso8601String(),
       'category': category.jsonKey,
+      'project_task_id': projectTaskId,
     };
   }
 
@@ -48,6 +52,7 @@ class TimeEntryModel {
       startedAt: startTime,
       endedAt: endTime,
       category: category,
+      projectTaskId: projectTaskId,
     );
   }
 }

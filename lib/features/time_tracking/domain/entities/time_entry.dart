@@ -7,37 +7,37 @@ enum TaskCategory {
   other;
 
   String get label => switch (this) {
-        TaskCategory.productive => 'Productive',
-        TaskCategory.learning => 'Learning',
-        TaskCategory.break_ => 'Break',
-        TaskCategory.distraction => 'Distraction',
-        TaskCategory.other => 'Other',
-      };
+    TaskCategory.productive => 'Productive',
+    TaskCategory.learning => 'Learning',
+    TaskCategory.break_ => 'Break',
+    TaskCategory.distraction => 'Distraction',
+    TaskCategory.other => 'Other',
+  };
 
   String get emoji => switch (this) {
-        TaskCategory.productive => '🚀',
-        TaskCategory.learning => '📚',
-        TaskCategory.break_ => '☕',
-        TaskCategory.distraction => '🌀',
-        TaskCategory.other => '📌',
-      };
+    TaskCategory.productive => '🚀',
+    TaskCategory.learning => '📚',
+    TaskCategory.break_ => '☕',
+    TaskCategory.distraction => '🌀',
+    TaskCategory.other => '📌',
+  };
 
   /// JSON column value stored in Supabase
   String get jsonKey => switch (this) {
-        TaskCategory.productive => 'productive',
-        TaskCategory.learning => 'learning',
-        TaskCategory.break_ => 'break',
-        TaskCategory.distraction => 'distraction',
-        TaskCategory.other => 'other',
-      };
+    TaskCategory.productive => 'productive',
+    TaskCategory.learning => 'learning',
+    TaskCategory.break_ => 'break',
+    TaskCategory.distraction => 'distraction',
+    TaskCategory.other => 'other',
+  };
 
   static TaskCategory fromJson(String? value) => switch (value) {
-        'productive' => TaskCategory.productive,
-        'learning' => TaskCategory.learning,
-        'break' => TaskCategory.break_,
-        'distraction' => TaskCategory.distraction,
-        _ => TaskCategory.other,
-      };
+    'productive' => TaskCategory.productive,
+    'learning' => TaskCategory.learning,
+    'break' => TaskCategory.break_,
+    'distraction' => TaskCategory.distraction,
+    _ => TaskCategory.other,
+  };
 }
 
 class TimeEntry {
@@ -47,6 +47,7 @@ class TimeEntry {
     required this.startedAt,
     required this.endedAt,
     this.category = TaskCategory.other,
+    this.projectTaskId,
   });
 
   final String id;
@@ -54,6 +55,9 @@ class TimeEntry {
   final DateTime startedAt;
   final DateTime? endedAt;
   final TaskCategory category;
+
+  /// Optional link to a project roadmap task this session was tracked against.
+  final String? projectTaskId;
 
   Duration get duration {
     final DateTime end = endedAt ?? DateTime.now();

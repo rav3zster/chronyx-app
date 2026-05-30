@@ -5,6 +5,7 @@ abstract class TimeTrackingRepository {
   Future<TimeEntry> startSession({
     required String taskName,
     required TaskCategory category,
+    String? projectTaskId,
   });
   Future<TimeEntry> stopSession({required String sessionId});
 }

@@ -1,5 +1,6 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
+import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/core/widgets/page_header.dart';
 import 'package:chronyx/core/widgets/state_view.dart';
 import 'package:chronyx/features/ai_coach/domain/entities/ai_insight.dart';
@@ -21,51 +22,54 @@ class AICoachPage extends ConsumerWidget {
       color: Theme.of(context).scaffoldBackgroundColor,
       child: SafeArea(
         bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(_kPad, 12, _kPad, 16),
-              child: PageHeader(title: 'AI Coach'),
-            ),
-            Expanded(
-              child: state.when(
-                data: (insights) {
-                  if (insights.isEmpty) {
-                    return StateView.empty(
-                      icon: Icons.psychology_outlined,
-                      title: 'Your coach is listening',
-                      message:
-                          'Track a few sessions and your coach will surface insights here.',
-                    );
-                  }
-                  return AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: ListView.separated(
-                      key: ValueKey('ai_list_${insights.length}'),
-                      physics: const BouncingScrollPhysics(),
-                      padding: EdgeInsets.fromLTRB(
-                        _kPad,
-                        0,
-                        _kPad,
-                        120 + bottomInset,
+        child: ResponsiveCenter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(_kPad, 12, _kPad, 16),
+                child: PageHeader(title: 'AI Coach'),
+              ),
+              Expanded(
+                child: state.when(
+                  data: (insights) {
+                    if (insights.isEmpty) {
+                      return StateView.empty(
+                        icon: Icons.psychology_outlined,
+                        title: 'Your coach is listening',
+                        message:
+                            'Track a few sessions and your coach will surface insights here.',
+                      );
+                    }
+                    return AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: ListView.separated(
+                        key: ValueKey('ai_list_${insights.length}'),
+                        physics: const BouncingScrollPhysics(),
+                        padding: EdgeInsets.fromLTRB(
+                          _kPad,
+                          0,
+                          _kPad,
+                          120 + bottomInset,
+                        ),
+                        itemCount: insights.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 10),
+                        itemBuilder: (context, index) =>
+                            _CoachCard(insight: insights[index]),
                       ),
-                      itemCount: insights.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 10),
-                      itemBuilder: (context, index) =>
-                          _CoachCard(insight: insights[index]),
-                    ),
-                  );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, _) => StateView.error(
-                  message: ErrorMessageMapper.fromError(err),
-                  onRetry: () => ref.read(aiCoachProvider.notifier).refresh(),
+                    );
+                  },
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (err, _) => StateView.error(
+                    message: ErrorMessageMapper.fromError(err),
+                    onRetry: () => ref.read(aiCoachProvider.notifier).refresh(),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

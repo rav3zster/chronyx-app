@@ -3,11 +3,13 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
+import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/core/widgets/animated_counter.dart';
 import 'package:chronyx/core/widgets/settings_icon_button.dart';
 import 'package:chronyx/features/analytics/presentation/providers/analytics_providers.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/life_insights/presentation/providers/life_insights_providers.dart';
+import 'package:chronyx/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:chronyx/features/project_planner/presentation/providers/project_planner_providers.dart';
 import 'package:chronyx/features/time_tracking/presentation/providers/time_tracking_providers.dart';
 import 'package:flutter/material.dart';
@@ -50,30 +52,32 @@ class _Content extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // Greeting
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(_kPad, 20, _kPad, 0),
-            sliver: SliverToBoxAdapter(child: _Greeting(user: user)),
-          ),
-          // Hero card
-          const SliverPadding(
-            padding: EdgeInsets.fromLTRB(_kPad, 20, _kPad, 0),
-            sliver: SliverToBoxAdapter(child: _HeroCard()),
-          ),
-          // Today's overview
-          const SliverPadding(
-            padding: EdgeInsets.fromLTRB(_kPad, 28, _kPad, 0),
-            sliver: SliverToBoxAdapter(child: _TodayOverview()),
-          ),
-          // This week
-          const SliverPadding(
-            padding: EdgeInsets.fromLTRB(_kPad, 28, _kPad, 120),
-            sliver: SliverToBoxAdapter(child: _ThisWeek()),
-          ),
-        ],
+      child: ResponsiveCenter(
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // Greeting
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(_kPad, 20, _kPad, 0),
+              sliver: SliverToBoxAdapter(child: _Greeting(user: user)),
+            ),
+            // Hero card
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(_kPad, 20, _kPad, 0),
+              sliver: SliverToBoxAdapter(child: _HeroCard()),
+            ),
+            // Today's overview
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(_kPad, 28, _kPad, 0),
+              sliver: SliverToBoxAdapter(child: _TodayOverview()),
+            ),
+            // This week
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(_kPad, 28, _kPad, 120),
+              sliver: SliverToBoxAdapter(child: _ThisWeek()),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -105,8 +109,10 @@ class _Greeting extends ConsumerWidget {
     final message = greeting?.message ?? "Let's make today count.";
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        const ProfileAvatar(),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

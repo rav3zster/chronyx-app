@@ -50,6 +50,7 @@ class ProjectSupabaseDataSource implements ProjectRemoteDataSource {
         .from(_projectsTable)
         .select()
         .eq('user_id', userId)
+        .eq('is_deleted', false)
         .order('created_at', ascending: false);
 
     return rows
@@ -130,11 +131,35 @@ class ProjectSupabaseDataSource implements ProjectRemoteDataSource {
   }
 
   @override
+  Future<void> updateProjectFields(
+    String projectId,
+    Map<String, dynamic> fields,
+  ) async {
+    if (fields.isEmpty) return;
+    final userId = _currentUserId;
+    try {
+      await _client
+          .from(_projectsTable)
+          .update(fields)
+          .eq('id', projectId)
+          .eq('user_id', userId);
+    } on PostgrestException catch (e, st) {
+      _logError(_projectsTable, e, st);
+      throw _mapPostgrest(e, _projectsTable);
+    }
+  }
+
+  @override
   Future<void> deleteProject(String projectId) async {
+    // Soft delete — never hard-delete. Reads filter on is_deleted = false.
     final userId = _currentUserId;
     await _client
         .from(_projectsTable)
-        .delete()
+        .update({
+          'is_deleted': true,
+          'status': 'deleted',
+          'deleted_at': DateTime.now().toUtc().toIso8601String(),
+        })
         .eq('id', projectId)
         .eq('user_id', userId);
   }
@@ -182,6 +207,27 @@ class ProjectSupabaseDataSource implements ProjectRemoteDataSource {
   }
 
   @override
+  Future<void> replaceProjectTasks(
+    String projectId,
+    List<Map<String, dynamic>> tasks,
+  ) async {
+    // Delete any existing rows for this project first so recovery never
+    // creates duplicates, then insert the rebuilt set.
+    try {
+      await _client.from(_tasksTable).delete().eq('project_id', projectId);
+      if (tasks.isEmpty) return;
+      await _client.from(_tasksTable).insert(tasks);
+      _logSuccess(_tasksTable, 'replaced ${tasks.length} rows');
+    } on PostgrestException catch (e, st) {
+      _logError(_tasksTable, e, st);
+      throw _mapPostgrest(e, _tasksTable);
+    } catch (e, st) {
+      _logError(_tasksTable, e, st);
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> updateTaskStatus(
     String taskId,
     String status, {
@@ -199,6 +245,49 @@ class ProjectSupabaseDataSource implements ProjectRemoteDataSource {
   @override
   Future<void> deleteTask(String taskId) async {
     await _client.from(_tasksTable).delete().eq('id', taskId);
+  }
+
+  @override
+  Future<void> attributeSessionMinutes({
+    required String projectTaskId,
+    required int minutes,
+  }) async {
+    if (minutes <= 0) return;
+    try {
+      // Read the task to get its project + current actual_minutes.
+      final task = await _client
+          .from(_tasksTable)
+          .select('project_id, actual_minutes')
+          .eq('id', projectTaskId)
+          .maybeSingle();
+      if (task == null) return; // task was deleted; nothing to attribute.
+
+      final projectId = task['project_id'] as String?;
+      final taskMinutes = (task['actual_minutes'] as int?) ?? 0;
+
+      await _client
+          .from(_tasksTable)
+          .update({'actual_minutes': taskMinutes + minutes})
+          .eq('id', projectTaskId);
+
+      if (projectId == null) return;
+      final project = await _client
+          .from(_projectsTable)
+          .select('actual_minutes_spent')
+          .eq('id', projectId)
+          .maybeSingle();
+      final projMinutes = (project?['actual_minutes_spent'] as int?) ?? 0;
+      await _client
+          .from(_projectsTable)
+          .update({
+            'actual_minutes_spent': projMinutes + minutes,
+            'last_active_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', projectId);
+    } on PostgrestException catch (e, st) {
+      _logError(_tasksTable, e, st);
+      throw _mapPostgrest(e, _tasksTable);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────

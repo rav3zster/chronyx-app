@@ -27,6 +27,9 @@ Future<void> main() async {
 
   // ignore: avoid_print
   print('[INIT] Supabase initialized — authFlowType: PKCE');
+  debugPrint('SUPABASE_URL=${SupabaseEnv.url}');
+  debugPrint('SUPABASE_URL_LENGTH=${SupabaseEnv.url.length}');
+  debugPrint('SUPABASE_ANON_KEY_LENGTH=${SupabaseEnv.anonKey.length}');
 
   // ── Auth diagnostics ────────────────────────────────────────────────────
   final session = Supabase.instance.client.auth.currentSession;

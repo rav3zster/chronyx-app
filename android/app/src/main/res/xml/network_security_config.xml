@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Explicit network security config for Chronyx release builds.
+
+  Android 9+ applies a restrictive default policy that can interfere with
+  DNS resolution and TLS connections to cloud endpoints in release APKs.
+  This config explicitly trusts the system CA store for our Supabase domain
+  and ensures HTTPS to *.supabase.co is never blocked.
+
+  This does NOT allow cleartext (http://) — HTTPS only.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">supabase.co</domain>
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Default: trust system CAs for all other domains, no cleartext -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>

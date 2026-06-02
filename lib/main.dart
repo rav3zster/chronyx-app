@@ -17,13 +17,23 @@ Future<void> main() async {
     return;
   }
 
-  await Supabase.initialize(
-    url: SupabaseEnv.url,
-    anonKey: SupabaseEnv.anonKey,
-  );
+  await Supabase.initialize(url: SupabaseEnv.url, anonKey: SupabaseEnv.anonKey);
 
   // ignore: avoid_print
   print('[INIT] Supabase initialized');
+
+  // ── Auth diagnostics ────────────────────────────────────────────────────
+  final session = Supabase.instance.client.auth.currentSession;
+  final user = Supabase.instance.client.auth.currentUser;
+  debugPrint('[AUTH] Session: ${session != null}');
+  debugPrint('[AUTH] User: ${user?.id}');
+  debugPrint('[AUTH] Email: ${user?.email}');
+
+  Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    debugPrint('[AUTH EVENT] ${data.event}');
+    debugPrint('[AUTH USER] ${data.session?.user.id}');
+  });
+  // ────────────────────────────────────────────────────────────────────────
 
   runApp(const ProviderScope(child: ChronyxApp()));
 }

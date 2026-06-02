@@ -30,15 +30,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = authState.valueOrNull != null;
       final isOnLogin = state.matchedLocation == AppRoutes.login;
 
+      debugPrint('[ROUTER] redirect() called');
+      debugPrint('[ROUTER]   location   = ${state.matchedLocation}');
+      debugPrint('[ROUTER]   isLoading  = ${authState.isLoading}');
+      debugPrint('[ROUTER]   hasValue   = ${authState.hasValue}');
+      debugPrint('[ROUTER]   isLoggedIn = $isLoggedIn');
+      debugPrint('[ROUTER]   isOnLogin  = $isOnLogin');
+      debugPrint('[ROUTER]   userId     = ${authState.valueOrNull?.id}');
+
       // Still loading — don't redirect yet.
-      if (authState.isLoading && !authState.hasValue) return null;
+      if (authState.isLoading && !authState.hasValue) {
+        debugPrint('[ROUTER]   → null (still loading)');
+        return null;
+      }
 
       // Not logged in and not on login → send to login.
-      if (!isLoggedIn && !isOnLogin) return AppRoutes.login;
+      if (!isLoggedIn && !isOnLogin) {
+        debugPrint('[ROUTER]   → /login (not logged in)');
+        return AppRoutes.login;
+      }
 
       // Logged in but still on login → send to dashboard.
-      if (isLoggedIn && isOnLogin) return AppRoutes.dashboard;
+      if (isLoggedIn && isOnLogin) {
+        debugPrint('[ROUTER]   → /dashboard (logged in)');
+        return AppRoutes.dashboard;
+      }
 
+      debugPrint('[ROUTER]   → null (no redirect needed)');
       return null;
     },
     routes: [

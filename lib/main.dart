@@ -17,10 +17,16 @@ Future<void> main() async {
     return;
   }
 
-  await Supabase.initialize(url: SupabaseEnv.url, anonKey: SupabaseEnv.anonKey);
+  await Supabase.initialize(
+    url: SupabaseEnv.url,
+    anonKey: SupabaseEnv.anonKey,
+    authOptions: const FlutterAuthClientOptions(
+      authFlowType: AuthFlowType.pkce,
+    ),
+  );
 
   // ignore: avoid_print
-  print('[INIT] Supabase initialized');
+  print('[INIT] Supabase initialized — authFlowType: PKCE');
 
   // ── Auth diagnostics ────────────────────────────────────────────────────
   final session = Supabase.instance.client.auth.currentSession;
@@ -32,6 +38,7 @@ Future<void> main() async {
   Supabase.instance.client.auth.onAuthStateChange.listen((data) {
     debugPrint('[AUTH EVENT] ${data.event}');
     debugPrint('[AUTH USER] ${data.session?.user.id}');
+    debugPrint('[AUTH ACCESS TOKEN] ${data.session?.accessToken != null}');
   });
   // ────────────────────────────────────────────────────────────────────────
 

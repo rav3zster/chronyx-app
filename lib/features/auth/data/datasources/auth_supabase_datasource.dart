@@ -3,7 +3,6 @@ import 'package:chronyx/features/auth/data/datasources/auth_remote_datasource.da
 import 'package:chronyx/features/auth/data/models/auth_user_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class AuthSupabaseDataSource implements AuthRemoteDataSource {
   AuthSupabaseDataSource(this._supabaseClient);

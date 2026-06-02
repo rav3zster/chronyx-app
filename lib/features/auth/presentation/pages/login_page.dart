@@ -2,10 +2,12 @@ import 'dart:math' as math;
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/constants/app_strings.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
+import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:chronyx/core/widgets/primary_button.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -43,15 +45,13 @@ class _LoginPageState extends ConsumerState<LoginPage>
       curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
     );
 
-    _slideUp = Tween<Offset>(
-      begin: const Offset(0, 0.08),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _entranceCtrl,
-        curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
-      ),
-    );
+    _slideUp = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _entranceCtrl,
+            curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
+          ),
+        );
 
     _logoFade = CurvedAnimation(
       parent: _entranceCtrl,
@@ -77,9 +77,9 @@ class _LoginPageState extends ConsumerState<LoginPage>
       authState.whenOrNull(
         error: (error, _) {
           final message = ErrorMessageMapper.fromError(error);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(message)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
         },
       );
     } finally {
@@ -97,6 +97,14 @@ class _LoginPageState extends ConsumerState<LoginPage>
     final size = MediaQuery.sizeOf(context);
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton.small(
+        heroTag: 'auth_debug',
+        backgroundColor: Colors.red.withValues(alpha: 0.85),
+        tooltip: 'Auth Debug',
+        onPressed: () => context.push(AppRoutes.authDebug),
+        child: const Icon(Icons.bug_report, size: 18, color: Colors.white),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startTop,
       body: Stack(
         children: [
           // ── Animated background ────────────────────────────────────────
@@ -316,20 +324,21 @@ class _BackgroundPainter extends CustomPainter {
 
     // Orb 1 — primary color, floats up/down
     final orb1 = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          primaryColor.withValues(alpha: 0.25),
-          primaryColor.withValues(alpha: 0),
-        ],
-      ).createShader(
-        Rect.fromCircle(
-          center: Offset(
-            size.width * 0.25,
-            size.height * (0.25 + 0.08 * math.sin(t * math.pi)),
-          ),
-          radius: size.width * 0.55,
-        ),
-      );
+      ..shader =
+          RadialGradient(
+            colors: [
+              primaryColor.withValues(alpha: 0.25),
+              primaryColor.withValues(alpha: 0),
+            ],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(
+                size.width * 0.25,
+                size.height * (0.25 + 0.08 * math.sin(t * math.pi)),
+              ),
+              radius: size.width * 0.55,
+            ),
+          );
     canvas.drawCircle(
       Offset(
         size.width * 0.25,
@@ -341,21 +350,22 @@ class _BackgroundPainter extends CustomPainter {
 
     // Orb 2 — secondary color, floats opposite phase
     final orb2 = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          secondaryColor.withValues(alpha: 0.20),
-          secondaryColor.withValues(alpha: 0),
-        ],
-      ).createShader(
-        Rect.fromCircle(
-          center: Offset(
-            size.width * 0.8,
-            size.height *
-                (0.65 + 0.07 * math.cos(t * math.pi + math.pi / 2)),
-          ),
-          radius: size.width * 0.50,
-        ),
-      );
+      ..shader =
+          RadialGradient(
+            colors: [
+              secondaryColor.withValues(alpha: 0.20),
+              secondaryColor.withValues(alpha: 0),
+            ],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(
+                size.width * 0.8,
+                size.height *
+                    (0.65 + 0.07 * math.cos(t * math.pi + math.pi / 2)),
+              ),
+              radius: size.width * 0.50,
+            ),
+          );
     canvas.drawCircle(
       Offset(
         size.width * 0.8,
@@ -373,8 +383,6 @@ class _BackgroundPainter extends CustomPainter {
       old.secondaryColor != secondaryColor ||
       old.scaffoldBg != scaffoldBg;
 }
-
-
 
 class _ClockLogoPainter extends CustomPainter {
   const _ClockLogoPainter({required this.primaryColor});
@@ -429,8 +437,7 @@ class _ClockLogoPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ClockLogoPainter old) =>
-      old.primaryColor != primaryColor;
+  bool shouldRepaint(_ClockLogoPainter old) => old.primaryColor != primaryColor;
 }
 
 class _GoogleIcon extends StatelessWidget {

@@ -18,4 +18,5 @@ class AppRoutes {
   static const String blueprint = '/blueprint';
   static const String projectDetail = '/project/:projectId';
   static const String lifeInsights = '/life-insights';
+  static const String authDebug = '/auth-debug';
 }

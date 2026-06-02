@@ -3,6 +3,7 @@ import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/features/analytics/presentation/pages/analytics_page.dart';
 import 'package:chronyx/features/analytics/presentation/pages/wrapped_page.dart';
 import 'package:chronyx/features/ai_coach/presentation/pages/ai_coach_page.dart';
+import 'package:chronyx/features/auth/presentation/pages/auth_debug_page.dart';
 import 'package:chronyx/features/auth/presentation/pages/dashboard_page.dart';
 import 'package:chronyx/features/auth/presentation/pages/login_page.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
@@ -29,6 +30,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authProvider);
       final isLoggedIn = authState.valueOrNull != null;
       final isOnLogin = state.matchedLocation == AppRoutes.login;
+      // Auth debug page is always accessible — skip redirect logic for it.
+      final isOnDebug = state.matchedLocation == AppRoutes.authDebug;
+      if (isOnDebug) return null;
 
       debugPrint('[ROUTER] redirect() called');
       debugPrint('[ROUTER]   location   = ${state.matchedLocation}');
@@ -145,6 +149,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.lifeInsights,
         name: 'lifeInsights',
         builder: (context, state) => const LifeInsightsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.authDebug,
+        name: 'authDebug',
+        builder: (context, state) => const AuthDebugPage(),
       ),
     ],
   );

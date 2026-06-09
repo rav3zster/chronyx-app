@@ -18,20 +18,51 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
 
   @override
   Future<List<TimeEntryModel>> fetchEntries() async {
-    final String userId = _currentUserId;
-    final List<dynamic> rows = await _supabaseClient
-        .from(_tableName)
-        .select()
-        .eq('user_id', userId)
-        .order('start_time', ascending: false)
-        .limit(200);
+    // ── 1. Auth ──────────────────────────────────────────────────────────────
+    print('[TIME] query start');
+    final String userId;
+    try {
+      userId = _currentUserId;
+    } catch (error, st) {
+      print('[TIME ERROR] _currentUserId threw');
+      print(error);
+      print(st);
+      rethrow;
+    }
+    print('[TIME] current user=${userId}');
 
-    return rows
-        .map(
-          (dynamic json) =>
-              TimeEntryModel.fromJson(json as Map<String, dynamic>),
-        )
-        .toList();
+    // ── 2. Query ─────────────────────────────────────────────────────────────
+    final List<dynamic> rows;
+    try {
+      rows = await _supabaseClient
+          .from(_tableName)
+          .select()
+          .eq('user_id', userId)
+          .order('start_time', ascending: false)
+          .limit(200);
+    } catch (error, st) {
+      print('[TIME ERROR] Supabase query threw');
+      print(error);
+      print(st);
+      rethrow;
+    }
+    print('[TIME] raw response=${rows}');
+
+    // ── 3. Mapping ───────────────────────────────────────────────────────────
+    print('[TIME] mapping entries, count=${rows.length}');
+    final List<TimeEntryModel> entries = [];
+    for (int i = 0; i < rows.length; i++) {
+      try {
+        entries.add(TimeEntryModel.fromJson(rows[i] as Map<String, dynamic>));
+      } catch (error, st) {
+        print('[TIME ERROR] fromJson crashed on row $i: ${rows[i]}');
+        print(error);
+        print(st);
+        rethrow;
+      }
+    }
+    print('[TIME] mapped entries count=${entries.length}');
+    return entries;
   }
 
   @override
@@ -49,8 +80,6 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
       'start_time': now.toIso8601String(),
     };
 
-    // Try inserting WITH category + project link first. If a column doesn't
-    // exist yet (migration not run), fall back to the minimal insert.
     try {
       final fullInsert = <String, dynamic>{
         ...base,
@@ -65,7 +94,6 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
           .select();
       return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
     } on PostgrestException catch (e) {
-      // Unknown column (category or project_task_id) → retry minimal insert.
       if (e.code == '42703' ||
           e.message.contains('category') ||
           e.message.contains('project_task_id')) {

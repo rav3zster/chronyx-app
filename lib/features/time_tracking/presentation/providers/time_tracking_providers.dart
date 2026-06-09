@@ -33,7 +33,6 @@ final timeTrackingRepositoryProvider = Provider<TimeTrackingRepository>((ref) {
 
 // ── Focus ratio tracking ──────────────────────────────────────────────────────
 
-/// Tracks today's focused vs away seconds since the app was opened.
 final focusStatsProvider = NotifierProvider<FocusStatsNotifier, FocusStats>(
   FocusStatsNotifier.new,
 );
@@ -121,22 +120,29 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
       _ticker = null;
     });
 
-    // Guard: wait for a confirmed authenticated user before querying Supabase.
-    // This prevents null-userId crashes during the OAuth redirect flow.
     final authState = ref.watch(authProvider);
+    print('[PROVIDER] build — hasValue=${authState.hasValue} auth=${authState.value?.id}');
     if (!authState.hasValue || authState.value == null) {
+      print('[PROVIDER] build — no auth, returning []');
       return <TimeEntry>[];
     }
 
-    final entries = await _repository.fetchTimeEntries();
-    _startTickerIfNeeded(entries);
-    return entries;
+    try {
+      final entries = await _repository.fetchTimeEntries();
+      print('[PROVIDER] build — got ${entries.length} entries');
+      _startTickerIfNeeded(entries);
+      return entries;
+    } catch (e, st) {
+      print('[PROVIDER ERROR] build threw: ${e.runtimeType}');
+      print(e);
+      print(st);
+      rethrow;
+    }
   }
 
   Future<void> refreshEntries() async {
-    // Avoid flashing an error (and showing the Retry button) while auth is
-    // in-flight during login/redirect flows.
-    final authState = ref.watch(authProvider);
+    final authState = ref.read(authProvider);
+    print('[PROVIDER] refreshEntries — hasValue=${authState.hasValue} auth=${authState.value?.id}');
     if (!authState.hasValue || authState.value == null) {
       state = const AsyncData(<TimeEntry>[]);
       return;
@@ -144,18 +150,9 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
 
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      try {
-        final entries = await _repository.fetchTimeEntries();
-        _startTickerIfNeeded(entries);
-        return entries;
-      } catch (e) {
-        // If auth just became invalid (e.g., token refresh race), treat as
-        // empty instead of erroring the UI.
-        if (e is UnknownException) {
-          return <TimeEntry>[];
-        }
-        rethrow;
-      }
+      final entries = await _repository.fetchTimeEntries();
+      _startTickerIfNeeded(entries);
+      return entries;
     });
   }
 
@@ -164,14 +161,14 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
     required TaskCategory category,
     String? projectTaskId,
   }) async {
-    final currentEntries = state.value ?? <TimeEntry>[];
-    final hasActiveSession = currentEntries.any((entry) => entry.isActive);
+    final previousEntries = state.value ?? <TimeEntry>[];
+    final hasActiveSession = previousEntries.any((entry) => entry.isActive);
     if (hasActiveSession) {
       throw const ValidationException(AppStrings.activeSessionExists);
     }
 
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    try {
       await _repository.startSession(
         taskName: taskName,
         category: category,
@@ -179,19 +176,33 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
       );
       final entries = await _repository.fetchTimeEntries();
       _startTickerIfNeeded(entries);
-      return entries;
-    });
+      state = AsyncData(entries);
+    } catch (e, st) {
+      print('[PROVIDER ERROR] startSession threw: ${e.runtimeType}');
+      print(e);
+      // Restore previous list so the sessions section stays visible,
+      // not stuck in Retry. The page's _startSession() shows a SnackBar.
+      state = AsyncData(previousEntries);
+      // Re-throw so the page catch block can show the SnackBar.
+      Error.throwWithStackTrace(e, st);
+    }
   }
 
   Future<TimeEntry?> stopSession({required String sessionId}) async {
+    final previousEntries = state.value ?? <TimeEntry>[];
     TimeEntry? finished;
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    try {
       finished = await _repository.stopSession(sessionId: sessionId);
       final entries = await _repository.fetchTimeEntries();
       _startTickerIfNeeded(entries);
-      return entries;
-    });
+      state = AsyncData(entries);
+    } catch (e, st) {
+      print('[PROVIDER ERROR] stopSession threw: ${e.runtimeType}');
+      print(e);
+      state = AsyncData(previousEntries);
+      Error.throwWithStackTrace(e, st);
+    }
     return finished;
   }
 }

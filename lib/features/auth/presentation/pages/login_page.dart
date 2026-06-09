@@ -6,6 +6,8 @@ import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:chronyx/core/widgets/primary_button.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/core/services/permission_service.dart';
+import 'package:chronyx/features/settings/presentation/providers/settings_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -97,6 +99,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final settings = ref.watch(settingsProvider);
     final bool buttonBusy =
         _oauthLaunchBusy || (authState.isLoading && !authState.hasValue);
     final scheme = Theme.of(context).colorScheme;
@@ -104,13 +107,15 @@ class _LoginPageState extends ConsumerState<LoginPage>
     final size = MediaQuery.sizeOf(context);
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.small(
-        heroTag: 'auth_debug',
-        backgroundColor: Colors.red.withValues(alpha: 0.85),
-        tooltip: 'Auth Debug',
-        onPressed: () => context.push(AppRoutes.authDebug),
-        child: const Icon(Icons.bug_report, size: 18, color: Colors.white),
-      ),
+      floatingActionButton: (kDebugMode || settings.enableDebugTools)
+          ? FloatingActionButton.small(
+              heroTag: 'auth_debug',
+              backgroundColor: Colors.red.withValues(alpha: 0.85),
+              tooltip: 'Auth Debug',
+              onPressed: () => context.push(AppRoutes.authDebug),
+              child: const Icon(Icons.bug_report, size: 18, color: Colors.white),
+            )
+          : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.startTop,
       body: Stack(
         children: [

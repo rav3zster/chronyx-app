@@ -43,8 +43,10 @@ final todaysRoadmapProvider = FutureProvider<TodaysRoadmap?>((ref) async {
     final tasks = await repo.fetchProjectTasks(project.id);
     if (tasks.isEmpty) return null;
 
-    // Calculate today's day number
-    final daysElapsed = DateTime.now().difference(project.createdAt).inDays + 1;
+    // Calculate today's day number based on calendar dates
+    final createdMidnight = DateTime(project.createdAt.year, project.createdAt.month, project.createdAt.day);
+    final nowMidnight = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final daysElapsed = nowMidnight.difference(createdMidnight).inDays + 1;
     final todayDayNumber = daysElapsed.clamp(1, project.durationDays);
 
     // Get today's tasks

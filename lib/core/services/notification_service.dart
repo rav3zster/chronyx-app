@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chronyx/features/settings/presentation/providers/settings_provider.dart';
+import 'package:chronyx/core/routing/app_router.dart';
+import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:timezone/data/latest_10y.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -49,6 +51,21 @@ class NotificationService {
   }
 
   void _onNotificationTap(NotificationResponse response) {
+    final payload = response.payload;
+    if (payload != null && payload.isNotEmpty) {
+      try {
+        final router = _ref.read(appRouterProvider);
+        if (payload == 'session_complete' || payload == 'time_tracking') {
+          router.go(AppRoutes.timeTracking);
+        } else if (payload == 'goal_deadline' || payload == 'goals') {
+          router.go(AppRoutes.goals);
+        } else if (payload == 'weekly_summary' || payload == 'analytics') {
+          router.go(AppRoutes.analytics);
+        }
+      } catch (e) {
+        debugPrint('[NOTIFICATION] Failed to navigate: $e');
+      }
+    }
   }
 
   Future<void> _ensureChannel() async {

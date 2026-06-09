@@ -108,10 +108,6 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
         final current = state.value ?? <TimeEntry>[];
         state = AsyncData(List<TimeEntry>.from(current));
       });
-      ref.onDispose(() {
-        _ticker?.cancel();
-        _ticker = null;
-      });
     } else if (!hasActive) {
       _ticker?.cancel();
       _ticker = null;
@@ -120,6 +116,11 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
 
   @override
   Future<List<TimeEntry>> build() async {
+    ref.onDispose(() {
+      _ticker?.cancel();
+      _ticker = null;
+    });
+
     // Guard: wait for a confirmed authenticated user before querying Supabase.
     // This prevents null-userId crashes during the OAuth redirect flow.
     final authState = ref.watch(authProvider);

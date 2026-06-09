@@ -79,6 +79,7 @@ class PermissionService {
 
   Future<bool> requestManageExternalStorage(BuildContext context) async {
     if (await Permission.manageExternalStorage.isGranted) return true;
+    if (!context.mounted) return false;
     return await requestWithExplanation(
       context,
       Permission.manageExternalStorage,
@@ -106,14 +107,17 @@ class PermissionService {
     required bool needsStorage,
   }) async {
     if (needsNotifications && !await hasNotificationPermission()) {
+      if (!context.mounted) return false;
       final granted = await requestNotification(context);
       if (!granted) return false;
     }
     if (needsExactAlarm && !await hasScheduleExactAlarmPermission()) {
+      if (!context.mounted) return false;
       final granted = await requestScheduleExactAlarm(context);
       if (!granted) return false;
     }
     if (needsStorage && !await Permission.storage.isGranted) {
+      if (!context.mounted) return false;
       final granted = await requestStorage(context);
       if (!granted) return false;
     }

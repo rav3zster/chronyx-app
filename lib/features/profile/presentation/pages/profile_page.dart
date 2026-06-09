@@ -8,6 +8,7 @@ import 'package:chronyx/features/analytics/presentation/providers/analytics_prov
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/profile/presentation/providers/profile_avatar_provider.dart';
 import 'package:chronyx/features/profile/presentation/widgets/profile_avatar.dart';
+import 'package:chronyx/features/settings/presentation/providers/settings_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -455,8 +456,8 @@ class _ProfileMenu extends ConsumerWidget {
         ),
         const SizedBox(height: 10),
 
-        // Auth Debug Tooling (Only visible in debug mode)
-        if (kDebugMode) ...[
+        // Auth Debug Tooling (Only visible in debug mode or when enabled in settings)
+        if (kDebugMode || ref.watch(settingsProvider).enableDebugTools) ...[
           _MenuTile(
             icon: Icons.bug_report_outlined,
             color: const Color(0xFFFBBC05),

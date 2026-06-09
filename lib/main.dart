@@ -2,7 +2,6 @@ import 'package:chronyx/app.dart';
 import 'package:chronyx/core/constants/supabase_env.dart';
 import 'package:chronyx/core/services/inactivity_lock.dart';
 import 'package:chronyx/core/services/notification_service.dart';
-import 'package:chronyx/core/services/permission_service.dart';
 import 'package:chronyx/core/widgets/biometric_gate.dart';
 import 'package:chronyx/core/services/sound_service.dart';
 import 'package:flutter/material.dart';
@@ -68,8 +67,6 @@ class _AppWithServices extends ConsumerStatefulWidget {
 }
 
 class _AppWithServicesState extends ConsumerState<_AppWithServices> {
-  bool _initialized = false;
-
   @override
   void initState() {
     super.initState();
@@ -100,10 +97,6 @@ class _AppWithServicesState extends ConsumerState<_AppWithServices> {
       }
     } catch (e) {
       debugPrint('[INIT] Service initialization error: $e');
-    }
-
-    if (mounted) {
-      setState(() => _initialized = true);
     }
   }
 

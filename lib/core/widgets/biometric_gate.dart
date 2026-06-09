@@ -2,8 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chronyx/core/services/biometric_service.dart';
-import 'package:chronyx/core/theme/theme_provider.dart';
-import 'package:chronyx/core/constants/app_strings.dart';
 import 'package:chronyx/features/settings/presentation/providers/settings_provider.dart';
 
 final biometricGateNotifierProvider =

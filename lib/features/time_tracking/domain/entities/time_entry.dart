@@ -76,6 +76,48 @@ enum TaskCategory {
   ];
 }
 
+enum SessionStatus {
+  active,
+  completed,
+  cancelled,
+  paused;
+
+  String get jsonKey => name;
+
+  String get label => switch (this) {
+    SessionStatus.active => 'Active',
+    SessionStatus.completed => 'Completed',
+    SessionStatus.cancelled => 'Cancelled',
+    SessionStatus.paused => 'Paused',
+  };
+
+  static SessionStatus fromJson(String? value) => switch (value) {
+    'active' => SessionStatus.active,
+    'completed' => SessionStatus.completed,
+    'cancelled' => SessionStatus.cancelled,
+    'paused' => SessionStatus.paused,
+    _ => SessionStatus.completed,
+  };
+}
+
+enum SessionMode {
+  stopwatch,
+  timer;
+
+  String get jsonKey => name;
+
+  String get label => switch (this) {
+    SessionMode.stopwatch => 'Stopwatch',
+    SessionMode.timer => 'Timer',
+  };
+
+  static SessionMode fromJson(String? value) => switch (value) {
+    'stopwatch' => SessionMode.stopwatch,
+    'timer' => SessionMode.timer,
+    _ => SessionMode.stopwatch,
+  };
+}
+
 class TimeEntry {
   const TimeEntry({
     required this.id,
@@ -85,6 +127,9 @@ class TimeEntry {
     this.category = TaskCategory.other,
     this.projectTaskId,
     this.durationMinutes,
+    this.status = SessionStatus.completed,
+    this.mode = SessionMode.stopwatch,
+    this.targetDurationMinutes,
   });
 
   final String id;
@@ -97,6 +142,9 @@ class TimeEntry {
   /// Stored duration from Supabase (null while session is active).
   /// Falls back to computed value for finished sessions missing this field.
   final int? durationMinutes;
+  final SessionStatus status;
+  final SessionMode mode;
+  final int? targetDurationMinutes;
 
   Duration get duration {
     if (!isActive && durationMinutes != null) {
@@ -106,7 +154,7 @@ class TimeEntry {
     return end.difference(startedAt);
   }
 
-  bool get isActive => endedAt == null;
+  bool get isActive => endedAt == null && (status == SessionStatus.active || status == SessionStatus.paused);
 
   /// Whether this category counts toward productive time (for analytics).
   bool get isProductive => category.isDeepWork;

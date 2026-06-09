@@ -6,11 +6,17 @@ class TimeEntryCard extends StatefulWidget {
   const TimeEntryCard({
     required this.entry,
     required this.onStopSession,
+    this.onResumeSession,
+    this.onEditSession,
+    this.onDeleteSession,
     super.key,
   });
 
   final TimeEntry entry;
   final VoidCallback? onStopSession;
+  final VoidCallback? onResumeSession;
+  final VoidCallback? onEditSession;
+  final VoidCallback? onDeleteSession;
 
   @override
   State<TimeEntryCard> createState() => _TimeEntryCardState();
@@ -202,6 +208,72 @@ class _TimeEntryCardState extends State<TimeEntryCard>
                             ),
                           ),
                         ),
+                    ],
+                  ),
+                  const SizedBox(width: 4),
+                  PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert, color: scheme.onSurfaceVariant),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'resume':
+                          widget.onResumeSession?.call();
+                          break;
+                        case 'stop':
+                          widget.onStopSession?.call();
+                          break;
+                        case 'edit':
+                          widget.onEditSession?.call();
+                          break;
+                        case 'delete':
+                          widget.onDeleteSession?.call();
+                          break;
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'resume',
+                        enabled: !widget.entry.isActive,
+                        child: Row(
+                          children: [
+                            Icon(Icons.play_arrow_rounded, color: scheme.onSurface, size: 20),
+                            const SizedBox(width: 8),
+                            const Text('Resume'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'stop',
+                        enabled: widget.entry.isActive,
+                        child: Row(
+                          children: [
+                            Icon(Icons.stop_rounded, color: scheme.onSurface, size: 20),
+                            const SizedBox(width: 8),
+                            const Text('Stop'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_rounded, color: scheme.onSurface, size: 20),
+                            const SizedBox(width: 8),
+                            const Text('Edit'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_rounded, color: scheme.error, size: 20),
+                            const SizedBox(width: 8),
+                            Text('Delete', style: TextStyle(color: scheme.error)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ],

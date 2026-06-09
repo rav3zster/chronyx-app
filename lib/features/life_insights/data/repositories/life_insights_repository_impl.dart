@@ -905,6 +905,9 @@ class LifeInsightsRepositoryImpl implements LifeInsightsRepository {
     return switch (category) {
       TaskCategory.learning => LifeArea.learning,
       TaskCategory.productive => LifeArea.career,
+      TaskCategory.meeting => LifeArea.social,
+      TaskCategory.exercise => LifeArea.health,
+      TaskCategory.entertainment => LifeArea.rest,
       TaskCategory.break_ => LifeArea.rest,
       TaskCategory.distraction => LifeArea.focus, // shows as low-focus drag
       TaskCategory.other => LifeArea.career,

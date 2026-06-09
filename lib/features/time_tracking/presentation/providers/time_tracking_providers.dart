@@ -160,11 +160,16 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
     required String taskName,
     required TaskCategory category,
     String? projectTaskId,
+    SessionMode mode = SessionMode.stopwatch,
+    int? targetDurationMinutes,
+    bool ignoreActiveCheck = false,
   }) async {
     final previousEntries = state.value ?? <TimeEntry>[];
-    final hasActiveSession = previousEntries.any((entry) => entry.isActive);
-    if (hasActiveSession) {
-      throw const ValidationException(AppStrings.activeSessionExists);
+    if (!ignoreActiveCheck) {
+      final hasActiveSession = previousEntries.any((entry) => entry.isActive);
+      if (hasActiveSession) {
+        throw const ValidationException(AppStrings.activeSessionExists);
+      }
     }
 
     state = const AsyncLoading();
@@ -173,6 +178,8 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
         taskName: taskName,
         category: category,
         projectTaskId: projectTaskId,
+        mode: mode,
+        targetDurationMinutes: targetDurationMinutes,
       );
       final entries = await _repository.fetchTimeEntries();
       _startTickerIfNeeded(entries);
@@ -188,12 +195,18 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
     }
   }
 
-  Future<TimeEntry?> stopSession({required String sessionId}) async {
+  Future<TimeEntry?> stopSession({
+    required String sessionId,
+    SessionStatus status = SessionStatus.completed,
+  }) async {
     final previousEntries = state.value ?? <TimeEntry>[];
     TimeEntry? finished;
     state = const AsyncLoading();
     try {
-      finished = await _repository.stopSession(sessionId: sessionId);
+      finished = await _repository.stopSession(
+        sessionId: sessionId,
+        status: status,
+      );
       final entries = await _repository.fetchTimeEntries();
       _startTickerIfNeeded(entries);
       state = AsyncData(entries);
@@ -204,5 +217,61 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
       Error.throwWithStackTrace(e, st);
     }
     return finished;
+  }
+
+  Future<void> deleteSession({required String sessionId}) async {
+    final previousEntries = state.value ?? <TimeEntry>[];
+    state = const AsyncLoading();
+    try {
+      await _repository.deleteSession(sessionId: sessionId);
+      final entries = await _repository.fetchTimeEntries();
+      _startTickerIfNeeded(entries);
+      state = AsyncData(entries);
+    } catch (e, st) {
+      print('[PROVIDER ERROR] deleteSession threw: ${e.runtimeType}');
+      print(e);
+      state = AsyncData(previousEntries);
+      Error.throwWithStackTrace(e, st);
+    }
+  }
+
+  Future<void> updateSession({
+    required String sessionId,
+    required String taskName,
+    required TaskCategory category,
+  }) async {
+    final previousEntries = state.value ?? <TimeEntry>[];
+    state = const AsyncLoading();
+    try {
+      await _repository.updateSession(
+        sessionId: sessionId,
+        taskName: taskName,
+        category: category,
+      );
+      final entries = await _repository.fetchTimeEntries();
+      _startTickerIfNeeded(entries);
+      state = AsyncData(entries);
+    } catch (e, st) {
+      print('[PROVIDER ERROR] updateSession threw: ${e.runtimeType}');
+      print(e);
+      state = AsyncData(previousEntries);
+      Error.throwWithStackTrace(e, st);
+    }
+  }
+
+  Future<void> resumeSession({required String sessionId}) async {
+    final previousEntries = state.value ?? <TimeEntry>[];
+    state = const AsyncLoading();
+    try {
+      await _repository.resumeSession(sessionId: sessionId);
+      final entries = await _repository.fetchTimeEntries();
+      _startTickerIfNeeded(entries);
+      state = AsyncData(entries);
+    } catch (e, st) {
+      print('[PROVIDER ERROR] resumeSession threw: ${e.runtimeType}');
+      print(e);
+      state = AsyncData(previousEntries);
+      Error.throwWithStackTrace(e, st);
+    }
   }
 }

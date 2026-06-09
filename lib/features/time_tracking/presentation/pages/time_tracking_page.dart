@@ -32,6 +32,8 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
   final TextEditingController _taskController = TextEditingController();
   final FocusNode _taskFocus = FocusNode();
   TaskCategory _selectedCategory = TaskCategory.productive;
+  SessionMode _selectedMode = SessionMode.stopwatch;
+  int? _targetDurationMinutes;
 
   /// Project task this next session should be attributed to (from a prefill).
   String? _pendingProjectTaskId;
@@ -63,11 +65,51 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
     final notifier = ref.read(timeEntriesProvider.notifier);
     final taskName = _taskController.text.trim();
     final linkedTaskId = _pendingProjectTaskId;
+
+    // Check for existing active session
+    final entries = ref.read(timeEntriesProvider).value ?? <TimeEntry>[];
+    TimeEntry? activeSession;
+    for (final e in entries) {
+      if (e.isActive) {
+        activeSession = e;
+        break;
+      }
+    }
+
+    if (activeSession != null) {
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (context) => _ActiveSessionDialog(activeSession: activeSession!),
+      );
+      if (choice == null || choice == 'resume') {
+        // Resume / dismiss does not start a new session
+        return;
+      }
+      try {
+        if (choice == 'stop') {
+          await notifier.stopSession(sessionId: activeSession.id);
+        } else if (choice == 'delete') {
+          await notifier.deleteSession(sessionId: activeSession.id);
+        } else if (choice == 'startAnyway') {
+          await notifier.stopSession(sessionId: activeSession.id);
+        }
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ErrorMessageMapper.fromError(error))),
+        );
+        return;
+      }
+    }
+
     try {
       await notifier.startSession(
         taskName: taskName,
         category: _selectedCategory,
         projectTaskId: linkedTaskId,
+        mode: _selectedMode,
+        targetDurationMinutes: _selectedMode == SessionMode.timer ? _targetDurationMinutes : null,
+        ignoreActiveCheck: true,
       );
       _taskController.clear();
       _taskFocus.unfocus();
@@ -115,6 +157,178 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
 
     if (!mounted) return;
     await showSessionCelebration(context, justFinished: finished);
+  }
+
+  Future<void> _resumeSession(TimeEntry entry) async {
+    final notifier = ref.read(timeEntriesProvider.notifier);
+    final entries = ref.read(timeEntriesProvider).value ?? <TimeEntry>[];
+
+    TimeEntry? activeSession;
+    for (final e in entries) {
+      if (e.isActive && e.id != entry.id) {
+        activeSession = e;
+        break;
+      }
+    }
+
+    if (activeSession != null) {
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (context) => _ActiveSessionDialog(activeSession: activeSession!),
+      );
+      if (choice == null || choice == 'resume') {
+        return;
+      }
+      try {
+        if (choice == 'stop') {
+          await notifier.stopSession(sessionId: activeSession.id);
+        } else if (choice == 'delete') {
+          await notifier.deleteSession(sessionId: activeSession.id);
+        } else if (choice == 'startAnyway') {
+          await notifier.stopSession(sessionId: activeSession.id);
+        }
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ErrorMessageMapper.fromError(error))),
+        );
+        return;
+      }
+    }
+
+    try {
+      await notifier.resumeSession(sessionId: entry.id);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ErrorMessageMapper.fromError(error))),
+      );
+    }
+  }
+
+  Future<void> _editSession(TimeEntry entry) async {
+    final nameController = TextEditingController(text: entry.taskName);
+    TaskCategory category = entry.category;
+
+    final updated = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final scheme = Theme.of(context).colorScheme;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: const Text('Edit Session'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Task Name'),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Category'),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<TaskCategory>(
+                    value: category,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    items: TaskCategory.selectable.map((cat) {
+                      return DropdownMenuItem(
+                        value: cat,
+                        child: Text(cat.label),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => category = val);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: scheme.primary,
+                    foregroundColor: scheme.onPrimary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (updated == true) {
+      final name = nameController.text.trim();
+      if (name.isNotEmpty) {
+        try {
+          await ref.read(timeEntriesProvider.notifier).updateSession(
+            sessionId: entry.id,
+            taskName: name,
+            category: category,
+          );
+        } catch (error) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(ErrorMessageMapper.fromError(error))),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteSession(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Delete Session'),
+        content: const Text('Are you sure you want to delete this session? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      try {
+        await ref.read(timeEntriesProvider.notifier).deleteSession(sessionId: id);
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ErrorMessageMapper.fromError(error))),
+        );
+      }
+    }
   }
 
   @override
@@ -167,9 +381,15 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
                           controller: _taskController,
                           focusNode: _taskFocus,
                           selected: _selectedCategory,
+                          mode: _selectedMode,
+                          targetDurationMinutes: _targetDurationMinutes,
                           isLoading: timeEntriesState.isLoading,
                           onSelectCategory: (c) =>
                               setState(() => _selectedCategory = c),
+                          onSelectMode: (m) =>
+                              setState(() => _selectedMode = m),
+                          onSelectTargetDuration: (mins) =>
+                              setState(() => _targetDurationMinutes = mins),
                           onStart: _startSession,
                         ),
                       ),
@@ -186,6 +406,9 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
                       data: (entries) => _SessionSliver(
                         entries: entries,
                         onStopSession: _stopSession,
+                        onResumeSession: _resumeSession,
+                        onEditSession: _editSession,
+                        onDeleteSession: _deleteSession,
                         bottomInset: bottomInset,
                       ),
                       error: (error, _) => SliverPadding(
@@ -235,9 +458,15 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
                                     controller: _taskController,
                                     focusNode: _taskFocus,
                                     selected: _selectedCategory,
+                                    mode: _selectedMode,
+                                    targetDurationMinutes: _targetDurationMinutes,
                                     isLoading: timeEntriesState.isLoading,
                                     onSelectCategory: (c) =>
                                         setState(() => _selectedCategory = c),
+                                    onSelectMode: (m) =>
+                                        setState(() => _selectedMode = m),
+                                    onSelectTargetDuration: (mins) =>
+                                        setState(() => _targetDurationMinutes = mins),
                                     onStart: _startSession,
                                   ),
                                 ],
@@ -266,6 +495,9 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
                                               onStopSession: entry.isActive
                                                   ? () => _stopSession(entry.id)
                                                   : null,
+                                              onResumeSession: () => _resumeSession(entry),
+                                              onEditSession: () => _editSession(entry),
+                                              onDeleteSession: () => _deleteSession(entry.id),
                                             ),
                                           );
                                         }).toList(),
@@ -390,16 +622,24 @@ class _NewSessionCard extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.selected,
+    required this.mode,
+    required this.targetDurationMinutes,
     required this.isLoading,
     required this.onSelectCategory,
+    required this.onSelectMode,
+    required this.onSelectTargetDuration,
     required this.onStart,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
   final TaskCategory selected;
+  final SessionMode mode;
+  final int? targetDurationMinutes;
   final bool isLoading;
   final ValueChanged<TaskCategory> onSelectCategory;
+  final ValueChanged<SessionMode> onSelectMode;
+  final ValueChanged<int?> onSelectTargetDuration;
   final VoidCallback onStart;
 
   @override
@@ -471,10 +711,189 @@ class _NewSessionCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _CategoryChips(selected: selected, onSelected: onSelectCategory),
+          const SizedBox(height: 18),
+          Text(
+            'MODE',
+            style: textTheme.labelSmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _ModeChip(
+                label: 'Stopwatch',
+                icon: Icons.timer_outlined,
+                isSelected: mode == SessionMode.stopwatch,
+                onTap: () {
+                  onSelectMode(SessionMode.stopwatch);
+                  onSelectTargetDuration(null);
+                },
+              ),
+              const SizedBox(width: 12),
+              _ModeChip(
+                label: 'Timer',
+                icon: Icons.hourglass_top_outlined,
+                isSelected: mode == SessionMode.timer,
+                onTap: () {
+                  onSelectMode(SessionMode.timer);
+                  onSelectTargetDuration(25); // default to 25 mins
+                },
+              ),
+            ],
+          ),
+          if (mode == SessionMode.timer) ...[
+            const SizedBox(height: 18),
+            Text(
+              'TARGET DURATION',
+              style: textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _TargetDurationSelector(
+              selectedMinutes: targetDurationMinutes ?? 25,
+              onChanged: (mins) => onSelectTargetDuration(mins),
+            ),
+          ],
           const SizedBox(height: 20),
           _StartButton(isLoading: isLoading, onTap: onStart),
         ],
       ),
+    );
+  }
+}
+
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? scheme.inverseSurface : scheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? scheme.inverseSurface : scheme.outlineVariant,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? scheme.onInverseSurface : scheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label.toUpperCase(),
+              style: textTheme.labelMedium?.copyWith(
+                color: isSelected ? scheme.onInverseSurface : scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TargetDurationSelector extends StatelessWidget {
+  const _TargetDurationSelector({
+    required this.selectedMinutes,
+    required this.onChanged,
+  });
+
+  final int selectedMinutes;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final presets = [15, 25, 45, 60];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: presets.map((mins) {
+            final isPresetSelected = selectedMinutes == mins;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => onChanged(mins),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isPresetSelected ? scheme.primary : scheme.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isPresetSelected ? scheme.primary : scheme.outlineVariant,
+                    ),
+                  ),
+                  child: Text(
+                    '${mins}M',
+                    style: textTheme.labelMedium?.copyWith(
+                      color: isPresetSelected ? scheme.onPrimary : scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            IconButton(
+              icon: Icon(Icons.remove_circle_outline, color: scheme.onSurfaceVariant),
+              onPressed: selectedMinutes > 5 ? () => onChanged(selectedMinutes - 5) : null,
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: scheme.outlineVariant),
+              ),
+              child: Text(
+                '$selectedMinutes mins',
+                style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.add_circle_outline, color: scheme.onSurfaceVariant),
+              onPressed: () => onChanged(selectedMinutes + 5),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -610,11 +1029,17 @@ class _SessionSliver extends StatelessWidget {
   const _SessionSliver({
     required this.entries,
     required this.onStopSession,
+    required this.onResumeSession,
+    required this.onEditSession,
+    required this.onDeleteSession,
     required this.bottomInset,
   });
 
   final List<TimeEntry> entries;
   final Future<void> Function(String id) onStopSession;
+  final Future<void> Function(TimeEntry entry) onResumeSession;
+  final Future<void> Function(TimeEntry entry) onEditSession;
+  final Future<void> Function(String id) onDeleteSession;
   final double bottomInset;
 
   @override
@@ -637,6 +1062,9 @@ class _SessionSliver extends StatelessWidget {
             onStopSession: entry.isActive
                 ? () => onStopSession(entry.id)
                 : null,
+            onResumeSession: () => onResumeSession(entry),
+            onEditSession: () => onEditSession(entry),
+            onDeleteSession: () => onDeleteSession(entry.id),
           );
         },
       ),
@@ -677,6 +1105,123 @@ class _NoSessionsView extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ActiveSessionDialog extends StatelessWidget {
+  const _ActiveSessionDialog({required this.activeSession});
+  final TimeEntry activeSession;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: scheme.surface,
+      title: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: scheme.primary, size: 28),
+          const SizedBox(width: 12),
+          const Text('Active Session Running'),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'You are currently tracking:',
+            style: textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        activeSession.taskName.isEmpty ? 'Unnamed' : activeSession.taskName,
+                        style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        activeSession.category.label,
+                        style: textTheme.bodySmall?.copyWith(color: scheme.primary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'What would you like to do?',
+            style: textTheme.bodyMedium,
+          ),
+        ],
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      actionsAlignment: MainAxisAlignment.center,
+      actions: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: scheme.primary,
+                foregroundColor: scheme.onPrimary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: () => Navigator.pop(context, 'resume'),
+              child: const Text('Resume Session'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: () => Navigator.pop(context, 'stop'),
+              child: const Text('Stop Session'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: scheme.error,
+                side: BorderSide(color: scheme.error.withValues(alpha: 0.5)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: () => Navigator.pop(context, 'delete'),
+              child: const Text('Delete Session'),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: scheme.onSurfaceVariant,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: () => Navigator.pop(context, 'startAnyway'),
+              child: const Text('Start New Anyway'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

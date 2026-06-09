@@ -1,5 +1,6 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
+import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/core/widgets/glass_card.dart';
 import 'package:chronyx/features/goals/presentation/providers/goals_providers.dart';
 import 'package:flutter/material.dart';
@@ -43,14 +44,16 @@ class GoalDetailPage extends ConsumerWidget {
               : scheme.error;
           final daysLeft = g.endDate.difference(DateTime.now()).inDays;
 
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.sm,
-              AppSpacing.md,
-              AppSpacing.xxxl,
-            ),
-            children: [
+          return ResponsiveCenter(
+            maxWidth: Breakpoints.maxContent,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                AppSpacing.xxxl,
+              ),
+              children: [
               // ── Header ───────────────────────────────────────────────
               GlassCard(
                 useBlur: false,
@@ -251,6 +254,7 @@ class GoalDetailPage extends ConsumerWidget {
                 },
               ),
             ],
+          ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),

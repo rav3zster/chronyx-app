@@ -42,6 +42,11 @@ class GoalsPage extends ConsumerWidget {
         child: SafeArea(
           bottom: false,
           child: ResponsiveCenter(
+            maxWidth: context.responsiveValue(
+              compact: Breakpoints.maxContent,
+              medium: Breakpoints.maxContent,
+              expanded: Breakpoints.maxDoubleContent,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -62,28 +67,60 @@ class GoalsPage extends ConsumerWidget {
                           onAction: () => _createGoal(context, ref),
                         );
                       }
+                      
+                      final crossAxisCount = context.responsiveValue<int>(
+                        compact: 1,
+                        medium: 2,
+                        expanded: 3,
+                      );
+
                       return AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
-                        child: ListView.separated(
-                          key: ValueKey('goals_list_${items.length}'),
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(
-                            _kPad,
-                            0,
-                            _kPad,
-                            140,
-                          ),
-                          itemCount: items.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(height: 10),
-                          itemBuilder: (context, index) {
-                            final g = items[index];
-                            return GoalCard(
-                              progress: g,
-                              onTap: () => context.push('/goals/${g.goal.id}'),
-                            );
-                          },
-                        ),
+                        child: crossAxisCount == 1
+                            ? ListView.separated(
+                                key: ValueKey('goals_list_${items.length}'),
+                                physics: const BouncingScrollPhysics(),
+                                padding: const EdgeInsets.fromLTRB(
+                                  _kPad,
+                                  0,
+                                  _kPad,
+                                  140,
+                                ),
+                                itemCount: items.length,
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(height: 10),
+                                itemBuilder: (context, index) {
+                                  final g = items[index];
+                                  return GoalCard(
+                                    progress: g,
+                                    onTap: () => context.push('/goals/${g.goal.id}'),
+                                  );
+                                },
+                              )
+                            : GridView.builder(
+                                key: ValueKey('goals_grid_${items.length}_$crossAxisCount'),
+                                physics: const BouncingScrollPhysics(),
+                                padding: const EdgeInsets.fromLTRB(
+                                  _kPad,
+                                  0,
+                                  _kPad,
+                                  140,
+                                ),
+                                itemCount: items.length,
+                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: crossAxisCount,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  mainAxisExtent: 96,
+                                ),
+                                itemBuilder: (context, index) {
+                                  final g = items[index];
+                                  return GoalCard(
+                                    progress: g,
+                                    onTap: () => context.push('/goals/${g.goal.id}'),
+                                  );
+                                },
+                              ),
                       );
                     },
                     error: (err, _) => StateView.error(

@@ -91,22 +91,29 @@ class _ReportContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Build section list as widgets so we can apply staggered fade-ins
-    // and reorder without rewriting sliver wiring.
-    final sections = <Widget>[
+    final isCompact = context.isCompact;
+
+    final leftColumn = [
       _HeroInsight(report: report),
       _WinsBlock(report: report),
       _Distribution(report: report),
       _BalanceBlock(report: report),
+      _WeeklyReflection(report: report),
+    ];
+    final rightColumn = [
       _LifeBreakdown(report: report),
       _MicroWrappedBlock(report: report),
       _BehaviorSection(report: report),
       _DailyTimeline(report: report),
-      _WeeklyReflection(report: report),
       _Predictions(report: report),
     ];
 
     return ResponsiveCenter(
+      maxWidth: context.responsiveValue(
+        compact: Breakpoints.maxContent,
+        medium: Breakpoints.maxContent,
+        expanded: Breakpoints.maxDoubleContent,
+      ),
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -134,18 +141,87 @@ class _ReportContent extends ConsumerWidget {
               ),
             ),
           ),
-          for (var i = 0; i < sections.length; i++)
+          if (isCompact)
+            ...List.generate(10, (i) {
+              final widgetList = [
+                _HeroInsight(report: report),
+                _WinsBlock(report: report),
+                _Distribution(report: report),
+                _BalanceBlock(report: report),
+                _LifeBreakdown(report: report),
+                _MicroWrappedBlock(report: report),
+                _BehaviorSection(report: report),
+                _DailyTimeline(report: report),
+                _WeeklyReflection(report: report),
+                _Predictions(report: report),
+              ];
+              return SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  i == 0 ? AppSpacing.lg : AppSpacing.xl,
+                  AppSpacing.md,
+                  i == 9 ? AppSpacing.xxl : 0,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: FadeSlideIn(
+                    delay: Duration(milliseconds: 60 * i),
+                    child: widgetList[i],
+                  ),
+                ),
+              );
+            })
+          else
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(
+              padding: const EdgeInsets.fromLTRB(
                 AppSpacing.md,
-                i == 0 ? AppSpacing.lg : AppSpacing.xl,
+                AppSpacing.lg,
                 AppSpacing.md,
-                i == sections.length - 1 ? AppSpacing.xxl : 0,
+                AppSpacing.xxl,
               ),
               sliver: SliverToBoxAdapter(
-                child: FadeSlideIn(
-                  delay: Duration(milliseconds: 60 * i),
-                  child: sections[i],
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left column
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: leftColumn.asMap().entries.map((entry) {
+                          final i = entry.key;
+                          final w = entry.value;
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              bottom: i == leftColumn.length - 1 ? 0 : AppSpacing.xl,
+                            ),
+                            child: FadeSlideIn(
+                              delay: Duration(milliseconds: 60 * i),
+                              child: w,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.lg),
+                    // Right column
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: rightColumn.asMap().entries.map((entry) {
+                          final i = entry.key;
+                          final w = entry.value;
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              bottom: i == rightColumn.length - 1 ? 0 : AppSpacing.xl,
+                            ),
+                            child: FadeSlideIn(
+                              delay: Duration(milliseconds: 60 * (i + leftColumn.length)),
+                              child: w,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

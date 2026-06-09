@@ -88,6 +88,12 @@ class AuthNotifier extends AsyncNotifier<AuthUser?> {
       },
       onError: (Object error, StackTrace stackTrace) {
         debugPrint('[Auth] onAuthStateChange stream error: $error');
+        // If we already have a logged-in user session, do not overwrite it with
+        // an error (e.g., PKCE code verifier not found on web hot-restarts).
+        if (state.hasValue && state.value != null) {
+          debugPrint('[Auth] Ignoring auth stream error since a valid user session is already active.');
+          return;
+        }
         state = AsyncError(error, stackTrace);
       },
     );

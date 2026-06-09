@@ -1,4 +1,5 @@
 // ignore_for_file: avoid_print
+import 'dart:async';
 import 'dart:io';
 
 import 'package:chronyx/core/constants/supabase_env.dart';
@@ -22,7 +23,7 @@ class _AuthDebugPageState extends ConsumerState<AuthDebugPage> {
   final List<String> _events = [];
   String _connectivityResult = 'Not tested yet';
   bool _testingConnectivity = false;
-  late final _sub;
+  late final StreamSubscription<AuthState> _sub;
 
   @override
   void initState() {

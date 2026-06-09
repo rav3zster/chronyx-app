@@ -122,6 +122,7 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
     final timeEntriesState = ref.watch(timeEntriesProvider);
     final focusStats = ref.watch(focusStatsProvider);
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final isCompact = context.isCompact;
 
     // Consume a one-shot prefill handed off from a project's Today's Focus.
     ref.listen<SessionPrefill?>(sessionPrefillProvider, (_, prefill) {
@@ -133,75 +134,165 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
       ref.read(sessionPrefillProvider.notifier).state = null;
     });
 
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: SafeArea(
+    return Scaffold(
+      body: SafeArea(
         bottom: false,
         child: ResponsiveCenter(
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // Header
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(_kPad, 12, _kPad, 0),
-                sliver: const SliverToBoxAdapter(child: _Header()),
-              ),
-              // Focus ratio banner
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(_kPad, 18, _kPad, 0),
-                sliver: SliverToBoxAdapter(
-                  child: _FocusBanner(stats: focusStats),
-                ),
-              ),
-              // New session card
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(_kPad, 16, _kPad, 0),
-                sliver: SliverToBoxAdapter(
-                  child: _NewSessionCard(
-                    controller: _taskController,
-                    focusNode: _taskFocus,
-                    selected: _selectedCategory,
-                    isLoading: timeEntriesState.isLoading,
-                    onSelectCategory: (c) =>
-                        setState(() => _selectedCategory = c),
-                    onStart: _startSession,
-                  ),
-                ),
-              ),
-              // Sessions header
-              const SliverPadding(
-                padding: EdgeInsets.fromLTRB(_kPad, 28, _kPad, 0),
-                sliver: SliverToBoxAdapter(
-                  child: _Label(AppStrings.sessionsHeader),
-                ),
-              ),
-              // Sessions list
-              timeEntriesState.when(
-                data: (entries) => _SessionSliver(
-                  entries: entries,
-                  onStopSession: _stopSession,
-                  bottomInset: bottomInset,
-                ),
-                error: (error, _) => SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(_kPad, 40, _kPad, 0),
-                  sliver: SliverToBoxAdapter(
-                    child: AppErrorView(
-                      message: ErrorMessageMapper.fromError(error),
-                      onRetry: () => ref
-                          .read(timeEntriesProvider.notifier)
-                          .refreshEntries(),
-                    ),
-                  ),
-                ),
-                loading: () => const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 48),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                ),
-              ),
-            ],
+          maxWidth: context.responsiveValue(
+            compact: Breakpoints.maxContent,
+            medium: Breakpoints.maxContent,
+            expanded: Breakpoints.maxDoubleContent,
           ),
+          child: isCompact
+              ? CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    // Header
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(_kPad, 12, _kPad, 0),
+                      sliver: const SliverToBoxAdapter(child: _Header()),
+                    ),
+                    // Focus ratio banner
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(_kPad, 18, _kPad, 0),
+                      sliver: SliverToBoxAdapter(
+                        child: _FocusBanner(stats: focusStats),
+                      ),
+                    ),
+                    // New session card
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(_kPad, 16, _kPad, 0),
+                      sliver: SliverToBoxAdapter(
+                        child: _NewSessionCard(
+                          controller: _taskController,
+                          focusNode: _taskFocus,
+                          selected: _selectedCategory,
+                          isLoading: timeEntriesState.isLoading,
+                          onSelectCategory: (c) =>
+                              setState(() => _selectedCategory = c),
+                          onStart: _startSession,
+                        ),
+                      ),
+                    ),
+                    // Sessions header
+                    const SliverPadding(
+                      padding: EdgeInsets.fromLTRB(_kPad, 28, _kPad, 0),
+                      sliver: SliverToBoxAdapter(
+                        child: _Label(AppStrings.sessionsHeader),
+                      ),
+                    ),
+                    // Sessions list
+                    timeEntriesState.when(
+                      data: (entries) => _SessionSliver(
+                        entries: entries,
+                        onStopSession: _stopSession,
+                        bottomInset: bottomInset,
+                      ),
+                      error: (error, _) => SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(_kPad, 40, _kPad, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: AppErrorView(
+                            message: ErrorMessageMapper.fromError(error),
+                            onRetry: () => ref
+                                .read(timeEntriesProvider.notifier)
+                                .refreshEntries(),
+                          ),
+                        ),
+                      ),
+                      loading: () => const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.only(top: 48),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    // Header
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(_kPad, 12, _kPad, 0),
+                      sliver: const SliverToBoxAdapter(child: _Header()),
+                    ),
+                    // Side-by-side layout for wide screens
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(_kPad, 18, _kPad, 120 + bottomInset),
+                      sliver: SliverToBoxAdapter(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Left Column (Focus Banner + New Session Card)
+                            Expanded(
+                              flex: 4,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _FocusBanner(stats: focusStats),
+                                  const SizedBox(height: 16),
+                                  _NewSessionCard(
+                                    controller: _taskController,
+                                    focusNode: _taskFocus,
+                                    selected: _selectedCategory,
+                                    isLoading: timeEntriesState.isLoading,
+                                    onSelectCategory: (c) =>
+                                        setState(() => _selectedCategory = c),
+                                    onStart: _startSession,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            // Right Column (Sessions Header + Sessions List)
+                            Expanded(
+                              flex: 5,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const _Label(AppStrings.sessionsHeader),
+                                  const SizedBox(height: 12),
+                                  timeEntriesState.when(
+                                    data: (entries) {
+                                      if (entries.isEmpty) {
+                                        return const _NoSessionsView();
+                                      }
+                                      return Column(
+                                        children: entries.map((entry) {
+                                          return Padding(
+                                            padding: const EdgeInsets.only(bottom: 10),
+                                            child: TimeEntryCard(
+                                              entry: entry,
+                                              onStopSession: entry.isActive
+                                                  ? () => _stopSession(entry.id)
+                                                  : null,
+                                            ),
+                                          );
+                                        }).toList(),
+                                      );
+                                    },
+                                    error: (error, _) => AppErrorView(
+                                      message: ErrorMessageMapper.fromError(error),
+                                      onRetry: () => ref
+                                          .read(timeEntriesProvider.notifier)
+                                          .refreshEntries(),
+                                    ),
+                                    loading: () => const Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.only(top: 48),
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ),
     );
@@ -530,34 +621,9 @@ class _SessionSliver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     if (entries.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(_kPad, 48, _kPad, 0),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.hourglass_empty_rounded,
-                  size: 44,
-                  color: scheme.onSurfaceVariant,
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  AppStrings.noSessionsYet,
-                  textAlign: TextAlign.center,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+      return const SliverToBoxAdapter(
+        child: _NoSessionsView(),
       );
     }
 
@@ -575,6 +641,43 @@ class _SessionSliver extends StatelessWidget {
                 : null,
           );
         },
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reusable empty sessions state view
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _NoSessionsView extends StatelessWidget {
+  const _NoSessionsView();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.hourglass_empty_rounded,
+              size: 44,
+              color: scheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              AppStrings.noSessionsYet,
+              textAlign: TextAlign.center,
+              style: textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

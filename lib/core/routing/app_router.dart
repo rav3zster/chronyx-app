@@ -2,7 +2,7 @@ import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/features/analytics/presentation/pages/analytics_page.dart';
 import 'package:chronyx/features/analytics/presentation/pages/wrapped_page.dart';
-import 'package:chronyx/features/ai_coach/presentation/pages/ai_coach_page.dart';
+import 'package:chronyx/features/profile/presentation/pages/profile_page.dart';
 import 'package:chronyx/features/auth/presentation/pages/auth_debug_page.dart';
 import 'package:chronyx/features/auth/presentation/pages/dashboard_page.dart';
 import 'package:chronyx/features/auth/presentation/pages/login_page.dart';
@@ -100,10 +100,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 const NoTransitionPage(child: GoalsPage()),
           ),
           GoRoute(
-            path: AppRoutes.aiCoach,
-            name: 'aiCoach',
+            path: AppRoutes.profile,
+            name: 'profile',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: AICoachPage()),
+                const NoTransitionPage(child: ProfilePage()),
           ),
         ],
       ),
@@ -171,7 +171,7 @@ class _MainShell extends StatelessWidget {
     if (location.startsWith(AppRoutes.timeTracking)) return 1;
     if (location.startsWith(AppRoutes.analytics)) return 2;
     if (location.startsWith(AppRoutes.goals)) return 3;
-    if (location.startsWith(AppRoutes.aiCoach)) return 4;
+    if (location.startsWith(AppRoutes.profile)) return 4;
     return 0; // dashboard
   }
 
@@ -180,7 +180,7 @@ class _MainShell extends StatelessWidget {
     _NavItem(Icons.timer_outlined, Icons.timer_rounded, 'Track'),
     _NavItem(Icons.insights_outlined, Icons.insights_rounded, 'Insights'),
     _NavItem(Icons.flag_outlined, Icons.flag_rounded, 'Goals'),
-    _NavItem(Icons.psychology_outlined, Icons.psychology_rounded, 'Coach'),
+    _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
   ];
 
   void _onSelect(BuildContext context, int index) {
@@ -188,7 +188,7 @@ class _MainShell extends StatelessWidget {
       1 => AppRoutes.timeTracking,
       2 => AppRoutes.analytics,
       3 => AppRoutes.goals,
-      4 => AppRoutes.aiCoach,
+      4 => AppRoutes.profile,
       _ => AppRoutes.dashboard,
     };
     GoRouter.of(context).go(route);

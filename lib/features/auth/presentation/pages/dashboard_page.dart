@@ -1,11 +1,10 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/core/widgets/animated_counter.dart';
-import 'package:chronyx/core/widgets/settings_icon_button.dart';
 import 'package:chronyx/features/analytics/presentation/providers/analytics_providers.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/life_insights/presentation/providers/life_insights_providers.dart';
@@ -29,13 +28,18 @@ class DashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
-    return authState.maybeWhen(
-      loading: () => const _Skeleton(),
-      error: (err, _) => _ErrorView(
-        message: ErrorMessageMapper.fromError(err),
-        onRetry: () => ref.read(authProvider.notifier).getCurrentUser(),
+    return Scaffold(
+      body: SafeArea(
+        bottom: false,
+        child: authState.maybeWhen(
+          loading: () => const _Skeleton(),
+          error: (err, _) => _ErrorView(
+            message: ErrorMessageMapper.fromError(err),
+            onRetry: () => ref.read(authProvider.notifier).getCurrentUser(),
+          ),
+          orElse: () => _Content(user: authState.valueOrNull),
+        ),
       ),
-      orElse: () => _Content(user: authState.valueOrNull),
     );
   }
 }
@@ -50,36 +54,42 @@ class _Content extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final padding = context.spacing(20);
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: ResponsiveCenter(
+        maxWidth: context.responsiveValue(
+          compact: Breakpoints.maxContent,
+          medium: Breakpoints.maxContent,
+          expanded: Breakpoints.maxDoubleContent,
+        ),
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
             // Greeting
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(_kPad, 20, _kPad, 0),
+              padding: EdgeInsets.fromLTRB(padding, context.spacing(20), padding, 0),
               sliver: SliverToBoxAdapter(child: _Greeting(user: user)),
             ),
-            // Hero card
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(_kPad, 20, _kPad, 0),
-              sliver: SliverToBoxAdapter(child: _HeroCard()),
-            ),
-            // Today's overview
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(_kPad, 28, _kPad, 0),
-              sliver: SliverToBoxAdapter(child: _TodayOverview()),
-            ),
-            // This week
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(_kPad, 28, _kPad, 120),
-              sliver: SliverToBoxAdapter(child: _ThisWeek()),
-            ),
-          ],
+              // Hero card
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(padding, context.spacing(20), padding, 0),
+                sliver: SliverToBoxAdapter(child: const _HeroCard()),
+              ),
+              // Today's overview
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(padding, context.spacing(28), padding, 0),
+                sliver: SliverToBoxAdapter(child: const _TodayOverview()),
+              ),
+              // This week
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(padding, context.spacing(28), padding, context.spacing(120)),
+                sliver: SliverToBoxAdapter(child: const _ThisWeek()),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
   }
 }
 
@@ -121,7 +131,7 @@ class _Greeting extends ConsumerWidget {
                 '$salutation, $name',
                 style: textTheme.headlineMedium?.copyWith(
                   color: scheme.onSurface,
-                  fontSize: 26,
+                  fontSize: context.scaleFont(26),
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.5,
                   height: 1.1,
@@ -132,7 +142,7 @@ class _Greeting extends ConsumerWidget {
                 message,
                 style: textTheme.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
-                  fontSize: 14,
+                  fontSize: context.scaleFont(14),
                   fontWeight: FontWeight.w400,
                   height: 1.35,
                 ),
@@ -140,7 +150,6 @@ class _Greeting extends ConsumerWidget {
             ],
           ),
         ),
-        const SettingsIconButton(),
       ],
     );
   }
@@ -170,7 +179,7 @@ class _HeroCard extends ConsumerWidget {
     final hasProject = projects.isNotEmpty;
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(context.spacing(24)),
       decoration: BoxDecoration(
         color: scheme.inverseSurface,
         borderRadius: BorderRadius.circular(_kRadius),
@@ -182,7 +191,7 @@ class _HeroCard extends ConsumerWidget {
             'NEXT CHAPTER',
             style: textTheme.labelSmall?.copyWith(
               color: scheme.onInverseSurface.withValues(alpha: 0.55),
-              fontSize: 11,
+              fontSize: context.scaleFont(11),
               fontWeight: FontWeight.w600,
               letterSpacing: 1.5,
             ),
@@ -194,7 +203,7 @@ class _HeroCard extends ConsumerWidget {
                 : 'Turn a goal into a daily\nroadmap — start here.',
             style: textTheme.titleLarge?.copyWith(
               color: scheme.onInverseSurface,
-              fontSize: 22,
+              fontSize: context.scaleFont(22),
               fontWeight: FontWeight.w700,
               letterSpacing: -0.3,
               height: 1.25,
@@ -208,7 +217,10 @@ class _HeroCard extends ConsumerWidget {
                   : AppRoutes.blueprint,
             ),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.spacing(20),
+                vertical: context.spacing(12),
+              ),
               decoration: BoxDecoration(
                 color: scheme.primary,
                 borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
@@ -218,14 +230,14 @@ class _HeroCard extends ConsumerWidget {
                 children: [
                   Text(
                     '✦',
-                    style: TextStyle(color: scheme.onPrimary, fontSize: 13),
+                    style: TextStyle(color: scheme.onPrimary, fontSize: context.scaleFont(13)),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     hasProject ? 'Continue Roadmap' : 'Create Blueprint',
                     style: textTheme.labelLarge?.copyWith(
                       color: scheme.onPrimary,
-                      fontSize: 14,
+                      fontSize: context.scaleFont(14),
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.1,
                     ),
@@ -265,54 +277,98 @@ class _TodayOverview extends ConsumerWidget {
       return s.year == now.year && s.month == now.month && s.day == now.day;
     }).length;
 
+    final isCompact = context.isCompact;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const _SectionLabel("TODAY'S OVERVIEW"),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                value: focusHours,
-                unit: 'h',
-                label: 'FOCUS\nHOURS',
-                fractionDigits: 1,
+        if (isCompact) ...[
+          Row(
+            children: [
+              Expanded(
+                child: _MetricCard(
+                  value: focusHours,
+                  unit: 'h',
+                  label: 'FOCUS\nHOURS',
+                  fractionDigits: 1,
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _MetricCard(
-                value: consistency,
-                unit: '%',
-                label: 'CONSISTENCY',
-                fractionDigits: 0,
+              const SizedBox(width: 10),
+              Expanded(
+                child: _MetricCard(
+                  value: consistency,
+                  unit: '%',
+                  label: 'CONSISTENCY',
+                  fractionDigits: 0,
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                value: sessionsToday.toDouble(),
-                unit: '',
-                label: 'SESSIONS',
-                fractionDigits: 0,
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _MetricCard(
+                  value: sessionsToday.toDouble(),
+                  unit: '',
+                  label: 'SESSIONS',
+                  fractionDigits: 0,
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _MetricCard(
-                value: momentum,
-                unit: '%',
-                label: 'MOMENTUM',
-                fractionDigits: 0,
+              const SizedBox(width: 10),
+              Expanded(
+                child: _MetricCard(
+                  value: momentum,
+                  unit: '%',
+                  label: 'MOMENTUM',
+                  fractionDigits: 0,
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ] else ...[
+          Row(
+            children: [
+              Expanded(
+                child: _MetricCard(
+                  value: focusHours,
+                  unit: 'h',
+                  label: 'FOCUS HOURS',
+                  fractionDigits: 1,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _MetricCard(
+                  value: consistency,
+                  unit: '%',
+                  label: 'CONSISTENCY',
+                  fractionDigits: 0,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _MetricCard(
+                  value: sessionsToday.toDouble(),
+                  unit: '',
+                  label: 'SESSIONS',
+                  fractionDigits: 0,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _MetricCard(
+                  value: momentum,
+                  unit: '%',
+                  label: 'MOMENTUM',
+                  fractionDigits: 0,
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -336,7 +392,7 @@ class _MetricCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      padding: EdgeInsets.all(context.spacing(16)),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(_kRadius),
@@ -352,7 +408,7 @@ class _MetricCard extends StatelessWidget {
                 fractionDigits: fractionDigits,
                 style: textTheme.displaySmall?.copyWith(
                   color: scheme.onSurface,
-                  fontSize: 32,
+                  fontSize: context.scaleFont(32),
                   fontWeight: FontWeight.w800,
                   letterSpacing: -1,
                   height: 1.0,
@@ -365,7 +421,7 @@ class _MetricCard extends StatelessWidget {
                     unit,
                     style: textTheme.titleMedium?.copyWith(
                       color: scheme.onSurface,
-                      fontSize: 18,
+                      fontSize: context.scaleFont(18),
                       fontWeight: FontWeight.w700,
                       height: 1.0,
                     ),
@@ -378,7 +434,7 @@ class _MetricCard extends StatelessWidget {
             label,
             style: textTheme.labelSmall?.copyWith(
               color: scheme.onSurfaceVariant,
-              fontSize: 10,
+              fontSize: context.scaleFont(10),
               fontWeight: FontWeight.w600,
               letterSpacing: 1.2,
               height: 1.3,

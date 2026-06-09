@@ -13,7 +13,7 @@ class AppRoutes {
   static const String goals = '/goals';
   static const String goalsCreate = '/goals/create';
   static const String goalDetail = '/goals/:goalId';
-  static const String aiCoach = '/ai-coach';
+  static const String profile = '/profile';
   static const String settings = '/settings';
   static const String blueprint = '/blueprint';
   static const String projectDetail = '/project/:projectId';

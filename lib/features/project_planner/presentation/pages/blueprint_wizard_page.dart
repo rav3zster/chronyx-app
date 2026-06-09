@@ -1,4 +1,5 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
+import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/features/project_planner/presentation/pages/steps/goal_input_step.dart';
 import 'package:chronyx/features/project_planner/presentation/pages/steps/prompt_preview_step.dart';
 import 'package:chronyx/features/project_planner/presentation/pages/steps/paste_response_step.dart';
@@ -38,28 +39,31 @@ class BlueprintWizardPage extends ConsumerWidget {
             },
           ),
         ),
-        body: Column(
-          children: [
-            // ── Step Indicator ──────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
+        body: ResponsiveCenter(
+          maxWidth: Breakpoints.maxContent,
+          child: Column(
+            children: [
+              // ── Step Indicator ──────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                child: _StepIndicator(
+                  currentStep: wizardState.currentStep,
+                  labels: _stepLabels,
+                ),
               ),
-              child: _StepIndicator(
-                currentStep: wizardState.currentStep,
-                labels: _stepLabels,
+  
+              // ── Step Content ───────────────────────────────────────────────
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: _buildStep(wizardState.currentStep),
+                ),
               ),
-            ),
-
-            // ── Step Content ───────────────────────────────────────────────
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: _buildStep(wizardState.currentStep),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

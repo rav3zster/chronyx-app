@@ -1,5 +1,6 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
+import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/core/widgets/glass_card.dart';
 import 'package:chronyx/core/widgets/input_field.dart';
 import 'package:chronyx/core/widgets/primary_button.dart';
@@ -109,7 +110,9 @@ class _CreateGoalPageState extends ConsumerState<CreateGoalPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: ListView(
+      body: ResponsiveCenter(
+        maxWidth: Breakpoints.maxContent,
+        child: ListView(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.md,
           AppSpacing.sm,
@@ -280,6 +283,7 @@ class _CreateGoalPageState extends ConsumerState<CreateGoalPage> {
           ),
         ],
       ),
+    ),
     );
   }
 }

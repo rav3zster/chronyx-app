@@ -1,6 +1,7 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
+import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/features/analytics/presentation/providers/analytics_providers.dart';
 import 'package:chronyx/features/project_planner/domain/entities/completion_report.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project.dart';
@@ -246,14 +247,21 @@ class _ProjectDetailPageState extends ConsumerState<ProjectDetailPage> {
             ),
         ],
       ),
-      body: detailAsync.when(
-        loading: () => const _DetailSkeleton(),
-        error: (err, _) => _ErrorState(
-          message: ErrorMessageMapper.fromError(err),
-          onRetry: _refresh,
-          onBack: () => context.pop(),
+      body: ResponsiveCenter(
+        maxWidth: context.responsiveValue(
+          compact: Breakpoints.maxContent,
+          medium: Breakpoints.maxContent,
+          expanded: Breakpoints.maxDoubleContent,
         ),
-        data: (detail) => _buildForState(detail),
+        child: detailAsync.when(
+          loading: () => const _DetailSkeleton(),
+          error: (err, _) => _ErrorState(
+            message: ErrorMessageMapper.fromError(err),
+            onRetry: _refresh,
+            onBack: () => context.pop(),
+          ),
+          data: (detail) => _buildForState(detail),
+        ),
       ),
     );
   }

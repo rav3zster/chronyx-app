@@ -51,8 +51,6 @@ class ErrorMessageMapper {
         'No goals yet. Create your first goal to build momentum.',
       EmptyStateContext.analytics =>
         'Track a few sessions to unlock your insights.',
-      EmptyStateContext.aiCoach =>
-        'Your coach needs more activity data. Start a session first.',
       EmptyStateContext.projects =>
         'No roadmaps yet. Create a Blueprint to get started.',
       EmptyStateContext.todaysRoadmap => 'No tasks scheduled for today.',
@@ -76,7 +74,6 @@ enum EmptyStateContext {
   timeTracking,
   goals,
   analytics,
-  aiCoach,
   projects,
   todaysRoadmap,
 }

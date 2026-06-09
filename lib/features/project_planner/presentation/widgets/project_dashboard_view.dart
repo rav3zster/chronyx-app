@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:chronyx/core/theme/scheme_x.dart';
+import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/features/analytics/domain/entities/analytics_summary.dart';
 import 'package:chronyx/features/project_planner/domain/entities/momentum_score.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project.dart';
@@ -37,26 +38,72 @@ class ProjectDashboardView extends StatelessWidget {
     final today = project.currentDayNumber;
     final todayTasks = tasks.where((t) => t.dayNumber == today).toList()
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final isCompact = context.isCompact;
 
-    return ListView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 48),
-      children: [
-        _HeroSection(project: project, tasks: tasks),
-        const SizedBox(height: 12),
-        _TodaysFocus(
-          dayNumber: today,
-          tasks: todayTasks,
-          onToggleTask: onToggleTask,
-          onStartSession: onStartSession,
-          onRegenerateDay: onRegenerateDay,
-        ),
-        const SizedBox(height: 12),
-        _MomentumStrip(analytics: analytics, tasks: tasks),
-        const SizedBox(height: 12),
-        _TimelineSection(project: project, tasks: tasks),
-      ],
-    );
+    if (isCompact) {
+      return ListView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 48),
+        children: [
+          _HeroSection(project: project, tasks: tasks),
+          const SizedBox(height: 12),
+          _TodaysFocus(
+            dayNumber: today,
+            tasks: todayTasks,
+            onToggleTask: onToggleTask,
+            onStartSession: onStartSession,
+            onRegenerateDay: onRegenerateDay,
+          ),
+          const SizedBox(height: 12),
+          _MomentumStrip(analytics: analytics, tasks: tasks),
+          const SizedBox(height: 12),
+          _TimelineSection(project: project, tasks: tasks),
+        ],
+      );
+    } else {
+      return ListView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 48),
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left Column
+              Expanded(
+                flex: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _HeroSection(project: project, tasks: tasks),
+                    const SizedBox(height: 12),
+                    _MomentumStrip(analytics: analytics, tasks: tasks),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 20),
+              // Right Column
+              Expanded(
+                flex: 5,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _TodaysFocus(
+                      dayNumber: today,
+                      tasks: todayTasks,
+                      onToggleTask: onToggleTask,
+                      onStartSession: onStartSession,
+                      onRegenerateDay: onRegenerateDay,
+                    ),
+                    const SizedBox(height: 12),
+                    _TimelineSection(project: project, tasks: tasks),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
   }
 }
 

@@ -21,11 +21,15 @@ class AnalyticsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(analyticsProvider);
 
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: SafeArea(
+    return Scaffold(
+      body: SafeArea(
         bottom: false,
         child: ResponsiveCenter(
+          maxWidth: context.responsiveValue(
+            compact: Breakpoints.maxContent,
+            medium: Breakpoints.maxContent,
+            expanded: Breakpoints.maxDoubleContent,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -72,56 +76,122 @@ class _AnalyticsBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    return ListView(
-      physics: const BouncingScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(_kPad, 0, _kPad, 120 + bottomInset),
-      children: [
-        // ── Productivity Score ───────────────────────────────────────────
-        _ProductivityScoreCard(score: summary.productivityScore),
-        const SizedBox(height: AppSpacing.md),
+    final isCompact = context.isCompact;
 
-        // ── Stats Row ───────────────────────────────────────────────────
-        _StatsRow(summary: summary),
-        const SizedBox(height: AppSpacing.md),
+    if (isCompact) {
+      return ListView(
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(_kPad, 0, _kPad, 120 + bottomInset),
+        children: [
+          // ── Productivity Score ───────────────────────────────────────────
+          _ProductivityScoreCard(score: summary.productivityScore),
+          const SizedBox(height: AppSpacing.md),
 
-        // ── Weekly Bar Chart ─────────────────────────────────────────────
-        _SectionLabel(label: 'Last 7 Days'),
-        const SizedBox(height: AppSpacing.sm),
-        GlassCard(
-          useBlur: false,
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: _WeeklyBarChart(dailyMinutes: summary.dailyMinutes),
-        ),
-        const SizedBox(height: AppSpacing.md),
+          // ── Stats Row ───────────────────────────────────────────────────
+          _StatsRow(summary: summary),
+          const SizedBox(height: AppSpacing.md),
 
-        // ── Category Breakdown ───────────────────────────────────────────
-        if (summary.categoryBreakdown.isNotEmpty) ...[
-          _SectionLabel(label: 'Time by Category'),
+          // ── Weekly Bar Chart ─────────────────────────────────────────────
+          _SectionLabel(label: 'Last 7 Days'),
           const SizedBox(height: AppSpacing.sm),
           GlassCard(
             useBlur: false,
             padding: const EdgeInsets.all(AppSpacing.md),
-            child: _CategoryBreakdown(breakdown: summary.categoryBreakdown),
+            child: _WeeklyBarChart(dailyMinutes: summary.dailyMinutes),
           ),
           const SizedBox(height: AppSpacing.md),
-        ],
 
-        // ── Top Tasks ────────────────────────────────────────────────────
-        if (summary.topTasks.isNotEmpty) ...[
-          _SectionLabel(label: 'Top Tasks'),
-          const SizedBox(height: AppSpacing.sm),
-          GlassCard(
-            useBlur: false,
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: _TopTasksList(tasks: summary.topTasks),
+          // ── Category Breakdown ───────────────────────────────────────────
+          if (summary.categoryBreakdown.isNotEmpty) ...[
+            _SectionLabel(label: 'Time by Category'),
+            const SizedBox(height: AppSpacing.sm),
+            GlassCard(
+              useBlur: false,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: _CategoryBreakdown(breakdown: summary.categoryBreakdown),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+
+          // ── Top Tasks ────────────────────────────────────────────────────
+          if (summary.topTasks.isNotEmpty) ...[
+            _SectionLabel(label: 'Top Tasks'),
+            const SizedBox(height: AppSpacing.sm),
+            GlassCard(
+              useBlur: false,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: _TopTasksList(tasks: summary.topTasks),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+
+          // ── Wrapped CTA ──────────────────────────────────────────────────
+          _WrappedCta(),
+        ],
+      );
+    } else {
+      return ListView(
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(_kPad, 0, _kPad, 120 + bottomInset),
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left Column
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ProductivityScoreCard(score: summary.productivityScore),
+                    const SizedBox(height: AppSpacing.md),
+                    _SectionLabel(label: 'Last 7 Days'),
+                    const SizedBox(height: AppSpacing.sm),
+                    GlassCard(
+                      useBlur: false,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: _WeeklyBarChart(dailyMinutes: summary.dailyMinutes),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _WrappedCta(),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              // Right Column
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _StatsRow(summary: summary),
+                    const SizedBox(height: AppSpacing.md),
+                    if (summary.categoryBreakdown.isNotEmpty) ...[
+                      _SectionLabel(label: 'Time by Category'),
+                      const SizedBox(height: AppSpacing.sm),
+                      GlassCard(
+                        useBlur: false,
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: _CategoryBreakdown(breakdown: summary.categoryBreakdown),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                    ],
+                    if (summary.topTasks.isNotEmpty) ...[
+                      _SectionLabel(label: 'Top Tasks'),
+                      const SizedBox(height: AppSpacing.sm),
+                      GlassCard(
+                        useBlur: false,
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: _TopTasksList(tasks: summary.topTasks),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.md),
         ],
-
-        // ── Wrapped CTA ──────────────────────────────────────────────────
-        _WrappedCta(),
-      ],
-    );
+      );
+    }
   }
 }
 

@@ -11,6 +11,7 @@ import 'package:chronyx/features/life_insights/presentation/providers/life_insig
 import 'package:chronyx/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:chronyx/features/project_planner/presentation/providers/project_planner_providers.dart';
 import 'package:chronyx/features/time_tracking/presentation/providers/time_tracking_providers.dart';
+import 'package:chronyx/features/settings/presentation/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -48,13 +49,27 @@ class DashboardPage extends ConsumerWidget {
 // Main content
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _Content extends StatelessWidget {
+class _Content extends ConsumerWidget {
   const _Content({required this.user});
   final dynamic user;
 
   @override
-  Widget build(BuildContext context) {
-    final padding = context.spacing(20);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+    final padMult = settings.compactDashboardMode ? 0.6 : 1.0;
+    final padding = context.spacing(20 * padMult);
+
+    final quotes = [
+      "The only way to do great work is to love what you do. — Steve Jobs",
+      "Focus is a muscle, and you build it by using it. — Unknown",
+      "It is not that we have a short time to live, but that we waste a lot of it. — Seneca",
+      "Productivity is being able to do things that you were never able to do before. — Franz Kafka",
+      "Done is better than perfect. — Sheryl Sandberg",
+      "Your mind is for having ideas, not holding them. — David Allen",
+    ];
+    final quoteIndex = DateTime.now().day % quotes.length;
+    final quoteText = quotes[quoteIndex];
+
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: ResponsiveCenter(
@@ -68,28 +83,74 @@ class _Content extends StatelessWidget {
           slivers: [
             // Greeting
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(padding, context.spacing(20), padding, 0),
+              padding: EdgeInsets.fromLTRB(padding, context.spacing(20 * padMult), padding, 0),
               sliver: SliverToBoxAdapter(child: _Greeting(user: user)),
             ),
-              // Hero card
+
+            // Quotes Card (if enabled)
+            if (settings.showQuotes)
               SliverPadding(
-                padding: EdgeInsets.fromLTRB(padding, context.spacing(20), padding, 0),
-                sliver: SliverToBoxAdapter(child: const _HeroCard()),
+                padding: EdgeInsets.fromLTRB(padding, context.spacing(14 * padMult), padding, 0),
+                sliver: SliverToBoxAdapter(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.format_quote_rounded,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            quoteText,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              // Today's overview
+
+            // Hero card
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(padding, context.spacing(20 * padMult), padding, 0),
+              sliver: SliverToBoxAdapter(child: const _HeroCard()),
+            ),
+
+            // Today's overview
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(padding, context.spacing(28 * padMult), padding, 0),
+              sliver: SliverToBoxAdapter(child: const _TodayOverview()),
+            ),
+
+            // This week (Weekly Graph)
+            if (settings.showWeeklyGraph)
               SliverPadding(
-                padding: EdgeInsets.fromLTRB(padding, context.spacing(28), padding, 0),
-                sliver: SliverToBoxAdapter(child: const _TodayOverview()),
-              ),
-              // This week
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(padding, context.spacing(28), padding, context.spacing(120)),
+                padding: EdgeInsets.fromLTRB(padding, context.spacing(28 * padMult), padding, context.spacing(120 * padMult)),
                 sliver: SliverToBoxAdapter(child: const _ThisWeek()),
+              )
+            else
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(padding, 0, padding, context.spacing(120 * padMult)),
+                sliver: const SliverToBoxAdapter(child: SizedBox.shrink()),
               ),
-            ],
-          ),
+          ],
         ),
-      );
+      ),
+    );
   }
 }
 
@@ -261,6 +322,7 @@ class _TodayOverview extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
     final analytics = ref.watch(analyticsProvider);
     final focusStats = ref.watch(focusStatsProvider);
     final timeEntries = ref.watch(timeEntriesProvider);
@@ -279,98 +341,84 @@ class _TodayOverview extends ConsumerWidget {
 
     final isCompact = context.isCompact;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionLabel("TODAY'S OVERVIEW"),
-        const SizedBox(height: 12),
-        if (isCompact) ...[
+    final activeCards = <Widget>[
+      _MetricCard(
+        value: focusHours,
+        unit: 'h',
+        label: isCompact ? 'FOCUS\nHOURS' : 'FOCUS HOURS',
+        fractionDigits: 1,
+      ),
+      if (settings.showStreakCard)
+        _MetricCard(
+          value: consistency,
+          unit: '%',
+          label: 'CONSISTENCY',
+          fractionDigits: 0,
+        ),
+      _MetricCard(
+        value: sessionsToday.toDouble(),
+        unit: '',
+        label: 'SESSIONS',
+        fractionDigits: 0,
+      ),
+      if (settings.showMomentumCard)
+        _MetricCard(
+          value: momentum,
+          unit: '%',
+          label: 'MOMENTUM',
+          fractionDigits: 0,
+        ),
+    ];
+
+    if (activeCards.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    if (isCompact) {
+      final List<Widget> rows = [];
+      for (var i = 0; i < activeCards.length; i += 2) {
+        final hasNext = i + 1 < activeCards.length;
+        rows.add(
           Row(
             children: [
-              Expanded(
-                child: _MetricCard(
-                  value: focusHours,
-                  unit: 'h',
-                  label: 'FOCUS\nHOURS',
-                  fractionDigits: 1,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MetricCard(
-                  value: consistency,
-                  unit: '%',
-                  label: 'CONSISTENCY',
-                  fractionDigits: 0,
-                ),
-              ),
+              Expanded(child: activeCards[i]),
+              if (hasNext) ...[
+                const SizedBox(width: 10),
+                Expanded(child: activeCards[i + 1]),
+              ] else
+                const Expanded(child: SizedBox.shrink()),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _MetricCard(
-                  value: sessionsToday.toDouble(),
-                  unit: '',
-                  label: 'SESSIONS',
-                  fractionDigits: 0,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MetricCard(
-                  value: momentum,
-                  unit: '%',
-                  label: 'MOMENTUM',
-                  fractionDigits: 0,
-                ),
-              ),
-            ],
-          ),
-        ] else ...[
-          Row(
-            children: [
-              Expanded(
-                child: _MetricCard(
-                  value: focusHours,
-                  unit: 'h',
-                  label: 'FOCUS HOURS',
-                  fractionDigits: 1,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MetricCard(
-                  value: consistency,
-                  unit: '%',
-                  label: 'CONSISTENCY',
-                  fractionDigits: 0,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MetricCard(
-                  value: sessionsToday.toDouble(),
-                  unit: '',
-                  label: 'SESSIONS',
-                  fractionDigits: 0,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MetricCard(
-                  value: momentum,
-                  unit: '%',
-                  label: 'MOMENTUM',
-                  fractionDigits: 0,
-                ),
-              ),
-            ],
-          ),
+        );
+        if (i + 2 < activeCards.length) {
+          rows.add(const SizedBox(height: 10));
+        }
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionLabel("TODAY'S OVERVIEW"),
+          const SizedBox(height: 12),
+          ...rows,
         ],
-      ],
-    );
+      );
+    } else {
+      final List<Widget> rowItems = [];
+      for (var i = 0; i < activeCards.length; i++) {
+        rowItems.add(Expanded(child: activeCards[i]));
+        if (i < activeCards.length - 1) {
+          rowItems.add(const SizedBox(width: 10));
+        }
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionLabel("TODAY'S OVERVIEW"),
+          const SizedBox(height: 12),
+          Row(children: rowItems),
+        ],
+      );
+    }
   }
 }
 

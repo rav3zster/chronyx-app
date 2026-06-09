@@ -447,10 +447,10 @@ class _ProfileMenu extends ConsumerWidget {
       children: [
         // App Settings
         _MenuTile(
-          icon: Icons.palette_outlined,
+          icon: Icons.settings_outlined,
           color: scheme.primary,
-          title: 'Appearance',
-          description: 'Customize application theme variants',
+          title: 'Settings',
+          description: 'Customize appearance, notifications, productivity, and privacy',
           onTap: () => context.push(AppRoutes.settings),
         ),
         const SizedBox(height: 10),

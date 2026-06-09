@@ -1,4 +1,5 @@
 import 'package:chronyx/core/theme/app_theme.dart';
+import 'package:chronyx/features/settings/presentation/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,20 +22,41 @@ enum AppThemeVariant {
 }
 
 class ThemeNotifier extends StateNotifier<AppThemeVariant> {
-  // Warm Minimal is now the default — matches the reference design.
-  ThemeNotifier() : super(AppThemeVariant.warmMinimal);
+  final Ref _ref;
 
-  void setTheme(AppThemeVariant variant) => state = variant;
+  // Warm Minimal is now the default — matches the reference design.
+  ThemeNotifier(this._ref) : super(AppThemeVariant.warmMinimal) {
+    state = _ref.read(settingsProvider).themeVariant;
+  }
+
+  void setTheme(AppThemeVariant variant) {
+    state = variant;
+    _ref.read(settingsProvider.notifier).setThemeVariant(variant);
+  }
+
+  void updateFromSettings(AppThemeVariant variant) {
+    if (state != variant) {
+      state = variant;
+    }
+  }
 }
 
 final themeProvider = StateNotifierProvider<ThemeNotifier, AppThemeVariant>(
-  (ref) => ThemeNotifier(),
+  (ref) {
+    final notifier = ThemeNotifier(ref);
+    ref.listen<SettingsState>(settingsProvider, (previous, next) {
+      notifier.updateFromSettings(next.themeVariant);
+    });
+    return notifier;
+  },
 );
 
 /// Resolved [ThemeData] for the currently selected variant.
 final resolvedThemeProvider = Provider<ThemeData>((ref) {
   final variant = ref.watch(themeProvider);
-  return switch (variant) {
+  final isAmoled = ref.watch(settingsProvider.select((s) => s.amoledMode));
+
+  final baseTheme = switch (variant) {
     AppThemeVariant.warmMinimal => AppTheme.warm,
     AppThemeVariant.cosmicDark => AppTheme.dark,
     AppThemeVariant.lightClean => AppTheme.light,
@@ -46,4 +68,18 @@ final resolvedThemeProvider = Provider<ThemeData>((ref) {
     AppThemeVariant.forestSage => AppTheme.forestSage,
     AppThemeVariant.noirRust => AppTheme.noirRust,
   };
+
+  if (isAmoled && baseTheme.brightness == Brightness.dark) {
+    return baseTheme.copyWith(
+      scaffoldBackgroundColor: Colors.black,
+      colorScheme: baseTheme.colorScheme.copyWith(
+        surface: Colors.black,
+        surfaceContainerHighest: const Color(0xFF101010),
+      ),
+      inputDecorationTheme: baseTheme.inputDecorationTheme.copyWith(
+        fillColor: Colors.black,
+      ),
+    );
+  }
+  return baseTheme;
 });

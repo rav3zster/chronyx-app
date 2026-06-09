@@ -1,4 +1,3 @@
-import 'package:chronyx/core/widgets/settings_icon_button.dart';
 import 'package:flutter/material.dart';
 
 /// Large page title with a trailing action (defaults to the settings button).
@@ -10,7 +9,7 @@ class PageHeader extends StatelessWidget {
 
   final String title;
 
-  /// Trailing widget. Defaults to [SettingsIconButton].
+  /// Trailing widget. Defaults to empty.
   final Widget? trailing;
 
   @override
@@ -30,7 +29,7 @@ class PageHeader extends StatelessWidget {
             ),
           ),
         ),
-        trailing ?? const SettingsIconButton(),
+        trailing ?? const SizedBox.shrink(),
       ],
     );
   }

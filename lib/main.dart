@@ -5,6 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:chronyx/features/settings/presentation/providers/settings_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -45,7 +48,16 @@ Future<void> main() async {
   });
   // ────────────────────────────────────────────────────────────────────────
 
-  runApp(const ProviderScope(child: ChronyxApp()));
+  final prefs = await SharedPreferences.getInstance();
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+      child: const ChronyxApp(),
+    ),
+  );
 }
 
 /// Same route surface as production (`/login`) so URLs and navigation match.

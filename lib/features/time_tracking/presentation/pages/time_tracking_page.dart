@@ -86,10 +86,15 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
         return;
       }
       try {
-        if (choice == 'stop') {
+        if (choice == 'pause') {
+          await notifier.pauseSession(sessionId: activeSession.id);
+          return;
+        } else if (choice == 'stop') {
           await notifier.stopSession(sessionId: activeSession.id);
+          return;
         } else if (choice == 'delete') {
           await notifier.deleteSession(sessionId: activeSession.id);
+          return;
         } else if (choice == 'startAnyway') {
           await notifier.stopSession(sessionId: activeSession.id);
         }
@@ -107,7 +112,7 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
         taskName: taskName,
         category: _selectedCategory,
         projectTaskId: linkedTaskId,
-        mode: _selectedMode,
+        sessionMode: _selectedMode,
         targetDurationMinutes: _selectedMode == SessionMode.timer ? _targetDurationMinutes : null,
         ignoreActiveCheck: true,
       );
@@ -159,6 +164,17 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
     await showSessionCelebration(context, justFinished: finished);
   }
 
+  Future<void> _pauseSession(String id) async {
+    try {
+      await ref.read(timeEntriesProvider.notifier).pauseSession(sessionId: id);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ErrorMessageMapper.fromError(error))),
+      );
+    }
+  }
+
   Future<void> _resumeSession(TimeEntry entry) async {
     final notifier = ref.read(timeEntriesProvider.notifier);
     final entries = ref.read(timeEntriesProvider).value ?? <TimeEntry>[];
@@ -180,10 +196,15 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
         return;
       }
       try {
-        if (choice == 'stop') {
+        if (choice == 'pause') {
+          await notifier.pauseSession(sessionId: activeSession.id);
+          return;
+        } else if (choice == 'stop') {
           await notifier.stopSession(sessionId: activeSession.id);
+          return;
         } else if (choice == 'delete') {
           await notifier.deleteSession(sessionId: activeSession.id);
+          return;
         } else if (choice == 'startAnyway') {
           await notifier.stopSession(sessionId: activeSession.id);
         }
@@ -406,6 +427,7 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
                       data: (entries) => _SessionSliver(
                         entries: entries,
                         onStopSession: _stopSession,
+                        onPauseSession: _pauseSession,
                         onResumeSession: _resumeSession,
                         onEditSession: _editSession,
                         onDeleteSession: _deleteSession,
@@ -495,6 +517,7 @@ class _TimeTrackingPageState extends ConsumerState<TimeTrackingPage> {
                                               onStopSession: entry.isActive
                                                   ? () => _stopSession(entry.id)
                                                   : null,
+                                              onPauseSession: () => _pauseSession(entry.id),
                                               onResumeSession: () => _resumeSession(entry),
                                               onEditSession: () => _editSession(entry),
                                               onDeleteSession: () => _deleteSession(entry.id),
@@ -1029,6 +1052,7 @@ class _SessionSliver extends StatelessWidget {
   const _SessionSliver({
     required this.entries,
     required this.onStopSession,
+    required this.onPauseSession,
     required this.onResumeSession,
     required this.onEditSession,
     required this.onDeleteSession,
@@ -1037,6 +1061,7 @@ class _SessionSliver extends StatelessWidget {
 
   final List<TimeEntry> entries;
   final Future<void> Function(String id) onStopSession;
+  final Future<void> Function(String id) onPauseSession;
   final Future<void> Function(TimeEntry entry) onResumeSession;
   final Future<void> Function(TimeEntry entry) onEditSession;
   final Future<void> Function(String id) onDeleteSession;
@@ -1062,6 +1087,7 @@ class _SessionSliver extends StatelessWidget {
             onStopSession: entry.isActive
                 ? () => onStopSession(entry.id)
                 : null,
+            onPauseSession: () => onPauseSession(entry.id),
             onResumeSession: () => onResumeSession(entry),
             onEditSession: () => onEditSession(entry),
             onDeleteSession: () => onDeleteSession(entry.id),
@@ -1195,6 +1221,15 @@ class _ActiveSessionDialog extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
+              onPressed: () => Navigator.pop(context, 'pause'),
+              child: const Text('Pause Session'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
               onPressed: () => Navigator.pop(context, 'stop'),
               child: const Text('Stop Session'),
             ),
@@ -1217,7 +1252,7 @@ class _ActiveSessionDialog extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
               onPressed: () => Navigator.pop(context, 'startAnyway'),
-              child: const Text('Start New Anyway'),
+              child: const Text('Start New Session Anyway'),
             ),
           ],
         ),

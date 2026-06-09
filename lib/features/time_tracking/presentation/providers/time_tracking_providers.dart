@@ -4,12 +4,15 @@ import 'package:chronyx/core/constants/app_strings.dart';
 import 'package:chronyx/core/errors/app_exception.dart';
 import 'package:chronyx/core/providers/supabase_provider.dart';
 import 'package:chronyx/core/services/focus_tracker.dart';
+import 'package:chronyx/core/services/sound_service.dart';
+import 'package:chronyx/core/services/notification_service.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/time_tracking/data/datasources/time_tracking_remote_datasource.dart';
 import 'package:chronyx/features/time_tracking/data/datasources/time_tracking_supabase_datasource.dart';
 import 'package:chronyx/features/time_tracking/data/repositories/time_tracking_repository_impl.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
 import 'package:chronyx/features/time_tracking/domain/repositories/time_tracking_repository.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ── Infrastructure providers ──────────────────────────────────────────────────
@@ -103,13 +106,60 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
   void _startTickerIfNeeded(List<TimeEntry> entries) {
     final bool hasActive = entries.any((e) => e.isActive);
     if (hasActive && _ticker == null) {
-      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) async {
         final current = state.value ?? <TimeEntry>[];
-        state = AsyncData(List<TimeEntry>.from(current));
+        bool updated = false;
+        
+        for (final entry in current) {
+          if (entry.isActive && entry.sessionMode == SessionMode.timer) {
+            final remaining = entry.remainingTime;
+            if (remaining <= Duration.zero) {
+              try {
+                await stopSession(sessionId: entry.id, status: SessionStatus.completed);
+                _triggerCompletionEffects(entry);
+                updated = true;
+              } catch (e) {
+                print('[AUTO STOP ERROR] failed to stop session: $e');
+              }
+            }
+          }
+        }
+        
+        if (!updated) {
+          state = AsyncData(List<TimeEntry>.from(current));
+        }
       });
     } else if (!hasActive) {
       _ticker?.cancel();
       _ticker = null;
+    }
+  }
+
+  void _triggerCompletionEffects(TimeEntry entry) async {
+    // 1. Play session complete sound
+    try {
+      await ref.read(soundServiceProvider).sessionComplete();
+    } catch (e) {
+      print('[COMPLETION EFFECTS] sound error: $e');
+    }
+
+    // 2. Trigger vibration
+    try {
+      await HapticFeedback.vibrate();
+      await Future.delayed(const Duration(milliseconds: 200));
+      await HapticFeedback.vibrate();
+    } catch (e) {
+      print('[COMPLETION EFFECTS] vibration error: $e');
+    }
+
+    // 3. Send local notification
+    try {
+      await ref.read(notificationServiceProvider).showSessionComplete(
+        sessionName: entry.taskName.isEmpty ? 'Timer Session' : entry.taskName,
+        duration: entry.duration,
+      );
+    } catch (e) {
+      print('[COMPLETION EFFECTS] notification error: $e');
     }
   }
 
@@ -160,13 +210,13 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
     required String taskName,
     required TaskCategory category,
     String? projectTaskId,
-    SessionMode mode = SessionMode.stopwatch,
+    SessionMode sessionMode = SessionMode.stopwatch,
     int? targetDurationMinutes,
     bool ignoreActiveCheck = false,
   }) async {
     final previousEntries = state.value ?? <TimeEntry>[];
     if (!ignoreActiveCheck) {
-      final hasActiveSession = previousEntries.any((entry) => entry.isActive);
+      final hasActiveSession = previousEntries.any((entry) => entry.isOngoing);
       if (hasActiveSession) {
         throw const ValidationException(AppStrings.activeSessionExists);
       }
@@ -178,7 +228,7 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
         taskName: taskName,
         category: category,
         projectTaskId: projectTaskId,
-        mode: mode,
+        sessionMode: sessionMode,
         targetDurationMinutes: targetDurationMinutes,
       );
       final entries = await _repository.fetchTimeEntries();
@@ -217,6 +267,22 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
       Error.throwWithStackTrace(e, st);
     }
     return finished;
+  }
+
+  Future<void> pauseSession({required String sessionId}) async {
+    final previousEntries = state.value ?? <TimeEntry>[];
+    state = const AsyncLoading();
+    try {
+      await _repository.pauseSession(sessionId: sessionId);
+      final entries = await _repository.fetchTimeEntries();
+      _startTickerIfNeeded(entries);
+      state = AsyncData(entries);
+    } catch (e, st) {
+      print('[PROVIDER ERROR] pauseSession threw: ${e.runtimeType}');
+      print(e);
+      state = AsyncData(previousEntries);
+      Error.throwWithStackTrace(e, st);
+    }
   }
 
   Future<void> deleteSession({required String sessionId}) async {

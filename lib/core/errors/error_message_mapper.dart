@@ -15,7 +15,7 @@ class ErrorMessageMapper {
       return 'Unable to connect. Check your internet and try again.';
     }
     if (error is ServerException) {
-      return 'Our servers are having a moment. Please try again shortly.';
+      return 'Server error: ${error.message}';
     }
     if (error is UnknownException) {
       return _mapUnknownMessage(error.message);

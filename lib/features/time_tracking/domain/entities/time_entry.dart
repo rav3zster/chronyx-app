@@ -78,24 +78,24 @@ enum TaskCategory {
 
 enum SessionStatus {
   active,
+  paused,
   completed,
-  cancelled,
-  paused;
+  cancelled;
 
   String get jsonKey => name;
 
   String get label => switch (this) {
     SessionStatus.active => 'Active',
+    SessionStatus.paused => 'Paused',
     SessionStatus.completed => 'Completed',
     SessionStatus.cancelled => 'Cancelled',
-    SessionStatus.paused => 'Paused',
   };
 
   static SessionStatus fromJson(String? value) => switch (value) {
     'active' => SessionStatus.active,
+    'paused' => SessionStatus.paused,
     'completed' => SessionStatus.completed,
     'cancelled' => SessionStatus.cancelled,
-    'paused' => SessionStatus.paused,
     _ => SessionStatus.completed,
   };
 }
@@ -126,10 +126,17 @@ class TimeEntry {
     required this.endedAt,
     this.category = TaskCategory.other,
     this.projectTaskId,
-    this.durationMinutes,
-    this.status = SessionStatus.completed,
-    this.mode = SessionMode.stopwatch,
+    this.elapsedSeconds = 0,
+    this.durationMinutes = 0,
     this.targetDurationMinutes,
+    this.completionPercentage = 0.0,
+    this.pausedDurationSeconds = 0,
+    this.pausedAt,
+    this.sessionMode = SessionMode.stopwatch,
+    this.status = SessionStatus.completed,
+    this.notes,
+    this.createdAt,
+    this.updatedAt,
   });
 
   final String id;
@@ -138,23 +145,46 @@ class TimeEntry {
   final DateTime? endedAt;
   final TaskCategory category;
   final String? projectTaskId;
-
-  /// Stored duration from Supabase (null while session is active).
-  /// Falls back to computed value for finished sessions missing this field.
-  final int? durationMinutes;
-  final SessionStatus status;
-  final SessionMode mode;
+  final int elapsedSeconds;
+  final int durationMinutes;
   final int? targetDurationMinutes;
+  final double completionPercentage;
+  final int pausedDurationSeconds;
+  final DateTime? pausedAt;
+  final SessionMode sessionMode;
+  final SessionStatus status;
+  final String? notes;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   Duration get duration {
-    if (!isActive && durationMinutes != null) {
-      return Duration(minutes: durationMinutes!);
+    if (status == SessionStatus.paused) {
+      final DateTime pTime = pausedAt ?? DateTime.now();
+      final dur = pTime.difference(startedAt) - Duration(seconds: pausedDurationSeconds);
+      return dur.inSeconds >= 0 ? dur : Duration.zero;
     }
-    final DateTime end = endedAt ?? DateTime.now();
-    return end.difference(startedAt);
+    if (endedAt != null) {
+      final dur = endedAt!.difference(startedAt) - Duration(seconds: pausedDurationSeconds);
+      return dur.inSeconds >= 0 ? dur : Duration.zero;
+    }
+    // active session
+    final dur = DateTime.now().difference(startedAt) - Duration(seconds: pausedDurationSeconds);
+    return dur.inSeconds >= 0 ? dur : Duration.zero;
   }
 
-  bool get isActive => endedAt == null && (status == SessionStatus.active || status == SessionStatus.paused);
+  Duration get remainingTime {
+    if (sessionMode == SessionMode.timer && targetDurationMinutes != null) {
+      final target = Duration(minutes: targetDurationMinutes!);
+      final elapsed = duration;
+      final rem = target - elapsed;
+      return rem.inSeconds >= 0 ? rem : Duration.zero;
+    }
+    return Duration.zero;
+  }
+
+  bool get isActive => status == SessionStatus.active;
+  bool get isPaused => status == SessionStatus.paused;
+  bool get isOngoing => status == SessionStatus.active || status == SessionStatus.paused;
 
   /// Whether this category counts toward productive time (for analytics).
   bool get isProductive => category.isDeepWork;

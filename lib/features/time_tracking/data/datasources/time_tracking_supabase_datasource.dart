@@ -67,7 +67,7 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
     required String taskName,
     required TaskCategory category,
     String? projectTaskId,
-    SessionMode mode = SessionMode.stopwatch,
+    SessionMode sessionMode = SessionMode.stopwatch,
     int? targetDurationMinutes,
   }) async {
     final String userId = _currentUserId;
@@ -83,7 +83,8 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
         .from(_tableName)
         .select('id')
         .eq('user_id', userId)
-        .isFilter('end_time', null);
+        .inFilter('status', ['active', 'paused']);
+        
     if (active.isNotEmpty) {
       throw const ValidationException(
         'A session is already running. Stop it before starting a new one.',
@@ -97,8 +98,12 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
       'start_time': now.toIso8601String(),
       'category': category.jsonKey,
       'status': SessionStatus.active.jsonKey,
-      'mode': mode.jsonKey,
+      'session_mode': sessionMode.jsonKey,
       if (targetDurationMinutes != null) 'target_duration_minutes': targetDurationMinutes,
+      'elapsed_seconds': 0,
+      'duration_minutes': 0,
+      'completion_percentage': 0.0,
+      'paused_duration_seconds': 0,
     };
     if (projectTaskId != null) {
       base['project_task_id'] = projectTaskId;
@@ -111,18 +116,16 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
           .select();
       return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
     } on PostgrestException catch (e) {
-      // Unknown column fallback (migration not yet run).
+      // Fallback logic for old schemas
       if (e.code == '42703' ||
-          e.message.contains('category') ||
-          e.message.contains('project_task_id') ||
-          e.message.contains('status') ||
-          e.message.contains('mode') ||
-          e.message.contains('target_duration_minutes')) {
+          e.message.contains('session_mode') ||
+          e.message.contains('status')) {
         final fallback = <String, dynamic>{
           'user_id': userId,
           'task_name': name,
           'start_time': now.toIso8601String(),
           'category': category.jsonKey,
+          'mode': sessionMode.jsonKey,
           if (projectTaskId != null) 'project_task_id': projectTaskId,
         };
         final List<dynamic> rows = await _supabaseClient
@@ -143,54 +146,118 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
     final String userId = _currentUserId;
     final DateTime now = DateTime.now().toUtc();
 
-    // Fetch the row first so we can compute duration_minutes accurately.
+    // Fetch details to compute stats accurately
     final List<dynamic> existing = await _supabaseClient
         .from(_tableName)
-        .select('start_time')
+        .select('start_time, session_mode, target_duration_minutes, paused_duration_seconds, paused_at')
         .eq('user_id', userId)
         .eq('id', sessionId);
 
-    int? durationMinutes;
+    int elapsedSeconds = 0;
+    int durationMinutes = 0;
+    double completionPercentage = 0.0;
+
     if (existing.isNotEmpty) {
-      final startRaw = (existing.first as Map<String, dynamic>)['start_time'];
+      final row = existing.first as Map<String, dynamic>;
+      final startRaw = row['start_time'];
+      final sessionModeStr = row['session_mode'] as String? ?? 'stopwatch';
+      final isTimer = sessionModeStr == 'timer';
+      final targetMins = (row['target_duration_minutes'] as num?)?.toInt();
+      final pausedSecs = (row['paused_duration_seconds'] as num?)?.toInt() ?? 0;
+      final pausedAtRaw = row['paused_at'] as String?;
+
       if (startRaw != null) {
-        final start = DateTime.parse(startRaw as String);
-        final computed = now.difference(start).inMinutes;
-        // Guard: never store a negative duration.
-        durationMinutes = computed >= 0 ? computed : 0;
+        final start = _parseDateTimeUtc(startRaw as String);
+        // If session was paused when stopped, compute duration up to the paused_at timestamp
+        final DateTime endPoint = pausedAtRaw != null ? _parseDateTimeUtc(pausedAtRaw) : now;
+        
+        final totalSeconds = endPoint.difference(start).inSeconds;
+        final computed = totalSeconds - pausedSecs;
+        elapsedSeconds = computed >= 0 ? computed : 0;
+        durationMinutes = elapsedSeconds ~/ 60;
+
+        if (isTimer && targetMins != null && targetMins > 0) {
+          completionPercentage = (elapsedSeconds / (targetMins * 60) * 100.0).clamp(0.0, 100.0);
+        } else {
+          completionPercentage = 100.0;
+        }
       }
     }
 
     final update = <String, dynamic>{
       'end_time': now.toIso8601String(),
-      if (durationMinutes != null) 'duration_minutes': durationMinutes,
+      'elapsed_seconds': elapsedSeconds,
+      'duration_minutes': durationMinutes,
+      'completion_percentage': completionPercentage,
       'status': status.jsonKey,
+      'paused_at': null, // clear
     };
 
-    try {
-      final List<dynamic> rows = await _supabaseClient
-          .from(_tableName)
-          .update(update)
-          .eq('user_id', userId)
-          .eq('id', sessionId)
-          .select();
-      return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
-    } on PostgrestException catch (e) {
-      if (e.code == '42703' || e.message.contains('status')) {
-        final fallbackUpdate = <String, dynamic>{
-          'end_time': now.toIso8601String(),
-          if (durationMinutes != null) 'duration_minutes': durationMinutes,
-        };
-        final List<dynamic> rows = await _supabaseClient
-            .from(_tableName)
-            .update(fallbackUpdate)
-            .eq('user_id', userId)
-            .eq('id', sessionId)
-            .select();
-        return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
+    final List<dynamic> rows = await _supabaseClient
+        .from(_tableName)
+        .update(update)
+        .eq('user_id', userId)
+        .eq('id', sessionId)
+        .select();
+
+    return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
+  }
+
+  @override
+  Future<TimeEntryModel> pauseSession({required String sessionId}) async {
+    final String userId = _currentUserId;
+    final DateTime now = DateTime.now().toUtc();
+    final update = <String, dynamic>{
+      'paused_at': now.toIso8601String(),
+      'status': SessionStatus.paused.jsonKey,
+    };
+    final List<dynamic> rows = await _supabaseClient
+        .from(_tableName)
+        .update(update)
+        .eq('user_id', userId)
+        .eq('id', sessionId)
+        .select();
+    return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
+  }
+
+  @override
+  Future<TimeEntryModel> resumeSession({required String sessionId}) async {
+    final String userId = _currentUserId;
+    final DateTime now = DateTime.now().toUtc();
+
+    // Fetch the existing session to read paused_at and paused_duration_seconds
+    final List<dynamic> existing = await _supabaseClient
+        .from(_tableName)
+        .select('paused_at, paused_duration_seconds')
+        .eq('user_id', userId)
+        .eq('id', sessionId);
+
+    int addedPausedSeconds = 0;
+    int currentPausedSeconds = 0;
+    if (existing.isNotEmpty) {
+      final row = existing.first as Map<String, dynamic>;
+      currentPausedSeconds = (row['paused_duration_seconds'] as num?)?.toInt() ?? 0;
+      final pausedAtRaw = row['paused_at'] as String?;
+      if (pausedAtRaw != null) {
+        final pausedAt = _parseDateTimeUtc(pausedAtRaw);
+        addedPausedSeconds = now.difference(pausedAt).inSeconds;
+        if (addedPausedSeconds < 0) addedPausedSeconds = 0;
       }
-      rethrow;
     }
+
+    final update = <String, dynamic>{
+      'paused_at': null,
+      'paused_duration_seconds': currentPausedSeconds + addedPausedSeconds,
+      'status': SessionStatus.active.jsonKey,
+    };
+
+    final List<dynamic> rows = await _supabaseClient
+        .from(_tableName)
+        .update(update)
+        .eq('user_id', userId)
+        .eq('id', sessionId)
+        .select();
+    return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
   }
 
   @override
@@ -229,39 +296,9 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
     return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
   }
 
-  @override
-  Future<TimeEntryModel> resumeSession({required String sessionId}) async {
-    final String userId = _currentUserId;
-
-    final update = <String, dynamic>{
-      'end_time': null,
-      'duration_minutes': null,
-      'status': SessionStatus.active.jsonKey,
-    };
-
-    try {
-      final List<dynamic> rows = await _supabaseClient
-          .from(_tableName)
-          .update(update)
-          .eq('user_id', userId)
-          .eq('id', sessionId)
-          .select();
-      return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
-    } on PostgrestException catch (e) {
-      if (e.code == '42703' || e.message.contains('status')) {
-        final fallbackUpdate = <String, dynamic>{
-          'end_time': null,
-          'duration_minutes': null,
-        };
-        final List<dynamic> rows = await _supabaseClient
-            .from(_tableName)
-            .update(fallbackUpdate)
-            .eq('user_id', userId)
-            .eq('id', sessionId)
-            .select();
-        return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
-      }
-      rethrow;
-    }
+  DateTime _parseDateTimeUtc(String dateStr) {
+    final hasTimezone = dateStr.endsWith('Z') || 
+                        (dateStr.length > 10 && (dateStr.contains('+', 10) || dateStr.contains('-', 10)));
+    return DateTime.parse(hasTimezone ? dateStr : '${dateStr}Z').toUtc();
   }
 }

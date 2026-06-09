@@ -40,7 +40,7 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
     required String taskName,
     required TaskCategory category,
     String? projectTaskId,
-    SessionMode mode = SessionMode.stopwatch,
+    SessionMode sessionMode = SessionMode.stopwatch,
     int? targetDurationMinutes,
   }) async {
     try {
@@ -48,7 +48,7 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
         taskName: taskName,
         category: category,
         projectTaskId: projectTaskId,
-        mode: mode,
+        sessionMode: sessionMode,
         targetDurationMinutes: targetDurationMinutes,
       );
       return model.toEntity();
@@ -102,6 +102,46 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
   }
 
   @override
+  Future<TimeEntry> pauseSession({required String sessionId}) async {
+    try {
+      final model = await _remoteDataSource.pauseSession(sessionId: sessionId);
+      return model.toEntity();
+    } on AppException {
+      rethrow;
+    } on PostgrestException catch (e, st) {
+      print('[REPO ERROR] PostgrestException in pauseSession');
+      print(st);
+      throw _mapPostgrest(e);
+    } catch (e, st) {
+      print('[REPO ERROR] non-Postgrest in pauseSession: ${e.runtimeType}');
+      print(e);
+      print(st);
+      if (_isNetworkError(e)) throw const NetworkException();
+      rethrow;
+    }
+  }
+
+  @override
+  Future<TimeEntry> resumeSession({required String sessionId}) async {
+    try {
+      final model = await _remoteDataSource.resumeSession(sessionId: sessionId);
+      return model.toEntity();
+    } on AppException {
+      rethrow;
+    } on PostgrestException catch (e, st) {
+      print('[REPO ERROR] PostgrestException in resumeSession');
+      print(st);
+      throw _mapPostgrest(e);
+    } catch (e, st) {
+      print('[REPO ERROR] non-Postgrest in resumeSession: ${e.runtimeType}');
+      print(e);
+      print(st);
+      if (_isNetworkError(e)) throw const NetworkException();
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> deleteSession({required String sessionId}) async {
     try {
       await _remoteDataSource.deleteSession(sessionId: sessionId);
@@ -141,26 +181,6 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
       throw _mapPostgrest(e);
     } catch (e, st) {
       print('[REPO ERROR] non-Postgrest in updateSession: ${e.runtimeType}');
-      print(e);
-      print(st);
-      if (_isNetworkError(e)) throw const NetworkException();
-      rethrow;
-    }
-  }
-
-  @override
-  Future<TimeEntry> resumeSession({required String sessionId}) async {
-    try {
-      final model = await _remoteDataSource.resumeSession(sessionId: sessionId);
-      return model.toEntity();
-    } on AppException {
-      rethrow;
-    } on PostgrestException catch (e, st) {
-      print('[REPO ERROR] PostgrestException in resumeSession');
-      print(st);
-      throw _mapPostgrest(e);
-    } catch (e, st) {
-      print('[REPO ERROR] non-Postgrest in resumeSession: ${e.runtimeType}');
       print(e);
       print(st);
       if (_isNetworkError(e)) throw const NetworkException();

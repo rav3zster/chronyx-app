@@ -7,18 +7,19 @@ abstract class TimeTrackingRemoteDataSource {
     required String taskName,
     required TaskCategory category,
     String? projectTaskId,
-    SessionMode mode = SessionMode.stopwatch,
+    SessionMode sessionMode = SessionMode.stopwatch,
     int? targetDurationMinutes,
   });
   Future<TimeEntryModel> stopSession({
     required String sessionId,
     SessionStatus status = SessionStatus.completed,
   });
+  Future<TimeEntryModel> pauseSession({required String sessionId});
+  Future<TimeEntryModel> resumeSession({required String sessionId});
   Future<void> deleteSession({required String sessionId});
   Future<TimeEntryModel> updateSession({
     required String sessionId,
     required String taskName,
     required TaskCategory category,
   });
-  Future<TimeEntryModel> resumeSession({required String sessionId});
 }

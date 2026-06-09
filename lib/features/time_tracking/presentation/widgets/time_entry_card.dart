@@ -6,6 +6,7 @@ class TimeEntryCard extends StatefulWidget {
   const TimeEntryCard({
     required this.entry,
     required this.onStopSession,
+    this.onPauseSession,
     this.onResumeSession,
     this.onEditSession,
     this.onDeleteSession,
@@ -14,6 +15,7 @@ class TimeEntryCard extends StatefulWidget {
 
   final TimeEntry entry;
   final VoidCallback? onStopSession;
+  final VoidCallback? onPauseSession;
   final VoidCallback? onResumeSession;
   final VoidCallback? onEditSession;
   final VoidCallback? onDeleteSession;
@@ -79,13 +81,30 @@ class _TimeEntryCardState extends State<TimeEntryCard>
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final accent = scheme.primary;
+    
+    // Status dot color mapping
     final dotColor = widget.entry.isActive
         ? accent
-        : _colorForCategory(widget.entry.category);
+        : (widget.entry.isPaused
+            ? const Color(0xFFFBBC05) // gold yellow for paused
+            : _colorForCategory(widget.entry.category));
 
-    final subtitle = widget.entry.isActive
-        ? '${widget.entry.category.label} · ${AppStrings.inProgress}'
-        : '${widget.entry.category.label} · ${_formatDuration(widget.entry.duration)}';
+    final String statusLabel;
+    if (widget.entry.isActive) {
+      statusLabel = 'In Progress';
+    } else if (widget.entry.isPaused) {
+      statusLabel = 'Paused';
+    } else {
+      statusLabel = widget.entry.status.label;
+    }
+
+    final durationToShow = widget.entry.sessionMode == SessionMode.timer && widget.entry.isOngoing
+        ? widget.entry.remainingTime
+        : widget.entry.duration;
+
+    final subtitle = widget.entry.isOngoing
+        ? '${widget.entry.category.label} · $statusLabel'
+        : '${widget.entry.category.label} · $statusLabel · ${_formatDuration(widget.entry.duration)}';
 
     return GestureDetector(
       onTap: _toggle,
@@ -95,7 +114,7 @@ class _TimeEntryCardState extends State<TimeEntryCard>
         decoration: BoxDecoration(
           color: scheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
-          border: widget.entry.isActive
+          border: widget.entry.isOngoing
               ? Border.all(
                   color: _expanded
                       ? accent.withValues(alpha: 0.65)
@@ -163,7 +182,7 @@ class _TimeEntryCardState extends State<TimeEntryCard>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        _clock(widget.entry.duration),
+                        _clock(durationToShow),
                         style: textTheme.titleLarge?.copyWith(
                           color: scheme.onSurface,
                           fontWeight: FontWeight.w800,
@@ -220,6 +239,9 @@ class _TimeEntryCardState extends State<TimeEntryCard>
                         case 'resume':
                           widget.onResumeSession?.call();
                           break;
+                        case 'pause':
+                          widget.onPauseSession?.call();
+                          break;
                         case 'stop':
                           widget.onStopSession?.call();
                           break;
@@ -234,7 +256,7 @@ class _TimeEntryCardState extends State<TimeEntryCard>
                     itemBuilder: (context) => [
                       PopupMenuItem(
                         value: 'resume',
-                        enabled: !widget.entry.isActive,
+                        enabled: widget.entry.isPaused || !widget.entry.isOngoing,
                         child: Row(
                           children: [
                             Icon(Icons.play_arrow_rounded, color: scheme.onSurface, size: 20),
@@ -244,8 +266,19 @@ class _TimeEntryCardState extends State<TimeEntryCard>
                         ),
                       ),
                       PopupMenuItem(
-                        value: 'stop',
+                        value: 'pause',
                         enabled: widget.entry.isActive,
+                        child: Row(
+                          children: [
+                            Icon(Icons.pause_rounded, color: scheme.onSurface, size: 20),
+                            const SizedBox(width: 8),
+                            const Text('Pause'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'stop',
+                        enabled: widget.entry.isOngoing,
                         child: Row(
                           children: [
                             Icon(Icons.stop_rounded, color: scheme.onSurface, size: 20),
@@ -296,6 +329,12 @@ class _TimeEntryCardState extends State<TimeEntryCard>
                       _expandCtrl.reverse();
                       widget.onStopSession?.call();
                     },
+                    onPause: () {
+                      // Collapse first, then trigger pause
+                      setState(() => _expanded = false);
+                      _expandCtrl.reverse();
+                      widget.onPauseSession?.call();
+                    },
                   ),
                 ),
               ),
@@ -331,10 +370,15 @@ class _TimeEntryCardState extends State<TimeEntryCard>
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SessionControls extends StatelessWidget {
-  const _SessionControls({required this.accent, required this.onStop});
+  const _SessionControls({
+    required this.accent,
+    required this.onStop,
+    required this.onPause,
+  });
 
   final Color accent;
   final VoidCallback onStop;
+  final VoidCallback onPause;
 
   @override
   Widget build(BuildContext context) {
@@ -358,9 +402,147 @@ class _SessionControls extends StatelessWidget {
               ),
             ),
           ),
-          // Stop button — full-width glowing pill
-          _StopButton(accent: accent, onStop: onStop, textTheme: textTheme),
+          Row(
+            children: [
+              Expanded(
+                child: _PauseButton(
+                  onPause: onPause,
+                  textTheme: textTheme,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _StopButton(
+                  accent: accent,
+                  onStop: onStop,
+                  textTheme: textTheme,
+                ),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pause button — pulsing amber glow ring + icon + label
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PauseButton extends StatefulWidget {
+  const _PauseButton({
+    required this.onPause,
+    required this.textTheme,
+  });
+
+  final VoidCallback onPause;
+  final TextTheme textTheme;
+
+  @override
+  State<_PauseButton> createState() => _PauseButtonState();
+}
+
+class _PauseButtonState extends State<_PauseButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _glowCtrl;
+  late Animation<double> _glow;
+  bool _pressed = false;
+
+  static const _pauseAmber = Color(0xFFFBBC05);
+
+  @override
+  void initState() {
+    super.initState();
+    _glowCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+    _glow = Tween<double>(begin: 0.3, end: 0.7).animate(
+      CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _glowCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onPause();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: AnimatedBuilder(
+          animation: _glow,
+          builder: (context, _) {
+            return Container(
+              height: 52,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFCA28), Color(0xFFF57F17)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _pauseAmber.withValues(alpha: _glow.value),
+                    blurRadius: 18,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Pause icon (two vertical bars)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(1.5),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Container(
+                        width: 4,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(1.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'PAUSE',
+                    style: widget.textTheme.labelLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.4,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

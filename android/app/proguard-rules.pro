@@ -37,3 +37,9 @@
 -dontwarn com.google.android.play.core.splitinstall.**
 -dontwarn com.google.android.play.core.tasks.**
 -dontwarn com.google.android.play.core.**
+
+# ── flutter_local_notifications / Gson ────────────────────────────────────────
+-keepattributes Signature, *Annotation*, InnerClasses
+-keep class com.google.gson.** { *; }
+-keep class com.dexterous.flutterlocalnotifications.** { *; }
+

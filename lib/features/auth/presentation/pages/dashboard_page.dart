@@ -12,6 +12,8 @@ import 'package:chronyx/features/profile/presentation/widgets/profile_avatar.dar
 import 'package:chronyx/features/project_planner/presentation/providers/project_planner_providers.dart';
 import 'package:chronyx/features/time_tracking/presentation/providers/time_tracking_providers.dart';
 import 'package:chronyx/features/settings/presentation/providers/settings_provider.dart';
+import 'package:chronyx/core/widgets/press_scale.dart';
+import 'package:chronyx/core/services/permission_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,11 +25,26 @@ import 'package:go_router/go_router.dart';
 const _kRadius = 20.0;
 const _kPad = 20.0;
 
-class DashboardPage extends ConsumerWidget {
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends ConsumerState<DashboardPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(permissionServiceProvider).requestOnFirstLaunch(context);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     return Scaffold(
       body: SafeArea(
@@ -271,7 +288,7 @@ class _HeroCard extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          GestureDetector(
+          PressScale(
             onTap: () => context.push(
               hasProject
                   ? '/project/${projects.first.id}'
@@ -535,7 +552,7 @@ class _ThisWeek extends ConsumerWidget {
       children: [
         const _SectionLabel('THIS WEEK'),
         const SizedBox(height: 12),
-        GestureDetector(
+        PressScale(
           onTap: () => context.push(AppRoutes.lifeInsights),
           child: Container(
             padding: const EdgeInsets.all(18),
@@ -784,7 +801,7 @@ class _ErrorView extends StatelessWidget {
                 style: TextStyle(color: scheme.onSurface, fontSize: 14),
               ),
               const SizedBox(height: 16),
-              GestureDetector(
+              PressScale(
                 onTap: onRetry,
                 child: Container(
                   padding: const EdgeInsets.symmetric(

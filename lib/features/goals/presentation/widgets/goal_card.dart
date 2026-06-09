@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/widgets/glass_card.dart';
 import 'package:chronyx/features/goals/domain/entities/goal_progress.dart';
+import 'package:chronyx/core/widgets/press_scale.dart';
 import 'package:flutter/material.dart';
 
 class GoalCard extends StatelessWidget {
@@ -31,7 +32,7 @@ class GoalCard extends StatelessWidget {
     final daysLeft = progress.goal.endDate.difference(now).inDays;
     final isExpired = daysLeft < 0;
 
-    return GestureDetector(
+    return PressScale(
       onTap: onTap,
       child: GlassCard(
         useBlur: false,

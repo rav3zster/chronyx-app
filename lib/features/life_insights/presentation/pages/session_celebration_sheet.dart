@@ -1,4 +1,5 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
+import 'package:chronyx/core/services/haptic_service.dart';
 import 'package:chronyx/core/theme/design_tokens.dart';
 import 'package:chronyx/core/widgets/animated_counter.dart';
 import 'package:chronyx/features/life_insights/domain/entities/session_celebration.dart';
@@ -6,7 +7,6 @@ import 'package:chronyx/features/life_insights/presentation/providers/life_insig
 import 'package:chronyx/features/life_insights/presentation/widgets/confetti_layer.dart';
 import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Shows a premium celebration sheet for a finished session.
@@ -16,8 +16,7 @@ Future<void> showSessionCelebration(
   BuildContext context, {
   required TimeEntry justFinished,
 }) async {
-  // Light haptic — premium, not gimmicky.
-  HapticFeedback.lightImpact();
+  ProviderScope.containerOf(context).read(hapticServiceProvider).sessionComplete();
 
   await showModalBottomSheet<void>(
     context: context,

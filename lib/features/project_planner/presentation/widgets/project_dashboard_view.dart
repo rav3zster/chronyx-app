@@ -2,15 +2,16 @@ import 'dart:math' as math;
 
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
+import 'package:chronyx/core/services/haptic_service.dart';
 import 'package:chronyx/core/theme/scheme_x.dart';
 import 'package:chronyx/core/utils/responsive.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chronyx/features/analytics/domain/entities/analytics_summary.dart';
 import 'package:chronyx/features/project_planner/domain/entities/momentum_score.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project_health.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project_task.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 /// Premium execution dashboard for an active/paused/draft project with tasks.
@@ -1051,7 +1052,9 @@ class _WeekGroupState extends State<_WeekGroup> {
       children: [
         InkWell(
           onTap: () {
-            HapticFeedback.selectionClick();
+            try {
+              ProviderScope.containerOf(context).read(hapticServiceProvider).selectionClick();
+            } catch (_) {}
             setState(() => _expanded = !_expanded);
           },
           child: Padding(

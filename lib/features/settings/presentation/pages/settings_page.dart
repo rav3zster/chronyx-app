@@ -1,18 +1,22 @@
-import 'dart:convert';
 import 'package:chronyx/core/constants/app_colors.dart';
 import 'package:chronyx/core/constants/app_spacing.dart';
+import 'package:chronyx/core/services/biometric_service.dart';
+import 'package:chronyx/core/services/data_service.dart';
+import 'package:chronyx/core/services/haptic_service.dart';
+import 'package:chronyx/core/services/notification_service.dart';
+import 'package:chronyx/core/services/permission_service.dart';
+import 'package:chronyx/core/services/ringtone_service.dart';
+import 'package:chronyx/core/services/sound_service.dart';
 import 'package:chronyx/core/theme/theme_provider.dart';
 import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/settings/presentation/providers/settings_provider.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -102,28 +106,92 @@ class SettingsPage extends ConsumerWidget {
                   label: 'Daily Reminder',
                   description: 'Remind me to work on active roadmaps',
                   value: settings.dailyReminder,
-                  onChanged: (val) => settingsNotifier.setDailyReminder(val),
+                  onChanged: (val) {
+                    settingsNotifier.setDailyReminder(val);
+                    if (val) {
+                      ref.read(notificationServiceProvider).scheduleDailyReminder(
+                        TimeOfDay(hour: settings.dailyReminderHour, minute: settings.dailyReminderMinute),
+                      );
+                      ref.read(permissionServiceProvider).requestPermissionsForFeature(
+                        context,
+                        needsNotifications: true,
+                        needsExactAlarm: true,
+                        needsStorage: false,
+                      );
+                    } else {
+                      ref.read(notificationServiceProvider).cancelDailyReminder();
+                    }
+                  },
                 ),
+                if (settings.dailyReminder) ...[
+                  const SizedBox(height: 4),
+                  _ActionTile(
+                    icon: Icons.schedule_rounded,
+                    label: 'Daily Reminder Time',
+                    description: '${settings.dailyReminderHour.toString().padLeft(2, '0')}:${settings.dailyReminderMinute.toString().padLeft(2, '0')}',
+                    onTap: () async {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay(hour: settings.dailyReminderHour, minute: settings.dailyReminderMinute),
+                      );
+                      if (time != null) {
+                        settingsNotifier.setDailyReminderTime(time.hour, time.minute);
+                        ref.read(notificationServiceProvider).scheduleDailyReminder(time);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 4),
+                ],
                 Divider(color: scheme.outlineVariant.withValues(alpha: 0.3), height: 16),
                 _SwitchRow(
                   label: 'Session Complete Notification',
                   description: 'Notify me when focus session ends',
                   value: settings.sessionCompleteNotify,
-                  onChanged: (val) => settingsNotifier.setSessionCompleteNotify(val),
+                  onChanged: (val) {
+                    settingsNotifier.setSessionCompleteNotify(val);
+                    ref.read(permissionServiceProvider).requestPermissionsForFeature(
+                      context,
+                      needsNotifications: true,
+                      needsExactAlarm: false,
+                      needsStorage: false,
+                    );
+                  },
                 ),
                 Divider(color: scheme.outlineVariant.withValues(alpha: 0.3), height: 16),
                 _SwitchRow(
                   label: 'Goal Deadline Reminder',
                   description: 'Notify me when goal targets approach deadlines',
                   value: settings.goalDeadlineNotify,
-                  onChanged: (val) => settingsNotifier.setGoalDeadlineNotify(val),
+                  onChanged: (val) {
+                    settingsNotifier.setGoalDeadlineNotify(val);
+                    ref.read(permissionServiceProvider).requestPermissionsForFeature(
+                      context,
+                      needsNotifications: true,
+                      needsExactAlarm: false,
+                      needsStorage: false,
+                    );
+                  },
                 ),
                 Divider(color: scheme.outlineVariant.withValues(alpha: 0.3), height: 16),
                 _SwitchRow(
                   label: 'Weekly Summary Notification',
                   description: 'Sunday evening summary of progress',
                   value: settings.weeklySummaryNotify,
-                  onChanged: (val) => settingsNotifier.setWeeklySummaryNotify(val),
+                  onChanged: (val) {
+                    settingsNotifier.setWeeklySummaryNotify(val);
+                    if (val) {
+                      ref.read(notificationServiceProvider).scheduleWeeklySummary();
+                    } else {
+                      ref.read(notificationServiceProvider).cancelWeeklySummary();
+                    }
+                  },
+                ),
+                Divider(color: scheme.outlineVariant.withValues(alpha: 0.3), height: 16),
+                _ActionTile(
+                  icon: Icons.ring_volume_rounded,
+                  label: 'Notification Sound',
+                  description: settings.notificationSoundName,
+                  onTap: () => _showNotificationSoundPicker(context, ref),
                 ),
               ],
             ),
@@ -195,6 +263,36 @@ class SettingsPage extends ConsumerWidget {
                   value: settings.soundEffects,
                   onChanged: (val) => settingsNotifier.setSoundEffects(val),
                 ),
+                if (settings.soundEffects) ...[
+                  const SizedBox(height: 4),
+                  _ActionTile(
+                    icon: Icons.music_note_rounded,
+                    label: 'Focus Completion Sound',
+                    description: settings.customSessionCompleteSound.isNotEmpty
+                        ? settings.customSessionCompleteSound.split('/').last
+                        : 'Default (Success Tone)',
+                    onTap: () async {
+                      final result = await FilePicker.platform.pickFiles(type: FileType.audio);
+                      if (result != null && result.files.single.path != null) {
+                        settingsNotifier.setCustomSessionCompleteSound(result.files.single.path!);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 4),
+                  _ActionTile(
+                    icon: Icons.audiotrack_rounded,
+                    label: 'Goal Completion Sound',
+                    description: settings.customGoalCompleteSound.isNotEmpty
+                        ? settings.customGoalCompleteSound.split('/').last
+                        : 'Default (Reward Tone)',
+                    onTap: () async {
+                      final result = await FilePicker.platform.pickFiles(type: FileType.audio);
+                      if (result != null && result.files.single.path != null) {
+                        settingsNotifier.setCustomGoalCompleteSound(result.files.single.path!);
+                      }
+                    },
+                  ),
+                ],
               ],
             ),
 
@@ -253,7 +351,25 @@ class SettingsPage extends ConsumerWidget {
                   label: 'Require Biometrics On Launch',
                   description: 'Use fingerprint or face recognition',
                   value: settings.requireBiometrics,
-                  onChanged: (val) => settingsNotifier.setRequireBiometrics(val),
+                  onChanged: (val) async {
+                    if (val) {
+                      final bioService = ref.read(biometricServiceProvider);
+                      final available = await bioService.isAvailable();
+                      if (!available) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Biometrics not available on this device')),
+                          );
+                        }
+                        return;
+                      }
+                      final authenticated = await bioService.authenticate(
+                        reason: 'Enable biometric lock at launch',
+                      );
+                      if (!authenticated) return;
+                    }
+                    settingsNotifier.setRequireBiometrics(val);
+                  },
                 ),
                 Divider(color: scheme.outlineVariant.withValues(alpha: 0.3), height: 16),
                 _SegmentedSelector<String>(
@@ -283,16 +399,23 @@ class SettingsPage extends ConsumerWidget {
               children: [
                 _ActionTile(
                   icon: Icons.download_rounded,
-                  label: 'Export Data',
+                  label: 'Export as JSON',
                   description: 'Export goals, projects, sessions to JSON',
-                  onTap: () => _exportData(context),
+                  onTap: () => _exportData(context, ref, asCsv: false),
+                ),
+                Divider(color: scheme.outlineVariant.withValues(alpha: 0.3), height: 16),
+                _ActionTile(
+                  icon: Icons.table_chart_rounded,
+                  label: 'Export as CSV',
+                  description: 'Export data in spreadsheet-compatible format',
+                  onTap: () => _exportData(context, ref, asCsv: true),
                 ),
                 Divider(color: scheme.outlineVariant.withValues(alpha: 0.3), height: 16),
                 _ActionTile(
                   icon: Icons.backup_rounded,
                   label: 'Backup to File',
                   description: 'Create a local backup archive',
-                  onTap: () => _backupToFile(context),
+                  onTap: () => _backupToFile(context, ref),
                 ),
                 Divider(color: scheme.outlineVariant.withValues(alpha: 0.3), height: 16),
                 _ActionTile(
@@ -306,7 +429,7 @@ class SettingsPage extends ConsumerWidget {
                   icon: Icons.delete_sweep_rounded,
                   label: 'Clear Cache',
                   description: 'Delete local temporary session files',
-                  onTap: () => _clearCache(context),
+                  onTap: () => _clearCache(context, ref),
                 ),
               ],
             ),
@@ -428,32 +551,9 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _exportData(BuildContext context) async {
+  Future<void> _exportData(BuildContext context, WidgetRef ref, {bool asCsv = false}) async {
     try {
-      final client = Supabase.instance.client;
-      final userId = client.auth.currentUser?.id;
-      if (userId == null) {
-        throw Exception('You must be signed in to export data.');
-      }
-      
-      final goals = await client.from('goals').select().eq('user_id', userId);
-      final projects = await client.from('projects').select().eq('user_id', userId);
-      final sessions = await client.from('time_logs').select().eq('user_id', userId);
-
-      final exportMap = {
-        'goals': goals,
-        'projects': projects,
-        'sessions': sessions,
-        'exported_at': DateTime.now().toIso8601String(),
-      };
-      
-      final jsonString = const JsonEncoder.withIndent('  ').convert(exportMap);
-      final bytes = utf8.encode(jsonString);
-      final base64 = base64Encode(bytes);
-      final url = 'data:application/json;base64,$base64';
-      
-      await launchUrl(Uri.parse(url));
-      
+      await ref.read(dataServiceProvider).exportAndShare(asCsv: asCsv);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Data exported successfully.')),
@@ -468,8 +568,21 @@ class SettingsPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _backupToFile(BuildContext context) async {
-    await _exportData(context);
+  Future<void> _backupToFile(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref.read(dataServiceProvider).backupToFile();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Backup file created.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Backup failed: $e')),
+        );
+      }
+    }
   }
 
   void _showRestoreDialog(BuildContext context, WidgetRef ref) {
@@ -485,10 +598,32 @@ class SettingsPage extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Paste the JSON content from your backup file below:',
+                'Paste the JSON content from your backup file below, or choose a file:',
                 style: TextStyle(fontSize: 12),
               ),
               const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  try {
+                    await ref.read(dataServiceProvider).restoreFromFilePicker();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Backup restored successfully.')),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Restore failed: $e')),
+                      );
+                    }
+                  }
+                },
+                icon: const Icon(Icons.file_open_rounded, size: 18),
+                label: const Text('Choose Backup File'),
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: controller,
                 maxLines: 8,
@@ -510,29 +645,7 @@ class SettingsPage extends ConsumerWidget {
               final text = controller.text;
               if (text.trim().isEmpty) return;
               try {
-                final data = jsonDecode(text) as Map<String, dynamic>;
-                final goals = data['goals'] as List?;
-                final projects = data['projects'] as List?;
-                final sessions = data['sessions'] as List?;
-
-                final client = Supabase.instance.client;
-
-                if (goals != null) {
-                  for (var g in goals) {
-                    await client.from('goals').upsert(g);
-                  }
-                }
-                if (projects != null) {
-                  for (var p in projects) {
-                    await client.from('projects').upsert(p);
-                  }
-                }
-                if (sessions != null) {
-                  for (var s in sessions) {
-                    await client.from('time_logs').upsert(s);
-                  }
-                }
-
+                await ref.read(dataServiceProvider).restoreFromJson(text);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Backup restored successfully.')),
@@ -542,7 +655,7 @@ class SettingsPage extends ConsumerWidget {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Restore failed: Invalid JSON format ($e)')),
+                    SnackBar(content: Text('Restore failed: $e')),
                   );
                 }
               }
@@ -554,14 +667,9 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _clearCache(BuildContext context) async {
+  Future<void> _clearCache(BuildContext context, WidgetRef ref) async {
     try {
-      if (!kIsWeb) {
-        final tempDir = await getTemporaryDirectory();
-        if (await tempDir.exists()) {
-          await tempDir.delete(recursive: true);
-        }
-      }
+      await ref.read(dataServiceProvider).clearCache();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Temporary cache cleared successfully.')),
@@ -616,9 +724,10 @@ class SettingsPage extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(ctx).pop();
-                Navigator.of(context).pop(); // Exit Settings page
+                Navigator.of(context).pop();
+                await ref.read(dataServiceProvider).clearCache();
                 ref.read(authProvider.notifier).signOut();
               },
               child: const Text('Sign Out'),
@@ -626,6 +735,13 @@ class SettingsPage extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+
+  void _showNotificationSoundPicker(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => _NotificationSoundPickerSheet(),
     );
   }
 
@@ -660,29 +776,43 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  void _showDoubleDeleteConfirmDialog(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
+  void _showDoubleDeleteConfirmDialog(BuildContext outerContext, WidgetRef ref) {
+    final scheme = Theme.of(outerContext).colorScheme;
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: outerContext,
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: scheme.surface,
         title: Text(
           'Wipe Account Data',
           style: TextStyle(color: scheme.error, fontWeight: FontWeight.bold),
         ),
         content: const Text(
-          'Are you absolutely sure? Click "Delete Permanently" to wipe all database tables and log out.',
+          'Are you absolutely sure? Biometric confirmation will be required to proceed.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: scheme.error),
             onPressed: () async {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop(); // Exit Settings page
+              Navigator.of(dialogContext).pop();
+              final bioService = ref.read(biometricServiceProvider);
+              final authenticated = await bioService.authenticate(
+                reason: 'Confirm account deletion',
+              );
+              if (!authenticated) {
+                if (outerContext.mounted) {
+                  ScaffoldMessenger.of(outerContext).showSnackBar(
+                    const SnackBar(content: Text('Biometric confirmation failed. Deletion cancelled.')),
+                  );
+                }
+                return;
+              }
+              if (outerContext.mounted) {
+                Navigator.of(outerContext).pop();
+              }
               try {
                 final client = Supabase.instance.client;
                 final userId = client.auth.currentUser?.id;
@@ -695,17 +825,18 @@ class SettingsPage extends ConsumerWidget {
                   }
                   await client.from('projects').delete().eq('user_id', userId);
                   await client.from('goals').delete().eq('user_id', userId);
+                  await ref.read(dataServiceProvider).clearCache();
                   await ref.read(authProvider.notifier).signOut();
                   
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                  if (outerContext.mounted) {
+                    ScaffoldMessenger.of(outerContext).showSnackBar(
                       const SnackBar(content: Text('Account wiped successfully.')),
                     );
                   }
                 }
               } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                if (outerContext.mounted) {
+                  ScaffoldMessenger.of(outerContext).showSnackBar(
                     SnackBar(content: Text('Deletion failed: $e')),
                   );
                 }
@@ -1015,7 +1146,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _SwitchRow extends StatelessWidget {
+class _SwitchRow extends ConsumerWidget {
   const _SwitchRow({
     required this.label,
     required this.description,
@@ -1029,7 +1160,7 @@ class _SwitchRow extends StatelessWidget {
   final ValueChanged<bool>? onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     return Padding(
@@ -1069,7 +1200,13 @@ class _SwitchRow extends StatelessWidget {
             child: CupertinoSwitch(
               value: value,
               activeTrackColor: scheme.primary,
-              onChanged: onChanged,
+              onChanged: onChanged == null
+                  ? null
+                  : (val) {
+                      ref.read(hapticServiceProvider).toggleSwitch();
+                      ref.read(soundServiceProvider).toggleSwitch();
+                      onChanged!(val);
+                    },
             ),
           ),
         ],
@@ -1078,7 +1215,7 @@ class _SwitchRow extends StatelessWidget {
   }
 }
 
-class _SegmentedSelector<T> extends StatelessWidget {
+class _SegmentedSelector<T> extends ConsumerWidget {
   const _SegmentedSelector({
     required this.label,
     required this.description,
@@ -1096,7 +1233,7 @@ class _SegmentedSelector<T> extends StatelessWidget {
   final String Function(T) labelBuilder;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     return Padding(
@@ -1138,7 +1275,11 @@ class _SegmentedSelector<T> extends StatelessWidget {
             children: options.map((opt) {
               final isSelected = opt == selectedOption;
               return GestureDetector(
-                onTap: () => onSelected(opt),
+                onTap: () {
+                  ref.read(hapticServiceProvider).buttonPress();
+                  ref.read(soundServiceProvider).buttonPress();
+                  onSelected(opt);
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -1169,7 +1310,7 @@ class _SegmentedSelector<T> extends StatelessWidget {
   }
 }
 
-class _ActionTile extends StatelessWidget {
+class _ActionTile extends ConsumerWidget {
   const _ActionTile({
     required this.icon,
     required this.label,
@@ -1185,13 +1326,17 @@ class _ActionTile extends StatelessWidget {
   final Color? color;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final tileColor = color ?? scheme.primary;
 
     return InkWell(
-      onTap: onTap,
+      onTap: () {
+        ref.read(hapticServiceProvider).buttonPress();
+        ref.read(soundServiceProvider).buttonPress();
+        onTap();
+      },
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
@@ -1240,6 +1385,114 @@ class _ActionTile extends StatelessWidget {
     );
   }
 }
+
+// ── Notification Sound Picker ────────────────────────────────────────────────
+
+class _NotificationSoundPickerSheet extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final settings = ref.watch(settingsProvider);
+
+    return Container(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Notification Sound',
+                    style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          _SoundOption(
+            label: 'Default',
+            subtitle: 'System default notification sound',
+            isSelected: settings.notificationSoundUri.isEmpty,
+            onTap: () {
+              ref.read(settingsProvider.notifier).setNotificationSound('', 'Default');
+              Navigator.of(context).pop();
+            },
+          ),
+          _SoundOption(
+            label: 'Pick from Ringtones',
+            subtitle: 'Choose a device ringtone',
+            isSelected: false,
+            onTap: () async {
+              final ringtoneService = RingtoneService();
+              final uri = await ringtoneService.pickRingtone();
+              if (uri != null && uri.isNotEmpty) {
+                final parts = uri.split('/');
+                final name = parts.isNotEmpty ? parts.last.replaceAll('.', ' ') : 'Custom';
+                ref.read(settingsProvider.notifier).setNotificationSound(uri, name);
+              }
+              if (context.mounted) Navigator.of(context).pop();
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+class _SoundOption extends StatelessWidget {
+  final String label;
+  final String subtitle;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _SoundOption({
+    required this.label,
+    required this.subtitle,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(
+        isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+        color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
+      ),
+      title: Text(label, style: TextStyle(fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+      onTap: onTap,
+    );
+  }
+}
+
+// ── End Notification Sound Picker ────────────────────────────────────────────
 
 class _InfoRow extends StatelessWidget {
   const _InfoRow({required this.label, required this.value});

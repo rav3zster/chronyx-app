@@ -1,7 +1,8 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
+import 'package:chronyx/core/services/haptic_service.dart';
 import 'package:chronyx/core/theme/scheme_x.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// A primary/secondary/destructive action for a project state screen.
 class ProjectStateAction {
@@ -150,7 +151,7 @@ class _ActionButton extends StatelessWidget {
         onTap: action.loading
             ? null
             : () {
-                HapticFeedback.selectionClick();
+                ProviderScope.containerOf(context).read(hapticServiceProvider).selectionClick();
                 action.onTap();
               },
         child: Container(

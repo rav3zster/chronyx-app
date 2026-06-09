@@ -1,6 +1,7 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
+import 'package:chronyx/core/services/haptic_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// User's choice from the recovery bottom sheet.
 enum RecoveryChoice { restoreMissing, replaceAll }
@@ -13,7 +14,7 @@ Future<RecoveryChoice?> showBlueprintRecoverySheet(
   BuildContext context, {
   required int existingTaskCount,
 }) {
-  HapticFeedback.selectionClick();
+  ProviderScope.containerOf(context).read(hapticServiceProvider).selectionClick();
   return showModalBottomSheet<RecoveryChoice>(
     context: context,
     isScrollControlled: true,
@@ -135,7 +136,7 @@ class _RecoveryOption extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         onTap: () {
-          HapticFeedback.selectionClick();
+  ProviderScope.containerOf(context).read(hapticServiceProvider).selectionClick();
           onTap();
         },
         child: Container(

@@ -1,7 +1,8 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
+import 'package:chronyx/core/services/haptic_service.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Actions a user can take on a project from the smart-actions sheet.
 enum SmartAction {
@@ -20,7 +21,7 @@ Future<SmartAction?> showProjectSmartActions(
   BuildContext context, {
   required ProjectStatus status,
 }) {
-  HapticFeedback.selectionClick();
+  ProviderScope.containerOf(context).read(hapticServiceProvider).selectionClick();
   return showModalBottomSheet<SmartAction>(
     context: context,
     isScrollControlled: true,
@@ -151,7 +152,7 @@ class _Row extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         onTap: () {
-          HapticFeedback.selectionClick();
+  ProviderScope.containerOf(context).read(hapticServiceProvider).selectionClick();
           onTap();
         },
         child: Padding(

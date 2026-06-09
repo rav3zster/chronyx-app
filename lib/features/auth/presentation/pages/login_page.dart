@@ -5,6 +5,7 @@ import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
 import 'package:chronyx/core/widgets/primary_button.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
+import 'package:chronyx/core/services/permission_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -59,6 +60,12 @@ class _LoginPageState extends ConsumerState<LoginPage>
     );
 
     _entranceCtrl.forward();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(permissionServiceProvider).requestOnFirstLaunch(context);
+      }
+    });
   }
 
   @override

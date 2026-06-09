@@ -2,6 +2,7 @@ import 'dart:async';
 
 // errors handled at repository layer
 import 'package:chronyx/core/providers/supabase_provider.dart';
+import 'package:chronyx/core/services/notification_service.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/goals/data/datasources/goals_remote_datasource.dart';
 import 'package:chronyx/features/goals/data/datasources/goals_supabase_datasource.dart';
@@ -62,7 +63,17 @@ class GoalsNotifier extends AsyncNotifier<List<GoalProgress>> {
         dailyTargetMinutes: dailyTargetMinutes,
         isChallenge: isChallenge,
       );
-      return _repository.fetchGoalsWithProgress();
+      final goals = await _repository.fetchGoalsWithProgress();
+      for (final gp in goals) {
+        if (gp.goal.endDate.isAfter(DateTime.now())) {
+          ref.read(notificationServiceProvider).scheduleGoalDeadlineReminder(
+            goalId: gp.goal.id,
+            goalTitle: gp.goal.title,
+            deadline: gp.goal.endDate,
+          );
+        }
+      }
+      return goals;
     });
   }
 
@@ -70,6 +81,7 @@ class GoalsNotifier extends AsyncNotifier<List<GoalProgress>> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       await _repository.deleteGoal(goalId);
+      await ref.read(notificationServiceProvider).cancelGoalDeadlineReminder(goalId);
       return _repository.fetchGoalsWithProgress();
     });
   }

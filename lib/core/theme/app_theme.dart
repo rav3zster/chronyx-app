@@ -1,6 +1,7 @@
 import 'package:chronyx/core/constants/app_colors.dart';
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/theme/app_text_theme.dart';
+import 'package:chronyx/core/services/sound_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -461,6 +462,7 @@ class AppTheme {
       colorScheme: scheme,
       textTheme: textTheme,
       scaffoldBackgroundColor: scaffoldBg,
+      splashFactory: const SoundSplashFactory(InkRipple.splashFactory),
 
       // ── AppBar ────────────────────────────────────────────────────────────
       appBarTheme: AppBarTheme(
@@ -649,6 +651,43 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         ),
       ),
+    );
+  }
+}
+
+class SoundSplashFactory extends InteractiveInkFeatureFactory {
+  const SoundSplashFactory(this.parentFactory);
+
+  final InteractiveInkFeatureFactory parentFactory;
+
+  @override
+  InteractiveInkFeature create({
+    required MaterialInkController controller,
+    required RenderBox referenceBox,
+    required Offset position,
+    required Color color,
+    required TextDirection textDirection,
+    bool containedInkWell = false,
+    RectCallback? rectCallback,
+    BorderRadius? borderRadius,
+    ShapeBorder? customBorder,
+    double? radius,
+    VoidCallback? onRemoved,
+  }) {
+    SoundService.instance?.buttonPress();
+
+    return parentFactory.create(
+      controller: controller,
+      referenceBox: referenceBox,
+      position: position,
+      color: color,
+      textDirection: textDirection,
+      containedInkWell: containedInkWell,
+      rectCallback: rectCallback,
+      borderRadius: borderRadius,
+      customBorder: customBorder,
+      radius: radius,
+      onRemoved: onRemoved,
     );
   }
 }

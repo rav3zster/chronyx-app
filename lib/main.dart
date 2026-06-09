@@ -1,5 +1,10 @@
 import 'package:chronyx/app.dart';
 import 'package:chronyx/core/constants/supabase_env.dart';
+import 'package:chronyx/core/services/inactivity_lock.dart';
+import 'package:chronyx/core/services/notification_service.dart';
+import 'package:chronyx/core/services/permission_service.dart';
+import 'package:chronyx/core/widgets/biometric_gate.dart';
+import 'package:chronyx/core/services/sound_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,13 +33,8 @@ Future<void> main() async {
     ),
   );
 
-  // ignore: avoid_print
-  print('[INIT] Supabase initialized — authFlowType: PKCE');
-  debugPrint('SUPABASE_URL=${SupabaseEnv.url}');
-  debugPrint('SUPABASE_URL_LENGTH=${SupabaseEnv.url.length}');
-  debugPrint('SUPABASE_ANON_KEY_LENGTH=${SupabaseEnv.anonKey.length}');
+  debugPrint('[INIT] Supabase initialized — authFlowType: PKCE');
 
-  // ── Auth diagnostics ────────────────────────────────────────────────────
   final session = Supabase.instance.client.auth.currentSession;
   final user = Supabase.instance.client.auth.currentUser;
   debugPrint('[AUTH] Session: ${session != null}');
@@ -46,7 +46,6 @@ Future<void> main() async {
     debugPrint('[AUTH USER] ${data.session?.user.id}');
     debugPrint('[AUTH ACCESS TOKEN] ${data.session?.accessToken != null}');
   });
-  // ────────────────────────────────────────────────────────────────────────
 
   final prefs = await SharedPreferences.getInstance();
 
@@ -55,9 +54,68 @@ Future<void> main() async {
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
       ],
-      child: const ChronyxApp(),
+      child: const _AppWithServices(),
     ),
   );
+}
+
+/// Wraps ChronyxApp with service initialization.
+class _AppWithServices extends ConsumerStatefulWidget {
+  const _AppWithServices();
+
+  @override
+  ConsumerState<_AppWithServices> createState() => _AppWithServicesState();
+}
+
+class _AppWithServicesState extends ConsumerState<_AppWithServices> {
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initServices();
+  }
+
+  Future<void> _initServices() async {
+    try {
+      ref.read(soundServiceProvider);
+      await ref.read(notificationServiceProvider).initialize();
+
+      final settings = ref.read(settingsProvider);
+      if (settings.dailyReminder) {
+        ref.read(notificationServiceProvider).scheduleDailyReminder(
+          TimeOfDay(hour: settings.dailyReminderHour, minute: settings.dailyReminderMinute),
+        );
+      }
+      if (settings.weeklySummaryNotify) {
+        ref.read(notificationServiceProvider).scheduleWeeklySummary();
+      }
+
+      if (settings.requireBiometrics) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ref.read(biometricGateNotifierProvider.notifier).authenticate();
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('[INIT] Service initialization error: $e');
+    }
+
+    if (mounted) {
+      setState(() => _initialized = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Read inactivity lock to keep it alive
+    ref.watch(inactivityLockProvider);
+    // Read biometric gate to keep it alive
+    ref.watch(biometricGateNotifierProvider);
+
+    return const ChronyxApp();
+  }
 }
 
 /// Same route surface as production (`/login`) so URLs and navigation match.

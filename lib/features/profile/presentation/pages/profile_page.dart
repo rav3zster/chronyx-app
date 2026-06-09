@@ -1,5 +1,6 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
+import 'package:chronyx/core/services/haptic_service.dart';
 import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/core/widgets/glass_card.dart';
 import 'package:chronyx/core/widgets/page_header.dart';
@@ -9,7 +10,6 @@ import 'package:chronyx/features/profile/presentation/providers/profile_avatar_p
 import 'package:chronyx/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -172,7 +172,7 @@ class _ProfileHeaderCard extends ConsumerWidget {
           // Avatar with hover/tap effect
           GestureDetector(
             onTap: () {
-              HapticFeedback.selectionClick();
+              ref.read(hapticServiceProvider).selectionClick();
               showAvatarPicker(context, ref);
             },
             child: MouseRegion(
@@ -474,7 +474,7 @@ class _ProfileMenu extends ConsumerWidget {
           title: 'Sign Out',
           description: 'Securely disconnect your current session',
           onTap: () {
-            HapticFeedback.vibrate();
+            ref.read(hapticServiceProvider).vibrate();
             _showSignOutDialog(context, ref);
           },
         ),

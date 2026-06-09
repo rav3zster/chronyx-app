@@ -1,11 +1,14 @@
+import 'package:chronyx/core/services/haptic_service.dart';
+import 'package:chronyx/core/services/sound_service.dart';
 import 'package:chronyx/core/theme/design_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Premium press feedback: subtle scale + light haptic.
+/// Premium press feedback: subtle scale + haptic (respects settings).
 ///
 /// Wrap any tappable surface that should feel responsive. Use this
 /// instead of bare GestureDetector on cards, tiles, and pill buttons.
-class PressScale extends StatefulWidget {
+class PressScale extends ConsumerStatefulWidget {
   const PressScale({
     super.key,
     required this.child,
@@ -22,10 +25,10 @@ class PressScale extends StatefulWidget {
   final bool haptics;
 
   @override
-  State<PressScale> createState() => _PressScaleState();
+  ConsumerState<PressScale> createState() => _PressScaleState();
 }
 
-class _PressScaleState extends State<PressScale>
+class _PressScaleState extends ConsumerState<PressScale>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
@@ -47,7 +50,16 @@ class _PressScaleState extends State<PressScale>
     _ctrl.forward();
   }
 
-  void _up(_) => _ctrl.reverse();
+  void _up(_) {
+    _ctrl.reverse();
+    if (widget.onTap != null) {
+      if (widget.haptics) {
+        ref.read(hapticServiceProvider).selectionClick();
+      }
+      ref.read(soundServiceProvider).buttonPress();
+    }
+  }
+
   void _cancel() => _ctrl.reverse();
 
   @override

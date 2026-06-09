@@ -1,7 +1,8 @@
 import 'package:chronyx/core/constants/app_spacing.dart';
+import 'package:chronyx/core/services/haptic_service.dart';
 import 'package:chronyx/features/profile/presentation/providers/profile_avatar_provider.dart';
+import 'package:chronyx/core/widgets/press_scale.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Tappable profile avatar shown beside the greeting. The character glyph
@@ -24,7 +25,7 @@ class ProfileAvatar extends ConsumerWidget {
       label: 'Change profile avatar',
       child: InkWell(
         onTap: () {
-          HapticFeedback.selectionClick();
+          ref.read(hapticServiceProvider).selectionClick();
           showAvatarPicker(context, ref);
         },
         borderRadius: BorderRadius.circular(size),
@@ -120,7 +121,7 @@ class _AvatarPickerSheet extends StatelessWidget {
                 glyph: glyph,
                 isSelected: isSelected,
                 onTap: () {
-                  HapticFeedback.selectionClick();
+                  ref.read(hapticServiceProvider).selectionClick();
                   ref.read(profileAvatarProvider.notifier).select(glyph);
                   Navigator.of(context).pop();
                 },
@@ -147,7 +148,7 @@ class _AvatarTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return GestureDetector(
+    return PressScale(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),

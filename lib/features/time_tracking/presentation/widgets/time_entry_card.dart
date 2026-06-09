@@ -27,6 +27,9 @@ class _TimeEntryCardState extends State<TimeEntryCard>
     TaskCategory.productive => const Color(0xFF22D3A6),
     TaskCategory.learning => const Color(0xFF818CF8),
     TaskCategory.break_ => const Color(0xFFFBBC05),
+    TaskCategory.meeting => const Color(0xFFFB923C),
+    TaskCategory.exercise => const Color(0xFF4ADE80),
+    TaskCategory.entertainment => const Color(0xFFF472B6),
     TaskCategory.distraction => const Color(0xFFEA4335),
     TaskCategory.other => const Color(0xFF94A3B8),
   };

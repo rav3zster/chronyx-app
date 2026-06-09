@@ -543,9 +543,7 @@ class _CategoryChips extends StatelessWidget {
     return Wrap(
       spacing: 10,
       runSpacing: 10,
-      children: TaskCategory.values
-          .where((c) => c != TaskCategory.distraction)
-          .map((cat) {
+      children: TaskCategory.selectable.map((cat) {
             final isSelected = cat == selected;
             return GestureDetector(
               onTap: () => onSelected(cat),

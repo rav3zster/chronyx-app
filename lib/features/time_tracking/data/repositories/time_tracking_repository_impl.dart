@@ -16,21 +16,16 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
       final models = await _remoteDataSource.fetchEntries();
       print('[REPO] fetchEntries ok, count=${models.length}');
       return models.map((m) => m.toEntity()).toList();
+    } on AppException {
+      rethrow;
     } on PostgrestException catch (e, st) {
-      // Expose the FULL Postgrest error — do not hide it.
       print('[REPO ERROR] PostgrestException in fetchTimeEntries');
       print('  code=${e.code}');
       print('  message=${e.message}');
       print('  details=${e.details}');
       print('  hint=${e.hint}');
       print(st);
-      throw Exception(
-        'POSTGREST ERROR\n'
-        'code=${e.code}\n'
-        'message=${e.message}\n'
-        'details=${e.details}\n'
-        'hint=${e.hint}',
-      );
+      throw _mapPostgrest(e);
     } catch (e, st) {
       print('[REPO ERROR] non-Postgrest in fetchTimeEntries: ${e.runtimeType}');
       print(e);
@@ -53,6 +48,8 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
         projectTaskId: projectTaskId,
       );
       return model.toEntity();
+    } on AppException {
+      rethrow;
     } on PostgrestException catch (e, st) {
       print('[REPO ERROR] PostgrestException in startSession');
       print('  code=${e.code}');
@@ -60,13 +57,7 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
       print('  details=${e.details}');
       print('  hint=${e.hint}');
       print(st);
-      throw Exception(
-        'POSTGREST ERROR\n'
-        'code=${e.code}\n'
-        'message=${e.message}\n'
-        'details=${e.details}\n'
-        'hint=${e.hint}',
-      );
+      throw _mapPostgrest(e);
     } catch (e, st) {
       print('[REPO ERROR] non-Postgrest in startSession: ${e.runtimeType}');
       print(e);
@@ -81,6 +72,8 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
     try {
       final model = await _remoteDataSource.stopSession(sessionId: sessionId);
       return model.toEntity();
+    } on AppException {
+      rethrow;
     } on PostgrestException catch (e, st) {
       print('[REPO ERROR] PostgrestException in stopSession');
       print('  code=${e.code}');
@@ -88,13 +81,7 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
       print('  details=${e.details}');
       print('  hint=${e.hint}');
       print(st);
-      throw Exception(
-        'POSTGREST ERROR\n'
-        'code=${e.code}\n'
-        'message=${e.message}\n'
-        'details=${e.details}\n'
-        'hint=${e.hint}',
-      );
+      throw _mapPostgrest(e);
     } catch (e, st) {
       print('[REPO ERROR] non-Postgrest in stopSession: ${e.runtimeType}');
       print(e);
@@ -102,6 +89,45 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
       if (_isNetworkError(e)) throw const NetworkException();
       rethrow;
     }
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  AppException _mapPostgrest(PostgrestException e) {
+    final code = e.code ?? '';
+    final msg = e.message.toLowerCase();
+
+    if (code == '42703' ||
+        (msg.contains('does not exist') && msg.contains('column'))) {
+      return ServerException(
+        'Database schema is out of date. Run the latest migration.',
+      );
+    }
+    if (code == '42P01' ||
+        (msg.contains('relation') && msg.contains('does not exist'))) {
+      return const ServerException(
+        'A required table is missing. Run the project migrations.',
+      );
+    }
+    if (code == '42501' ||
+        msg.contains('permission denied') ||
+        msg.contains('row-level security')) {
+      return const ServerException('Access denied by database policy.');
+    }
+    if (msg.contains('jwt') || msg.contains('not authenticated')) {
+      return const ServerException('Session expired. Please sign in again.');
+    }
+    if (code == '23502') {
+      return ServerException(
+        'Missing required field: ${e.message}',
+      );
+    }
+    if (code == '23503') {
+      return ServerException(
+        'Database FK violation: ${e.message}. Check that user exists in auth.users.',
+      );
+    }
+    return ServerException(e.message);
   }
 
   bool _isNetworkError(Object e) {

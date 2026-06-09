@@ -18,7 +18,6 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
 
   @override
   Future<List<TimeEntryModel>> fetchEntries() async {
-    // ── 1. Auth ──────────────────────────────────────────────────────────────
     print('[TIME] query start');
     final String userId;
     try {
@@ -31,7 +30,6 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
     }
     print('[TIME] current user=${userId}');
 
-    // ── 2. Query ─────────────────────────────────────────────────────────────
     final List<dynamic> rows;
     try {
       rows = await _supabaseClient
@@ -48,7 +46,6 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
     }
     print('[TIME] raw response=${rows}');
 
-    // ── 3. Mapping ───────────────────────────────────────────────────────────
     print('[TIME] mapping entries, count=${rows.length}');
     final List<TimeEntryModel> entries = [];
     for (int i = 0; i < rows.length; i++) {
@@ -72,34 +69,55 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
     String? projectTaskId,
   }) async {
     final String userId = _currentUserId;
-    final DateTime now = DateTime.now().toUtc();
 
+    // Data integrity: prevent empty task names.
+    final name = taskName.trim();
+    if (name.isEmpty) {
+      throw const ValidationException('Task name cannot be empty.');
+    }
+
+    // Data integrity: prevent duplicate active sessions.
+    final List<dynamic> active = await _supabaseClient
+        .from(_tableName)
+        .select('id')
+        .eq('user_id', userId)
+        .isFilter('end_time', null);
+    if (active.isNotEmpty) {
+      throw const ValidationException(
+        'A session is already running. Stop it before starting a new one.',
+      );
+    }
+
+    final DateTime now = DateTime.now().toUtc();
     final base = <String, dynamic>{
       'user_id': userId,
-      'task_name': taskName,
+      'task_name': name,
       'start_time': now.toIso8601String(),
+      'category': category.jsonKey,
     };
+    if (projectTaskId != null) {
+      base['project_task_id'] = projectTaskId;
+    }
 
     try {
-      final fullInsert = <String, dynamic>{
-        ...base,
-        'category': category.jsonKey,
-      };
-      if (projectTaskId != null) {
-        fullInsert['project_task_id'] = projectTaskId;
-      }
       final List<dynamic> rows = await _supabaseClient
           .from(_tableName)
-          .insert(fullInsert)
+          .insert(base)
           .select();
       return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
     } on PostgrestException catch (e) {
+      // Unknown column fallback (migration not yet run).
       if (e.code == '42703' ||
           e.message.contains('category') ||
           e.message.contains('project_task_id')) {
+        final fallback = <String, dynamic>{
+          'user_id': userId,
+          'task_name': name,
+          'start_time': now.toIso8601String(),
+        };
         final List<dynamic> rows = await _supabaseClient
             .from(_tableName)
-            .insert(base)
+            .insert(fallback)
             .select();
         return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
       }
@@ -111,9 +129,34 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
   Future<TimeEntryModel> stopSession({required String sessionId}) async {
     final String userId = _currentUserId;
     final DateTime now = DateTime.now().toUtc();
+
+    // Fetch the row first so we can compute duration_minutes accurately.
+    final List<dynamic> existing = await _supabaseClient
+        .from(_tableName)
+        .select('start_time')
+        .eq('user_id', userId)
+        .eq('id', sessionId)
+        .isFilter('end_time', null);
+
+    int? durationMinutes;
+    if (existing.isNotEmpty) {
+      final startRaw = (existing.first as Map<String, dynamic>)['start_time'];
+      if (startRaw != null) {
+        final start = DateTime.parse(startRaw as String);
+        final computed = now.difference(start).inMinutes;
+        // Guard: never store a negative duration.
+        durationMinutes = computed >= 0 ? computed : 0;
+      }
+    }
+
+    final update = <String, dynamic>{
+      'end_time': now.toIso8601String(),
+      if (durationMinutes != null) 'duration_minutes': durationMinutes,
+    };
+
     final List<dynamic> rows = await _supabaseClient
         .from(_tableName)
-        .update(<String, dynamic>{'end_time': now.toIso8601String()})
+        .update(update)
         .eq('user_id', userId)
         .eq('id', sessionId)
         .select();

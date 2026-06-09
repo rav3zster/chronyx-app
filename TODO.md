@@ -1,0 +1,4 @@
+- [ ] Edit TimeEntriesNotifier.refreshEntries() to guard auth readiness (mirror build()) so retry UI doesn’t show during auth transitions.
+- [ ] Optionally catch UnknownException (e.g., “Not authenticated”) inside refreshEntries() and return empty list.
+- [ ] Run `flutter analyze` and a quick build/test to ensure no Dart errors.
+- [ ] Manually verify: login -> open Time Tracking -> “no sessions” state shows without retry; start session -> transient server moment should not trigger retry unless it’s a real failure.

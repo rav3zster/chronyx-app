@@ -134,11 +134,28 @@ class TimeEntriesNotifier extends AsyncNotifier<List<TimeEntry>> {
   }
 
   Future<void> refreshEntries() async {
+    // Avoid flashing an error (and showing the Retry button) while auth is
+    // in-flight during login/redirect flows.
+    final authState = ref.watch(authProvider);
+    if (!authState.hasValue || authState.value == null) {
+      state = const AsyncData(<TimeEntry>[]);
+      return;
+    }
+
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final entries = await _repository.fetchTimeEntries();
-      _startTickerIfNeeded(entries);
-      return entries;
+      try {
+        final entries = await _repository.fetchTimeEntries();
+        _startTickerIfNeeded(entries);
+        return entries;
+      } catch (e) {
+        // If auth just became invalid (e.g., token refresh race), treat as
+        // empty instead of erroring the UI.
+        if (e is UnknownException) {
+          return <TimeEntry>[];
+        }
+        rethrow;
+      }
     });
   }
 

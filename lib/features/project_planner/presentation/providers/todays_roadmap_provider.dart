@@ -1,3 +1,4 @@
+import 'package:chronyx/core/services/widget_service.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project_task.dart';
@@ -58,14 +59,20 @@ final todaysRoadmapProvider = FutureProvider<TodaysRoadmap?>((ref) async {
         .where((t) => t.status == ProjectTaskStatus.completed)
         .length;
 
-    return TodaysRoadmap(
+    final roadmap = TodaysRoadmap(
       tasks: todayTasks,
       projectTitle: project.title,
       projectId: project.id,
       completedCount: completedCount,
       totalCount: todayTasks.length,
     );
+
+    // Sync to native home widget
+    WidgetService.syncTodayTasks(roadmap);
+
+    return roadmap;
   } catch (_) {
+    WidgetService.syncTodayTasks(null);
     return null;
   }
 });

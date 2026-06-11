@@ -2,6 +2,7 @@ import 'package:chronyx/app.dart';
 import 'package:chronyx/core/constants/supabase_env.dart';
 import 'package:chronyx/core/services/inactivity_lock.dart';
 import 'package:chronyx/core/services/notification_service.dart';
+import 'package:chronyx/core/services/widget_service.dart';
 import 'package:chronyx/core/widgets/biometric_gate.dart';
 import 'package:chronyx/core/services/sound_service.dart';
 import 'package:flutter/material.dart';
@@ -77,6 +78,9 @@ class _AppWithServicesState extends ConsumerState<_AppWithServices> {
     try {
       ref.read(soundServiceProvider);
       await ref.read(notificationServiceProvider).initialize();
+      
+      // Initialize native home screen widget service
+      WidgetService.initialize(ref);
 
       final settings = ref.read(settingsProvider);
       if (settings.dailyReminder) {

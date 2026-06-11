@@ -1,5 +1,6 @@
 package com.example.chronyx
 
+import android.content.ComponentName
 import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
@@ -12,11 +13,64 @@ import io.flutter.plugin.common.MethodChannel.Result
 import org.json.JSONArray
 import org.json.JSONObject
 
+import android.appwidget.AppWidgetManager
+import android.os.Bundle
+
 class MainActivity : FlutterFragmentActivity() {
     private val CHANNEL = "chronyx/ringtones"
+    private val WIDGET_CHANNEL = "com.example.chronyx/widget"
     private val PICK_RINGTONE_REQUEST = 1001
 
     private var pendingResult: Result? = null
+    private var pendingTaskIdToToggle: String? = null
+    private var pendingLaunchWidgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
+    private var pendingLaunchWidgetType: String? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        activeInstance = this
+        super.onCreate(savedInstanceState)
+        handleIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    override fun onDestroy() {
+        if (activeInstance == this) {
+            activeInstance = null
+        }
+        super.onDestroy()
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent == null) return
+        val action = intent.action
+        if (action == "com.example.chronyx.ACTION_TOGGLE_TASK") {
+            val taskId = intent.getStringExtra("task_id")
+            if (taskId != null) {
+                pendingTaskIdToToggle = taskId
+                flutterEngine?.let { engine ->
+                    MethodChannel(engine.dartExecutor.binaryMessenger, WIDGET_CHANNEL)
+                        .invokeMethod("toggleTask", taskId)
+                }
+            }
+        } else if (action == "com.example.chronyx.ACTION_OPEN_APP") {
+            pendingLaunchWidgetId = intent.getIntExtra("widget_id", AppWidgetManager.INVALID_APPWIDGET_ID)
+            pendingLaunchWidgetType = intent.getStringExtra("widget_type")
+            
+            flutterEngine?.let { engine ->
+                val data = mapOf(
+                    "widgetId" to if (pendingLaunchWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) null else pendingLaunchWidgetId,
+                    "widgetType" to pendingLaunchWidgetType
+                )
+                MethodChannel(engine.dartExecutor.binaryMessenger, WIDGET_CHANNEL)
+                    .invokeMethod("widgetLaunch", data)
+            }
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -40,6 +94,56 @@ class MainActivity : FlutterFragmentActivity() {
                     pickRingtone()
                 }
                 else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "updateWidget" -> {
+                    val intent = Intent(this@MainActivity, ChronyxWidgetProvider::class.java).apply {
+                        action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                    }
+                    this@MainActivity.sendBroadcast(intent)
+                    result.success(true)
+                }
+                "getLaunchIntent" -> {
+                    val taskId = pendingTaskIdToToggle
+                    pendingTaskIdToToggle = null
+                    result.success(taskId)
+                }
+                "getLaunchData" -> {
+                    val data = mapOf(
+                        "taskId" to pendingTaskIdToToggle,
+                        "widgetId" to if (pendingLaunchWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) null else pendingLaunchWidgetId,
+                        "widgetType" to pendingLaunchWidgetType
+                    )
+                    pendingTaskIdToToggle = null
+                    pendingLaunchWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
+                    pendingLaunchWidgetType = null
+                    result.success(data)
+                }
+                "getActiveWidgetIds" -> {
+                    val manager = AppWidgetManager.getInstance(this@MainActivity)
+                    val componentName = ComponentName(this@MainActivity, ChronyxWidgetProvider::class.java)
+                    val ids = manager.getAppWidgetIds(componentName)
+                    result.success(ids.toList())
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    companion object {
+        private var activeInstance: MainActivity? = null
+
+        fun notifyTaskToggled(taskId: String) {
+            activeInstance?.let { activity ->
+                activity.runOnUiThread {
+                    activity.flutterEngine?.let { engine ->
+                        MethodChannel(engine.dartExecutor.binaryMessenger, activity.WIDGET_CHANNEL)
+                            .invokeMethod("toggleTask", taskId)
+                    }
+                }
             }
         }
     }

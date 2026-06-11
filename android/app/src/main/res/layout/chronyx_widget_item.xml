@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/task_item_container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingVertical="6dp"
+    android:paddingHorizontal="4dp"
+    android:background="?android:attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Priority Dot -->
+    <ImageView
+        android:id="@+id/task_priority_dot"
+        android:layout_width="8dp"
+        android:layout_height="8dp"
+        android:layout_marginEnd="8dp"
+        android:src="@drawable/widget_priority_dot"
+        android:contentDescription="Priority"
+        android:visibility="gone"/>
+
+    <!-- Checkbox Image -->
+    <ImageView
+        android:id="@+id/task_checkbox"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginEnd="10dp"
+        android:src="@drawable/widget_checkbox_unchecked"
+        android:contentDescription="Checkbox"/>
+
+    <TextView
+        android:id="@+id/task_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Sample task title"
+        android:textColor="#F1F4FF"
+        android:textSize="13sp"
+        android:ellipsize="end"
+        android:singleLine="true"/>
+
+    <TextView
+        android:id="@+id/task_duration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="30m"
+        android:textColor="#8B96B8"
+        android:textSize="11sp"/>
+</LinearLayout>

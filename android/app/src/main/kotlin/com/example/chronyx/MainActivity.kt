@@ -125,7 +125,9 @@ class MainActivity : FlutterFragmentActivity() {
                         ChronyxImportantWidgetProvider::class.java,
                         ChronyxProjectWidgetProvider::class.java,
                         ChronyxStatsWidgetProvider::class.java,
-                        ChronyxFocusWidgetProvider::class.java
+                        ChronyxFocusWidgetProvider::class.java,
+                        ChronyxTodosWidgetProvider::class.java,
+                        ChronyxTodoTodayWidgetProvider::class.java
                     )
                     for (provider in providers) {
                         val intent = Intent(this@MainActivity, provider).apply {
@@ -167,6 +169,16 @@ class MainActivity : FlutterFragmentActivity() {
                     val importantIds = manager.getAppWidgetIds(ComponentName(this@MainActivity, ChronyxImportantWidgetProvider::class.java))
                     for (id in importantIds) {
                         resultList.add(mapOf("id" to id, "type" to "todo_important"))
+                    }
+
+                    val todosIds = manager.getAppWidgetIds(ComponentName(this@MainActivity, ChronyxTodosWidgetProvider::class.java))
+                    for (id in todosIds) {
+                        resultList.add(mapOf("id" to id, "type" to "todo"))
+                    }
+
+                    val todoTodayIds = manager.getAppWidgetIds(ComponentName(this@MainActivity, ChronyxTodoTodayWidgetProvider::class.java))
+                    for (id in todoTodayIds) {
+                        resultList.add(mapOf("id" to id, "type" to "todo_today"))
                     }
 
                     val projectIds = manager.getAppWidgetIds(ComponentName(this@MainActivity, ChronyxProjectWidgetProvider::class.java))

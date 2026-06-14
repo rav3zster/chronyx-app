@@ -73,6 +73,26 @@
                 android:resource="@xml/chronyx_widget_info" />
         </receiver>
 
+        <!-- Chronyx Todos Widget Provider -->
+        <receiver android:name=".ChronyxTodosWidgetProvider" android:exported="false" android:label="Chronyx Todos">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/chronyx_widget_info" />
+        </receiver>
+
+        <!-- Chronyx Todo Today Widget Provider -->
+        <receiver android:name=".ChronyxTodoTodayWidgetProvider" android:exported="false" android:label="Chronyx Todo Today">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/chronyx_widget_info" />
+        </receiver>
+
         <!-- Chronyx Project Widget Provider -->
         <receiver android:name=".ChronyxProjectWidgetProvider" android:exported="false" android:label="Chronyx Project">
             <intent-filter>

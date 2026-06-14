@@ -5,8 +5,8 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:paddingVertical="6dp"
-    android:paddingHorizontal="4dp"
+    android:paddingVertical="8dp"
+    android:paddingHorizontal="6dp"
     android:background="?android:attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true">
@@ -30,23 +30,51 @@
         android:src="@drawable/widget_checkbox_unchecked"
         android:contentDescription="Checkbox"/>
 
-    <TextView
-        android:id="@+id/task_title"
+    <!-- Text content area -->
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:text="Sample task title"
-        android:textColor="#F1F4FF"
-        android:textSize="13sp"
-        android:ellipsize="end"
-        android:singleLine="true"/>
+        android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/task_duration"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:text="30m"
-        android:textColor="#8B96B8"
-        android:textSize="11sp"/>
+        <TextView
+            android:id="@+id/task_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sample task title"
+            android:textColor="#F1F4FF"
+            android:textSize="13sp"
+            android:ellipsize="end"
+            android:singleLine="true"/>
+
+        <!-- Sub-item Metadata Row (hidden by default unless duration or due date exists) -->
+        <LinearLayout
+            android:id="@+id/task_meta_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="2dp"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/task_duration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="30m"
+                android:textColor="#8B96B8"
+                android:textSize="10sp"
+                android:layout_marginEnd="8dp"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/task_due_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Today"
+                android:textColor="#8B96B8"
+                android:textSize="10sp"
+                android:visibility="gone"/>
+        </LinearLayout>
+    </LinearLayout>
 </LinearLayout>

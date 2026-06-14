@@ -40,7 +40,9 @@ open class ChronyxWidgetProvider : AppWidgetProvider() {
                 ChronyxImportantWidgetProvider::class.java,
                 ChronyxProjectWidgetProvider::class.java,
                 ChronyxStatsWidgetProvider::class.java,
-                ChronyxFocusWidgetProvider::class.java
+                ChronyxFocusWidgetProvider::class.java,
+                ChronyxTodosWidgetProvider::class.java,
+                ChronyxTodoTodayWidgetProvider::class.java
             )
             for (provider in providers) {
                 val componentName = ComponentName(context, provider)
@@ -80,6 +82,10 @@ open class ChronyxWidgetProvider : AppWidgetProvider() {
             var widgetType = "today"
             if (className.contains("ChronyxImportantWidgetProvider")) {
                 widgetType = "todo_important"
+            } else if (className.contains("ChronyxTodosWidgetProvider")) {
+                widgetType = "todo"
+            } else if (className.contains("ChronyxTodoTodayWidgetProvider")) {
+                widgetType = "todo_today"
             } else if (className.contains("ChronyxProjectWidgetProvider")) {
                 widgetType = "project"
             } else if (className.contains("ChronyxStatsWidgetProvider")) {
@@ -119,6 +125,8 @@ open class ChronyxWidgetProvider : AppWidgetProvider() {
             if (stateJson == null || widgetTitle.isEmpty()) {
                 widgetTitle = when (widgetType) {
                     "todo_important" -> "Important Tasks"
+                    "todo" -> "All To-Dos"
+                    "todo_today" -> "Today's To-Dos"
                     "project" -> "Project Roadmap"
                     "stats" -> "My Analytics"
                     "focus" -> "Focus Session"

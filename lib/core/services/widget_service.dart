@@ -509,6 +509,7 @@ class WidgetService {
         'estimatedMinutes': todo.estimatedMinutes > 0 ? todo.estimatedMinutes : null,
         'status': todo.status.jsonKey,
         'priority': todo.priority.jsonKey,
+        'dueDate': todo.dueDate?.toIso8601String(),
       };
     }).toList();
 

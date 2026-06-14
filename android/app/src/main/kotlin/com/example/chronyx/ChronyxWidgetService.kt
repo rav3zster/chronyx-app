@@ -34,7 +34,8 @@ class ChronyxRemoteViewsFactory(
         val title: String,
         val estimatedMinutes: Int?,
         val status: String,
-        val priority: String
+        val priority: String,
+        val dueDate: String?
     )
 
     override fun onCreate() {
@@ -74,9 +75,9 @@ class ChronyxRemoteViewsFactory(
             views.setImageViewResource(R.id.task_checkbox, R.drawable.widget_checkbox_unchecked)
         }
 
-        // Priority Dots styling (High: Red, Medium: Yellow, Low: Gray/Hidden)
+        // Priority Dots styling (High/Critical: Red, Medium: Yellow, Low: Hidden)
         when (task.priority) {
-            "high" -> {
+            "high", "critical" -> {
                 views.setViewVisibility(R.id.task_priority_dot, View.VISIBLE)
                 views.setInt(R.id.task_priority_dot, "setColorFilter", Color.parseColor("#FF5370")) // red
             }
@@ -85,7 +86,6 @@ class ChronyxRemoteViewsFactory(
                 views.setInt(R.id.task_priority_dot, "setColorFilter", Color.parseColor("#F59E0B")) // warning orange/yellow
             }
             else -> {
-                // For low priority, show subtle cyan or hide it. Let's hide it for a cleaner UI, or show subtle dark border.
                 views.setViewVisibility(R.id.task_priority_dot, View.GONE)
             }
         }
@@ -96,6 +96,75 @@ class ChronyxRemoteViewsFactory(
             views.setViewVisibility(R.id.task_duration, View.VISIBLE)
         } else {
             views.setViewVisibility(R.id.task_duration, View.GONE)
+        }
+
+        // Formatted due date label
+        var formattedDueDate: String? = null
+        var isOverdue = false
+        if (task.dueDate != null) {
+            try {
+                val dateStr = if (task.dueDate.length >= 10) task.dueDate.substring(0, 10) else task.dueDate
+                val parts = dateStr.split("-")
+                if (parts.size == 3) {
+                    val year = parts[0].toInt()
+                    val month = parts[1].toInt()
+                    val day = parts[2].toInt()
+
+                    val calendar = java.util.Calendar.getInstance()
+                    val todayYear = calendar.get(java.util.Calendar.YEAR)
+                    val todayMonth = calendar.get(java.util.Calendar.MONTH) + 1
+                    val todayDay = calendar.get(java.util.Calendar.DAY_OF_MONTH)
+
+                    val targetCal = java.util.Calendar.getInstance().apply {
+                        set(year, month - 1, day, 0, 0, 0)
+                        set(java.util.Calendar.MILLISECOND, 0)
+                    }
+                    val todayCal = java.util.Calendar.getInstance().apply {
+                        set(todayYear, todayMonth - 1, todayDay, 0, 0, 0)
+                        set(java.util.Calendar.MILLISECOND, 0)
+                    }
+
+                    val diffDays = ((targetCal.timeInMillis - todayCal.timeInMillis) / (24 * 60 * 60 * 1000)).toInt()
+
+                    formattedDueDate = when (diffDays) {
+                        0 -> "Today"
+                        1 -> "Tomorrow"
+                        -1 -> "Yesterday"
+                        else -> {
+                            if (diffDays < -1) {
+                                isOverdue = true
+                                "Overdue"
+                            } else {
+                                val months = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+                                if (month in 1..12) "${months[month - 1]} $day" else dateStr
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        if (formattedDueDate != null) {
+            views.setTextViewText(R.id.task_due_date, formattedDueDate)
+            views.setViewVisibility(R.id.task_due_date, View.VISIBLE)
+            if (isOverdue && !isCompleted) {
+                views.setTextColor(R.id.task_due_date, Color.parseColor("#FF5370")) // red for overdue
+            } else {
+                views.setTextColor(R.id.task_due_date, Color.parseColor("#8B96B8")) // standard gray
+            }
+        } else {
+            views.setViewVisibility(R.id.task_due_date, View.GONE)
+        }
+
+        // Show/hide sub-item metadata row container
+        val hasDuration = task.estimatedMinutes != null && task.estimatedMinutes > 0
+        val hasDueDate = formattedDueDate != null
+        if (hasDuration || hasDueDate) {
+            views.setViewVisibility(R.id.task_meta_container, View.VISIBLE)
+        } else {
+            views.setViewVisibility(R.id.task_meta_container, View.GONE)
         }
 
         // Setup fillInIntent to pass widget_id and task_id to the pending intent template in ChronyxWidgetProvider
@@ -140,7 +209,12 @@ class ChronyxRemoteViewsFactory(
                         }
                         val status = obj.optString("status", "pending")
                         val priority = obj.optString("priority", "low")
-                        tasksList.add(TaskItem(id, title, estMin, status, priority))
+                        val dueDate = if (obj.has("dueDate") && !obj.isNull("dueDate")) {
+                            obj.optString("dueDate")
+                        } else {
+                            null
+                        }
+                        tasksList.add(TaskItem(id, title, estMin, status, priority, dueDate))
                     }
                 }
             } catch (e: Exception) {

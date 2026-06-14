@@ -19,4 +19,6 @@ class AppRoutes {
   static const String projectDetail = '/project/:projectId';
   static const String lifeInsights = '/life-insights';
   static const String authDebug = '/auth-debug';
+  static const String todos = '/todos';
 }
+

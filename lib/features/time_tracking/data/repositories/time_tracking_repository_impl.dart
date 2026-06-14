@@ -165,12 +165,14 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
     required String sessionId,
     required String taskName,
     required TaskCategory category,
+    String? notes,
   }) async {
     try {
       final model = await _remoteDataSource.updateSession(
         sessionId: sessionId,
         taskName: taskName,
         category: category,
+        notes: notes,
       );
       return model.toEntity();
     } on AppException {
@@ -188,7 +190,50 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
     }
   }
 
+  @override
+
+  Future<void> mergeSessions({
+    required String firstSessionId,
+    required String secondSessionId,
+    required String mergedTaskName,
+    required TaskCategory mergedCategory,
+    required DateTime mergedStartTime,
+    required DateTime? mergedEndTime,
+    required int mergedElapsedSeconds,
+    required int mergedPausedSeconds,
+    required double mergedCompletionPercentage,
+    String? mergedNotes,
+  }) async {
+    try {
+      await _remoteDataSource.mergeSessions(
+        firstSessionId: firstSessionId,
+        secondSessionId: secondSessionId,
+        mergedTaskName: mergedTaskName,
+        mergedCategory: mergedCategory,
+        mergedStartTime: mergedStartTime,
+        mergedEndTime: mergedEndTime,
+        mergedElapsedSeconds: mergedElapsedSeconds,
+        mergedPausedSeconds: mergedPausedSeconds,
+        mergedCompletionPercentage: mergedCompletionPercentage,
+        mergedNotes: mergedNotes,
+      );
+    } on AppException {
+      rethrow;
+    } on PostgrestException catch (e, st) {
+      print('[REPO ERROR] PostgrestException in mergeSessions');
+      print(st);
+      throw _mapPostgrest(e);
+    } catch (e, st) {
+      print('[REPO ERROR] non-Postgrest in mergeSessions: ${e.runtimeType}');
+      print(e);
+      print(st);
+      if (_isNetworkError(e)) throw const NetworkException();
+      rethrow;
+    }
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
+
 
   AppException _mapPostgrest(PostgrestException e) {
     final code = e.code ?? '';

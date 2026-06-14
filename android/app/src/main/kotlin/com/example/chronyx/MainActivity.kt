@@ -15,6 +15,7 @@ import org.json.JSONObject
 
 import android.appwidget.AppWidgetManager
 import android.os.Bundle
+import android.util.Log
 
 class MainActivity : FlutterFragmentActivity() {
     private val CHANNEL = "chronyx/ringtones"
@@ -25,6 +26,8 @@ class MainActivity : FlutterFragmentActivity() {
     private var pendingTaskIdToToggle: String? = null
     private var pendingLaunchWidgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
     private var pendingLaunchWidgetType: String? = null
+    private var pendingLaunchWidgetAction: String? = null
+    private var pendingLaunchFocusAction: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         activeInstance = this
@@ -48,6 +51,8 @@ class MainActivity : FlutterFragmentActivity() {
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
         val action = intent.action
+        Log.d("MainActivity", "handleIntent action: $action")
+        
         if (action == "com.example.chronyx.ACTION_TOGGLE_TASK") {
             val taskId = intent.getStringExtra("task_id")
             if (taskId != null) {
@@ -68,6 +73,21 @@ class MainActivity : FlutterFragmentActivity() {
                 )
                 MethodChannel(engine.dartExecutor.binaryMessenger, WIDGET_CHANNEL)
                     .invokeMethod("widgetLaunch", data)
+            }
+        } else if (action == "com.example.chronyx.ACTION_QUICK_ADD") {
+            pendingLaunchWidgetAction = "quick_add"
+            flutterEngine?.let { engine ->
+                MethodChannel(engine.dartExecutor.binaryMessenger, WIDGET_CHANNEL)
+                    .invokeMethod("quickAdd", null)
+            }
+        } else if (action == "com.example.chronyx.ACTION_FOCUS_CONTROL") {
+            val focusAction = intent.getStringExtra("focus_action")
+            if (focusAction != null) {
+                pendingLaunchFocusAction = focusAction
+                flutterEngine?.let { engine ->
+                    MethodChannel(engine.dartExecutor.binaryMessenger, WIDGET_CHANNEL)
+                        .invokeMethod("focusControl", focusAction)
+                }
             }
         }
     }
@@ -100,10 +120,19 @@ class MainActivity : FlutterFragmentActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "updateWidget" -> {
-                    val intent = Intent(this@MainActivity, ChronyxWidgetProvider::class.java).apply {
-                        action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                    val providers = listOf(
+                        ChronyxWidgetProvider::class.java,
+                        ChronyxImportantWidgetProvider::class.java,
+                        ChronyxProjectWidgetProvider::class.java,
+                        ChronyxStatsWidgetProvider::class.java,
+                        ChronyxFocusWidgetProvider::class.java
+                    )
+                    for (provider in providers) {
+                        val intent = Intent(this@MainActivity, provider).apply {
+                            action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                        }
+                        this@MainActivity.sendBroadcast(intent)
                     }
-                    this@MainActivity.sendBroadcast(intent)
                     result.success(true)
                 }
                 "getLaunchIntent" -> {
@@ -115,18 +144,47 @@ class MainActivity : FlutterFragmentActivity() {
                     val data = mapOf(
                         "taskId" to pendingTaskIdToToggle,
                         "widgetId" to if (pendingLaunchWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) null else pendingLaunchWidgetId,
-                        "widgetType" to pendingLaunchWidgetType
+                        "widgetType" to pendingLaunchWidgetType,
+                        "action" to pendingLaunchWidgetAction,
+                        "focusAction" to pendingLaunchFocusAction
                     )
                     pendingTaskIdToToggle = null
                     pendingLaunchWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
                     pendingLaunchWidgetType = null
+                    pendingLaunchWidgetAction = null
+                    pendingLaunchFocusAction = null
                     result.success(data)
                 }
                 "getActiveWidgetIds" -> {
                     val manager = AppWidgetManager.getInstance(this@MainActivity)
-                    val componentName = ComponentName(this@MainActivity, ChronyxWidgetProvider::class.java)
-                    val ids = manager.getAppWidgetIds(componentName)
-                    result.success(ids.toList())
+                    val resultList = mutableListOf<Map<String, Any>>()
+                    
+                    val todayIds = manager.getAppWidgetIds(ComponentName(this@MainActivity, ChronyxWidgetProvider::class.java))
+                    for (id in todayIds) {
+                        resultList.add(mapOf("id" to id, "type" to "today"))
+                    }
+                    
+                    val importantIds = manager.getAppWidgetIds(ComponentName(this@MainActivity, ChronyxImportantWidgetProvider::class.java))
+                    for (id in importantIds) {
+                        resultList.add(mapOf("id" to id, "type" to "todo_important"))
+                    }
+
+                    val projectIds = manager.getAppWidgetIds(ComponentName(this@MainActivity, ChronyxProjectWidgetProvider::class.java))
+                    for (id in projectIds) {
+                        resultList.add(mapOf("id" to id, "type" to "project"))
+                    }
+
+                    val statsIds = manager.getAppWidgetIds(ComponentName(this@MainActivity, ChronyxStatsWidgetProvider::class.java))
+                    for (id in statsIds) {
+                        resultList.add(mapOf("id" to id, "type" to "stats"))
+                    }
+
+                    val focusIds = manager.getAppWidgetIds(ComponentName(this@MainActivity, ChronyxFocusWidgetProvider::class.java))
+                    for (id in focusIds) {
+                        resultList.add(mapOf("id" to id, "type" to "focus"))
+                    }
+
+                    result.success(resultList)
                 }
                 else -> result.notImplemented()
             }

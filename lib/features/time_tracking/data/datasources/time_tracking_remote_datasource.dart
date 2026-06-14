@@ -21,5 +21,18 @@ abstract class TimeTrackingRemoteDataSource {
     required String sessionId,
     required String taskName,
     required TaskCategory category,
+    String? notes,
+  });
+  Future<void> mergeSessions({
+    required String firstSessionId,
+    required String secondSessionId,
+    required String mergedTaskName,
+    required TaskCategory mergedCategory,
+    required DateTime mergedStartTime,
+    required DateTime? mergedEndTime,
+    required int mergedElapsedSeconds,
+    required int mergedPausedSeconds,
+    required double mergedCompletionPercentage,
+    String? mergedNotes,
   });
 }

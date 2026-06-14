@@ -14,7 +14,7 @@ import android.widget.RemoteViews
 import org.json.JSONArray
 import org.json.JSONObject
 
-class ChronyxWidgetProvider : AppWidgetProvider() {
+open class ChronyxWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         for (appWidgetId in appWidgetIds) {
@@ -35,75 +35,22 @@ class ChronyxWidgetProvider : AppWidgetProvider() {
 
         if (action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
             val appWidgetManager = AppWidgetManager.getInstance(context)
-            val componentName = ComponentName(context, ChronyxWidgetProvider::class.java)
-            val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-            appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list)
-            for (appWidgetId in appWidgetIds) {
-                updateAppWidget(context, appWidgetManager, appWidgetId)
-            }
-        } else if (action == "com.example.chronyx.ACTION_TOGGLE_TASK_BACKGROUND") {
-            val taskId = intent.getStringExtra("task_id")
-            val appWidgetId = intent.getIntExtra("widget_id", AppWidgetManager.INVALID_APPWIDGET_ID)
-            
-            if (taskId != null && appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                Log.d("ChronyxWidgetProvider", "Toggling task $taskId for widget $appWidgetId in background")
-                
-                // 1. Optimistic UI update: Modify SharedPreferences state instantly
-                val nextStatus = toggleTaskInSharedPreferences(context, appWidgetId, taskId)
-                
-                // 2. Trigger instant widget UI reload
-                val appWidgetManager = AppWidgetManager.getInstance(context)
-                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list)
-                updateAppWidget(context, appWidgetManager, appWidgetId)
-                
-                // 3. Sync to Supabase in a background thread
-                if (nextStatus != null) {
-                    SupabaseNetworkClient.toggleTaskStatus(context, taskId, nextStatus)
-                    
-                    // 4. If MainActivity is active, notify Flutter via MethodChannel
-                    MainActivity.notifyTaskToggled(taskId)
+            val providers = listOf(
+                ChronyxWidgetProvider::class.java,
+                ChronyxImportantWidgetProvider::class.java,
+                ChronyxProjectWidgetProvider::class.java,
+                ChronyxStatsWidgetProvider::class.java,
+                ChronyxFocusWidgetProvider::class.java
+            )
+            for (provider in providers) {
+                val componentName = ComponentName(context, provider)
+                val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list)
+                for (appWidgetId in appWidgetIds) {
+                    updateAppWidget(context, appWidgetManager, appWidgetId)
                 }
             }
         }
-    }
-
-    private fun toggleTaskInSharedPreferences(context: Context, appWidgetId: Int, taskId: String): String? {
-        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val stateKey = "flutter.widget_state_$appWidgetId"
-        val stateJson = prefs.getString(stateKey, null) ?: return null
-
-        try {
-            val stateObj = JSONObject(stateJson)
-            val tasksArray = stateObj.optJSONArray("tasks") ?: return null
-            var nextStatus: String? = null
-            var completedCount = 0
-
-            for (i in 0 until tasksArray.length()) {
-                val task = tasksArray.getJSONObject(i)
-                if (task.optString("id") == taskId) {
-                    val currentStatus = task.optString("status")
-                    nextStatus = if (currentStatus == "completed") "pending" else "completed"
-                    task.put("status", nextStatus)
-                }
-                if (task.optString("status") == "completed") {
-                    completedCount++
-                }
-            }
-
-            if (nextStatus != null) {
-                stateObj.put("completedCount", completedCount)
-                val totalCount = tasksArray.length()
-                val pct = if (totalCount == 0) 0 else ((completedCount.toDouble() / totalCount.toDouble()) * 100).toInt()
-                stateObj.put("progressPercentage", pct)
-
-                // Save back to preferences
-                prefs.edit().putString(stateKey, stateObj.toString()).commit()
-                return nextStatus
-            }
-        } catch (e: Exception) {
-            Log.e("ChronyxWidgetProvider", "Error toggling task in local cache", e)
-        }
-        return null
     }
 
     companion object {
@@ -120,21 +67,41 @@ class ChronyxWidgetProvider : AppWidgetProvider() {
             // Medium: height < 220dp
             // Large: height >= 220dp
             val isSmall = minHeight < 110 || minWidth < 180
-            val isMedium = minHeight in 110..219
-            val isLarge = minHeight >= 220
 
             // Read Config and State for this widget ID
             val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             val stateKey = "flutter.widget_state_$appWidgetId"
             val stateJson = prefs.getString(stateKey, null)
 
-            var widgetTitle = "Chronyx Tasks"
+            // Resolve widget type based on provider class name
+            val component = appWidgetManager.getAppWidgetInfo(appWidgetId)?.provider
+            val className = component?.className ?: ""
+            
+            var widgetType = "today"
+            if (className.contains("ChronyxImportantWidgetProvider")) {
+                widgetType = "todo_important"
+            } else if (className.contains("ChronyxProjectWidgetProvider")) {
+                widgetType = "project"
+            } else if (className.contains("ChronyxStatsWidgetProvider")) {
+                widgetType = "stats"
+            } else if (className.contains("ChronyxFocusWidgetProvider")) {
+                widgetType = "focus"
+            } else {
+                if (stateJson != null) {
+                    try {
+                        val stateObj = JSONObject(stateJson)
+                        widgetType = stateObj.optString("widgetType", "today")
+                    } catch (e: Exception) {}
+                }
+            }
+
+            var widgetTitle = "Chronyx Today"
             var widgetSubtitle = "No tasks"
             var pctProgress = 0
             var completedCount = 0
             var totalCount = 0
-            var widgetType = "today"
 
+            // Parse state values
             if (stateJson != null) {
                 try {
                     val stateObj = JSONObject(stateJson)
@@ -142,55 +109,27 @@ class ChronyxWidgetProvider : AppWidgetProvider() {
                     completedCount = stateObj.optInt("completedCount", 0)
                     totalCount = stateObj.optInt("totalCount", 0)
                     pctProgress = stateObj.optInt("progressPercentage", 0)
-                    widgetType = stateObj.optString("widgetType", "today")
                     widgetSubtitle = "$completedCount/$totalCount completed"
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
             }
 
+            // Fallback default titles for known types
+            if (stateJson == null || widgetTitle.isEmpty()) {
+                widgetTitle = when (widgetType) {
+                    "todo_important" -> "Important Tasks"
+                    "project" -> "Project Roadmap"
+                    "stats" -> "My Analytics"
+                    "focus" -> "Focus Session"
+                    else -> "Chronyx Today"
+                }
+            }
+
             views.setTextViewText(R.id.widget_title, widgetTitle)
             views.setTextViewText(R.id.widget_subtitle, widgetSubtitle)
 
-            // Dynamic layout adjustments based on size
-            if (isSmall) {
-                // Hide progress bar in small widgets to save vertical space
-                views.setViewVisibility(R.id.widget_progress_bar, View.GONE)
-                views.setViewVisibility(R.id.widget_divider, View.GONE)
-            } else {
-                views.setViewVisibility(R.id.widget_progress_bar, View.VISIBLE)
-                views.setViewVisibility(R.id.widget_divider, View.VISIBLE)
-                views.setProgressBar(R.id.widget_progress_bar, 100, pctProgress, false)
-            }
-
-            if (totalCount == 0) {
-                views.setViewVisibility(R.id.widget_empty_view, View.VISIBLE)
-                views.setViewVisibility(R.id.widget_list, View.GONE)
-            } else {
-                views.setViewVisibility(R.id.widget_empty_view, View.GONE)
-                views.setViewVisibility(R.id.widget_list, View.VISIBLE)
-            }
-
-            // Set up RemoteViews ListView Service Intent
-            val intent = Intent(context, ChronyxWidgetService::class.java).apply {
-                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
-            }
-            views.setRemoteAdapter(R.id.widget_list, intent)
-
-            // Setup PendingIntent template for ListView clicks (com.example.chronyx.ACTION_TOGGLE_TASK_BACKGROUND)
-            val clickIntent = Intent(context, ChronyxWidgetProvider::class.java).apply {
-                action = "com.example.chronyx.ACTION_TOGGLE_TASK_BACKGROUND"
-            }
-            val clickPendingIntent = PendingIntent.getBroadcast(
-                context,
-                appWidgetId,
-                clickIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-            )
-            views.setPendingIntentTemplate(R.id.widget_list, clickPendingIntent)
-
-            // Setup PendingIntent for Header: Tapping open launches MainActivity to a specific route or general main
+            // Setup Header click (launches MainActivity)
             val headerIntent = Intent(context, MainActivity::class.java).apply {
                 action = "com.example.chronyx.ACTION_OPEN_APP"
                 putExtra("widget_id", appWidgetId)
@@ -216,6 +155,183 @@ class ChronyxWidgetProvider : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             views.setOnClickPendingIntent(R.id.widget_refresh_button, syncPendingIntent)
+
+            // Setup Quick Add floating button click
+            val addIntent = Intent(context, MainActivity::class.java).apply {
+                action = "com.example.chronyx.ACTION_QUICK_ADD"
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val addPendingIntent = PendingIntent.getActivity(
+                context,
+                appWidgetId + 3000,
+                addIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(R.id.widget_add_button, addPendingIntent)
+
+            // Handle UI branching based on layout category (List, Stats, or Focus)
+            if (widgetType == "stats") {
+                // Hide List layout and Focus layouts
+                views.setViewVisibility(R.id.widget_list, View.GONE)
+                views.setViewVisibility(R.id.widget_empty_view, View.GONE)
+                views.setViewVisibility(R.id.widget_progress_bar, View.GONE)
+                views.setViewVisibility(R.id.widget_divider, View.GONE)
+                views.setViewVisibility(R.id.widget_focus_layout, View.GONE)
+
+                // Show Stats layout
+                views.setViewVisibility(R.id.widget_stats_layout, View.VISIBLE)
+
+                // Parse and populate statistics
+                var deepWorkHrs = 0.0
+                var weeklyStreak = 0
+                var tasksCompleted = 0
+                if (stateJson != null) {
+                    try {
+                        val stateObj = JSONObject(stateJson)
+                        deepWorkHrs = stateObj.optDouble("deepWorkHours", 0.0)
+                        weeklyStreak = stateObj.optInt("weeklyStreak", 0)
+                        tasksCompleted = stateObj.optInt("tasksCompleted", 0)
+                    } catch (e: Exception) {}
+                }
+
+                views.setTextViewText(R.id.widget_subtitle, "Weekly productivity")
+                views.setTextViewText(R.id.widget_stat_deep_work_val, String.format("%.1f", deepWorkHrs))
+                views.setTextViewText(R.id.widget_stat_streak_val, weeklyStreak.toString())
+                views.setTextViewText(R.id.widget_stat_completed_val, tasksCompleted.toString())
+
+            } else if (widgetType == "focus") {
+                // Hide List layout and Stats layouts
+                views.setViewVisibility(R.id.widget_list, View.GONE)
+                views.setViewVisibility(R.id.widget_empty_view, View.GONE)
+                views.setViewVisibility(R.id.widget_progress_bar, View.GONE)
+                views.setViewVisibility(R.id.widget_divider, View.GONE)
+                views.setViewVisibility(R.id.widget_stats_layout, View.GONE)
+
+                // Show Focus layout
+                views.setViewVisibility(R.id.widget_focus_layout, View.VISIBLE)
+
+                var focusTask = "No Active Session"
+                var status = "idle"
+                var displayTime = "--:--"
+
+                if (stateJson != null) {
+                    try {
+                        val stateObj = JSONObject(stateJson)
+                        status = stateObj.optString("status", "idle")
+                        focusTask = stateObj.optString("taskName", "Focus Session")
+                        val elapsed = stateObj.optInt("elapsedSeconds", 0)
+                        val remaining = stateObj.optInt("remainingSeconds", 0)
+                        val sessionMode = stateObj.optString("sessionMode", "stopwatch")
+
+                        val activeTimeSec = if (sessionMode == "stopwatch") elapsed else remaining
+                        val mins = activeTimeSec / 60
+                        val secs = activeTimeSec % 60
+                        displayTime = String.format("%02d:%02d", mins, secs)
+                    } catch (e: Exception) {}
+                }
+
+                views.setTextViewText(R.id.widget_subtitle, "Active Timer")
+                views.setTextViewText(R.id.widget_focus_task_title, focusTask)
+                views.setTextViewText(R.id.widget_focus_timer, displayTime)
+
+                if (status == "idle") {
+                    views.setViewVisibility(R.id.widget_focus_pause_btn, View.GONE)
+                    views.setViewVisibility(R.id.widget_focus_resume_btn, View.GONE)
+                    views.setViewVisibility(R.id.widget_focus_stop_btn, View.GONE)
+                } else {
+                    val isPaused = status == "paused"
+                    if (isPaused) {
+                        views.setViewVisibility(R.id.widget_focus_pause_btn, View.GONE)
+                        views.setViewVisibility(R.id.widget_focus_resume_btn, View.VISIBLE)
+                    } else {
+                        views.setViewVisibility(R.id.widget_focus_pause_btn, View.VISIBLE)
+                        views.setViewVisibility(R.id.widget_focus_resume_btn, View.GONE)
+                    }
+                    views.setViewVisibility(R.id.widget_focus_stop_btn, View.VISIBLE)
+
+                    // Bind control clicks to MainActivity triggers
+                    val pauseIntent = Intent(context, MainActivity::class.java).apply {
+                        action = "com.example.chronyx.ACTION_FOCUS_CONTROL"
+                        putExtra("focus_action", "pause")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    val pausePendingIntent = PendingIntent.getActivity(
+                        context,
+                        appWidgetId + 4000,
+                        pauseIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                    )
+                    views.setOnClickPendingIntent(R.id.widget_focus_pause_btn, pausePendingIntent)
+
+                    val resumeIntent = Intent(context, MainActivity::class.java).apply {
+                        action = "com.example.chronyx.ACTION_FOCUS_CONTROL"
+                        putExtra("focus_action", "resume")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    val resumePendingIntent = PendingIntent.getActivity(
+                        context,
+                        appWidgetId + 5000,
+                        resumeIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                    )
+                    views.setOnClickPendingIntent(R.id.widget_focus_resume_btn, resumePendingIntent)
+
+                    val stopIntent = Intent(context, MainActivity::class.java).apply {
+                        action = "com.example.chronyx.ACTION_FOCUS_CONTROL"
+                        putExtra("focus_action", "stop")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    val stopPendingIntent = PendingIntent.getActivity(
+                        context,
+                        appWidgetId + 6000,
+                        stopIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                    )
+                    views.setOnClickPendingIntent(R.id.widget_focus_stop_btn, stopPendingIntent)
+                }
+
+            } else {
+                // List layouts: today, important, project, etc.
+                views.setViewVisibility(R.id.widget_stats_layout, View.GONE)
+                views.setViewVisibility(R.id.widget_focus_layout, View.GONE)
+
+                // Dynamic progress visibility based on widget size
+                if (isSmall) {
+                    views.setViewVisibility(R.id.widget_progress_bar, View.GONE)
+                    views.setViewVisibility(R.id.widget_divider, View.GONE)
+                } else {
+                    views.setViewVisibility(R.id.widget_progress_bar, View.VISIBLE)
+                    views.setViewVisibility(R.id.widget_divider, View.VISIBLE)
+                    views.setProgressBar(R.id.widget_progress_bar, 100, pctProgress, false)
+                }
+
+                if (totalCount == 0) {
+                    views.setViewVisibility(R.id.widget_empty_view, View.VISIBLE)
+                    views.setViewVisibility(R.id.widget_list, View.GONE)
+                } else {
+                    views.setViewVisibility(R.id.widget_empty_view, View.GONE)
+                    views.setViewVisibility(R.id.widget_list, View.VISIBLE)
+                }
+
+                // Set up RemoteViews ListView Service Intent
+                val listIntent = Intent(context, ChronyxWidgetService::class.java).apply {
+                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                    data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
+                }
+                views.setRemoteAdapter(R.id.widget_list, listIntent)
+
+                // Setup PendingIntent template for ListView item toggling
+                val clickIntent = Intent(context, MainActivity::class.java).apply {
+                    action = "com.example.chronyx.ACTION_TOGGLE_TASK"
+                }
+                val clickPendingIntent = PendingIntent.getActivity(
+                    context,
+                    appWidgetId,
+                    clickIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                )
+                views.setPendingIntentTemplate(R.id.widget_list, clickPendingIntent)
+            }
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }

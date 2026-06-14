@@ -102,18 +102,21 @@ enum SessionStatus {
 
 enum SessionMode {
   stopwatch,
-  timer;
+  timer,
+  pomodoro;
 
   String get jsonKey => name;
 
   String get label => switch (this) {
     SessionMode.stopwatch => 'Stopwatch',
     SessionMode.timer => 'Timer',
+    SessionMode.pomodoro => 'Pomodoro',
   };
 
   static SessionMode fromJson(String? value) => switch (value) {
     'stopwatch' => SessionMode.stopwatch,
     'timer' => SessionMode.timer,
+    'pomodoro' => SessionMode.pomodoro,
     _ => SessionMode.stopwatch,
   };
 }
@@ -173,7 +176,7 @@ class TimeEntry {
   }
 
   Duration get remainingTime {
-    if (sessionMode == SessionMode.timer && targetDurationMinutes != null) {
+    if ((sessionMode == SessionMode.timer || sessionMode == SessionMode.pomodoro) && targetDurationMinutes != null) {
       final target = Duration(minutes: targetDurationMinutes!);
       final elapsed = duration;
       final rem = target - elapsed;

@@ -11,6 +11,12 @@ import 'package:chronyx/features/project_planner/presentation/providers/todays_r
 import 'package:chronyx/features/project_planner/presentation/providers/project_planner_providers.dart';
 import 'package:chronyx/features/project_planner/domain/entities/project.dart';
 import 'package:chronyx/features/auth/presentation/providers/auth_provider.dart';
+import 'package:chronyx/features/todos/domain/entities/todo.dart';
+import 'package:chronyx/features/todos/presentation/providers/todos_providers.dart';
+import 'package:chronyx/features/time_tracking/presentation/providers/time_tracking_providers.dart';
+import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
+import 'package:chronyx/core/routing/app_router.dart';
+import 'package:chronyx/core/routing/app_routes.dart';
 
 class WidgetService {
   WidgetService._();
@@ -33,7 +39,14 @@ class WidgetService {
       } else if (call.method == 'widgetLaunch') {
         final data = call.arguments as Map?;
         if (data != null) {
-          _handleWidgetLaunch(data);
+          _handleWidgetLaunch(ref, data);
+        }
+      } else if (call.method == 'quickAdd') {
+        _handleQuickAddLaunch(ref);
+      } else if (call.method == 'focusControl') {
+        final action = call.arguments as String?;
+        if (action != null) {
+          await _handleFocusControl(ref, action);
         }
       }
     });
@@ -44,6 +57,14 @@ class WidgetService {
     });
 
     ref.listen<AsyncValue<List<Project>>>(projectsProvider, (prev, next) {
+      scheduleSync(ref);
+    });
+
+    ref.listen<AsyncValue<List<Todo>>>(todosProvider, (prev, next) {
+      scheduleSync(ref);
+    });
+
+    ref.listen<AsyncValue<List<TimeEntry>>>(timeEntriesProvider, (prev, next) {
       scheduleSync(ref);
     });
 
@@ -73,6 +94,14 @@ class WidgetService {
         if (taskId != null) {
           await _handleToggleTask(ref, taskId);
         }
+        final action = data['action'] as String?;
+        if (action == 'quick_add') {
+          _handleQuickAddLaunch(ref);
+        }
+        final focusAction = data['focusAction'] as String?;
+        if (focusAction != null) {
+          await _handleFocusControl(ref, focusAction);
+        }
         final widgetId = data['widgetId'] as int?;
         final widgetType = data['widgetType'] as String?;
         if (widgetId != null) {
@@ -84,15 +113,64 @@ class WidgetService {
     }
   }
 
-  static void _handleWidgetLaunch(Map data) {
+  static void _handleWidgetLaunch(WidgetRef ref, Map data) {
     final widgetId = data['widgetId'] as int?;
     final widgetType = data['widgetType'] as String?;
-    debugPrint('[WidgetService] Real-time widget launch event: widgetId=$widgetId, type=$widgetType');
-    // Implement navigation routing here based on type/id if needed
+    final action = data['action'] as String?;
+    debugPrint('[WidgetService] Real-time widget launch event: widgetId=$widgetId, type=$widgetType, action=$action');
+    if (action == 'quick_add') {
+      _handleQuickAddLaunch(ref);
+    }
+  }
+
+  static void _handleQuickAddLaunch(WidgetRef ref) {
+    try {
+      final router = ref.read(appRouterProvider);
+      router.push('${AppRoutes.todos}?quickAdd=true');
+      debugPrint('[WidgetService] Successfully navigated to Quick Add');
+    } catch (e) {
+      debugPrint('[WidgetService] Error navigating to Quick Add: $e');
+    }
+  }
+
+  static Future<void> _handleFocusControl(WidgetRef ref, String action) async {
+    try {
+      final entries = ref.read(timeEntriesProvider).valueOrNull ?? [];
+      final activeSession = entries.where((e) => e.isOngoing).firstOrNull;
+      if (activeSession == null) {
+        debugPrint('[WidgetService] No active focus session found to control');
+        return;
+      }
+
+      final notifier = ref.read(timeEntriesProvider.notifier);
+      if (action == 'pause') {
+        await notifier.pauseSession(sessionId: activeSession.id);
+        debugPrint('[WidgetService] Successfully paused focus session');
+      } else if (action == 'resume') {
+        await notifier.resumeSession(sessionId: activeSession.id);
+        debugPrint('[WidgetService] Successfully resumed focus session');
+      } else if (action == 'stop') {
+        await notifier.stopSession(sessionId: activeSession.id);
+        debugPrint('[WidgetService] Successfully stopped focus session');
+      }
+    } catch (e) {
+      debugPrint('[WidgetService] Error handling focus control action: $e');
+    }
   }
 
   static Future<void> _handleToggleTask(WidgetRef ref, String taskId) async {
     try {
+      // 1. Try toggling as To-Do first
+      final repoTodo = ref.read(todosRepositoryProvider);
+      final todos = await repoTodo.fetchTodos();
+      final hasTodo = todos.any((t) => t.id == taskId);
+      if (hasTodo) {
+        await ref.read(todosProvider.notifier).toggleTodoStatus(taskId);
+        debugPrint('[WidgetService] Successfully handled toggle todo: $taskId');
+        return;
+      }
+
+      // 2. Try toggling as ProjectTask (fallback)
       final repo = ref.read(projectRepositoryProvider);
       final projects = await repo.fetchProjects();
       final activeProjects = projects
@@ -171,11 +249,9 @@ class WidgetService {
   /// Rebuild configurations and states for all active pinned widgets
   static Future<void> syncAllWidgets(WidgetRef ref) async {
     try {
-      // 1. Query Android OS for all active widget IDs
-      final List<dynamic>? ids = await _channel.invokeMethod<List<dynamic>>('getActiveWidgetIds');
-      final List<int> activeIds = ids?.cast<int>() ?? [];
-      
-      if (activeIds.isEmpty) {
+      // 1. Query Android OS for all active widget IDs and their types
+      final List<dynamic>? widgetsList = await _channel.invokeMethod<List<dynamic>>('getActiveWidgetIds');
+      if (widgetsList == null || widgetsList.isEmpty) {
         debugPrint('[WidgetService] No active widgets to sync');
         return;
       }
@@ -185,11 +261,15 @@ class WidgetService {
       // Make sure auth session is synced
       await syncAuthSession();
 
-      for (final id in activeIds) {
-        // 2. Read widget config from cache (or default to today tasks)
+      for (final widgetItem in widgetsList) {
+        final widgetMap = Map<String, dynamic>.from(widgetItem as Map);
+        final id = widgetMap['id'] as int;
+        final nativeType = widgetMap['type'] as String;
+
+        // 2. Read widget config from cache (or default to nativeType)
         final configKey = 'flutter.widget_config_$id';
         final configJson = prefs.getString(configKey);
-        Map<String, dynamic> config = {'type': 'today'};
+        Map<String, dynamic> config = {'type': nativeType};
         if (configJson != null) {
           try {
             config = jsonDecode(configJson) as Map<String, dynamic>;
@@ -199,7 +279,7 @@ class WidgetService {
           await prefs.setString(configKey, jsonEncode(config));
         }
 
-        final type = config['type'] ?? 'today';
+        final type = config['type'] ?? nativeType;
         final projectId = config['projectId'] as String?;
 
         // 3. Compute State based on type
@@ -212,30 +292,23 @@ class WidgetService {
           case 'project':
             stateObj = await _computeProjectTasks(ref, projectId);
             break;
-          case 'priority':
-            stateObj = await _computePriorityTasks(ref);
+          case 'todo':
+            stateObj = await _computeTodoTasks(ref, 'all');
+            break;
+          case 'todo_today':
+            stateObj = await _computeTodoTasks(ref, 'today');
+            break;
+          case 'todo_important':
+            stateObj = await _computeTodoTasks(ref, 'important');
+            break;
+          case 'todo_inbox':
+            stateObj = await _computeTodoTasks(ref, 'inbox');
+            break;
+          case 'stats':
+            stateObj = await _computeStatsState(ref);
             break;
           case 'focus':
-            // Future widget - Focus Timer (shows placeholder/extensible state)
-            stateObj = {
-              'title': 'Focus Timer',
-              'widgetType': 'focus',
-              'completedCount': 0,
-              'totalCount': 0,
-              'progressPercentage': 0,
-              'tasks': []
-            };
-            break;
-          case 'statistics':
-            // Future widget - Weekly Stats (shows placeholder/extensible state)
-            stateObj = {
-              'title': 'Weekly Stats',
-              'widgetType': 'statistics',
-              'completedCount': 0,
-              'totalCount': 0,
-              'progressPercentage': 0,
-              'tasks': []
-            };
+            stateObj = await _computeFocusState(ref);
             break;
           default:
             stateObj = await _computeTodayTasks(ref);
@@ -250,7 +323,7 @@ class WidgetService {
 
       // 5. Notify native side to reload all layouts
       await _channel.invokeMethod('updateWidget');
-      debugPrint('[WidgetService] Successfully synced ${activeIds.length} widgets');
+      debugPrint('[WidgetService] Successfully synced ${widgetsList.length} widgets');
     } catch (e) {
       debugPrint('[WidgetService] Error in syncAllWidgets: $e');
     }
@@ -301,36 +374,148 @@ class WidgetService {
     }
   }
 
-  static Future<Map<String, dynamic>?> _computePriorityTasks(WidgetRef ref) async {
+  static Future<Map<String, dynamic>?> _computeTodoTasks(WidgetRef ref, String subType) async {
     try {
-      final repo = ref.read(projectRepositoryProvider);
-      final projects = await repo.fetchProjects();
-      final activeProjects = projects.where((p) => p.status == ProjectStatus.active).toList();
-      
-      final List<ProjectTask> allPendingTasks = [];
-      for (final project in activeProjects) {
-        final tasks = await repo.fetchProjectTasks(project.id);
-        allPendingTasks.addAll(tasks.where((t) => t.status != ProjectTaskStatus.completed));
+      final allTodos = ref.read(todosProvider).valueOrNull;
+      if (allTodos == null) return null;
+
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final todayEnd = todayStart.add(const Duration(days: 1));
+
+      List<Todo> filtered;
+      String title;
+
+      switch (subType) {
+        case 'today':
+          title = 'Today\'s To-Dos';
+          filtered = allTodos.where((todo) {
+            if (todo.dueDate == null) return false;
+            return todo.dueDate!.isBefore(todayEnd) && todo.status != TodoStatus.archived;
+          }).toList();
+          break;
+        case 'important':
+          title = 'Important To-Dos';
+          filtered = allTodos.where((todo) {
+            return (todo.priority == TodoPriority.high || todo.priority == TodoPriority.critical) &&
+                todo.status != TodoStatus.archived;
+          }).toList();
+          break;
+        case 'inbox':
+          title = 'Inbox To-Dos';
+          filtered = allTodos.where((todo) {
+            return todo.parentId == null && todo.status != TodoStatus.archived;
+          }).toList();
+          break;
+        case 'all':
+        default:
+          title = 'All To-Dos';
+          filtered = allTodos.where((todo) => todo.status != TodoStatus.archived).toList();
       }
 
-      // Sort by priority (larger estimated minutes represents higher priority)
-      allPendingTasks.sort((a, b) {
-        final minA = a.estimatedMinutes ?? 0;
-        final minB = b.estimatedMinutes ?? 0;
-        return minB.compareTo(minA); // Descending order (largest first)
+      // Sort pending first, then completed. Also sort by priority/dueDate.
+      filtered.sort((a, b) {
+        if (a.isCompleted != b.isCompleted) {
+          return a.isCompleted ? 1 : -1;
+        }
+        // Then by priority descending
+        final priorityCompare = b.priority.index.compareTo(a.priority.index);
+        if (priorityCompare != 0) return priorityCompare;
+        // Then by due date
+        if (a.dueDate != null && b.dueDate != null) {
+          return a.dueDate!.compareTo(b.dueDate!);
+        }
+        if (a.dueDate != null) return -1;
+        if (b.dueDate != null) return 1;
+        return a.title.compareTo(b.title);
       });
 
-      // Limit to top 10 priority tasks
-      final topPriorityTasks = allPendingTasks.take(10).toList();
-
-      return _buildTasksState(
-        title: 'Priority Tasks',
-        widgetType: 'priority',
-        tasks: topPriorityTasks,
+      return _buildTodosWidgetState(
+        title: title,
+        widgetType: 'todo_$subType',
+        todos: filtered,
       );
     } catch (_) {
       return null;
     }
+  }
+
+  static Future<Map<String, dynamic>?> _computeStatsState(WidgetRef ref) async {
+    try {
+      final stats = ref.read(timeTrackingStatsProvider);
+      final allTodos = ref.read(todosProvider).valueOrNull ?? [];
+      final completedTodosCount = allTodos.where((t) => t.isCompleted).length;
+
+      return {
+        'title': 'My Analytics',
+        'widgetType': 'stats',
+        'deepWorkHours': stats.deepWorkHours,
+        'weeklyStreak': stats.weeklyStreak,
+        'tasksCompleted': completedTodosCount,
+      };
+    } catch (e) {
+      debugPrint('[WidgetService] Error computing stats state: $e');
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> _computeFocusState(WidgetRef ref) async {
+    try {
+      final entries = ref.read(timeEntriesProvider).valueOrNull ?? [];
+      final activeSession = entries.where((e) => e.isOngoing).firstOrNull;
+
+      if (activeSession == null) {
+        return {
+          'title': 'Focus Session',
+          'widgetType': 'focus',
+          'status': 'idle',
+        };
+      }
+
+      return {
+        'title': 'Focus Session',
+        'widgetType': 'focus',
+        'sessionId': activeSession.id,
+        'taskName': activeSession.taskName.isNotEmpty ? activeSession.taskName : 'Focus Session',
+        'sessionMode': activeSession.sessionMode.name,
+        'status': activeSession.status.name, // active / paused
+        'elapsedSeconds': activeSession.duration.inSeconds,
+        'remainingSeconds': activeSession.remainingTime.inSeconds,
+        'targetMinutes': activeSession.targetDurationMinutes,
+      };
+    } catch (e) {
+      debugPrint('[WidgetService] Error computing focus state: $e');
+      return null;
+    }
+  }
+
+  static Map<String, dynamic> _buildTodosWidgetState({
+    required String title,
+    required String widgetType,
+    required List<Todo> todos,
+  }) {
+    final completedCount = todos.where((t) => t.status == TodoStatus.completed).length;
+    final totalCount = todos.length;
+    final pct = totalCount == 0 ? 0 : ((completedCount / totalCount) * 100).round();
+
+    final tasksJson = todos.map((todo) {
+      return {
+        'id': todo.id,
+        'title': todo.title,
+        'estimatedMinutes': todo.estimatedMinutes > 0 ? todo.estimatedMinutes : null,
+        'status': todo.status.jsonKey,
+        'priority': todo.priority.jsonKey,
+      };
+    }).toList();
+
+    return {
+      'title': title,
+      'widgetType': widgetType,
+      'completedCount': completedCount,
+      'totalCount': totalCount,
+      'progressPercentage': pct,
+      'tasks': tasksJson,
+    };
   }
 
   static Map<String, dynamic> _buildTasksState({

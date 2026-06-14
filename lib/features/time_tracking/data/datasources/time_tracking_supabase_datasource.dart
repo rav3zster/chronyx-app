@@ -161,7 +161,7 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
       final row = existing.first as Map<String, dynamic>;
       final startRaw = row['start_time'];
       final sessionModeStr = row['session_mode'] as String? ?? 'stopwatch';
-      final isTimer = sessionModeStr == 'timer';
+      final isTimer = sessionModeStr == 'timer' || sessionModeStr == 'pomodoro';
       final targetMins = (row['target_duration_minutes'] as num?)?.toInt();
       final pausedSecs = (row['paused_duration_seconds'] as num?)?.toInt() ?? 0;
       final pausedAtRaw = row['paused_at'] as String?;
@@ -177,7 +177,8 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
         durationMinutes = elapsedSeconds ~/ 60;
 
         if (isTimer && targetMins != null && targetMins > 0) {
-          completionPercentage = (elapsedSeconds / (targetMins * 60) * 100.0).clamp(0.0, 100.0);
+          final rawPct = (elapsedSeconds / (targetMins * 60)) * 100.0;
+          completionPercentage = ((rawPct * 10.0).roundToDouble() / 10.0).clamp(0.0, 100.0);
         } else {
           completionPercentage = 100.0;
         }
@@ -275,6 +276,7 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
     required String sessionId,
     required String taskName,
     required TaskCategory category,
+    String? notes,
   }) async {
     final String userId = _currentUserId;
     final name = taskName.trim();
@@ -285,6 +287,7 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
     final update = <String, dynamic>{
       'task_name': name,
       'category': category.jsonKey,
+      'notes': notes,
     };
 
     final List<dynamic> rows = await _supabaseClient
@@ -294,6 +297,46 @@ class TimeTrackingSupabaseDataSource implements TimeTrackingRemoteDataSource {
         .eq('id', sessionId)
         .select();
     return TimeEntryModel.fromJson(rows.first as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> mergeSessions({
+    required String firstSessionId,
+    required String secondSessionId,
+    required String mergedTaskName,
+    required TaskCategory mergedCategory,
+    required DateTime mergedStartTime,
+    required DateTime? mergedEndTime,
+    required int mergedElapsedSeconds,
+    required int mergedPausedSeconds,
+    required double mergedCompletionPercentage,
+    String? mergedNotes,
+  }) async {
+    final String userId = _currentUserId;
+    
+    // 1. Update first session with merged values
+    await _supabaseClient
+        .from(_tableName)
+        .update({
+          'task_name': mergedTaskName,
+          'category': mergedCategory.jsonKey,
+          'start_time': mergedStartTime.toIso8601String(),
+          'end_time': mergedEndTime?.toIso8601String(),
+          'elapsed_seconds': mergedElapsedSeconds,
+          'duration_minutes': mergedElapsedSeconds ~/ 60,
+          'paused_duration_seconds': mergedPausedSeconds,
+          'completion_percentage': mergedCompletionPercentage,
+          'notes': mergedNotes,
+        })
+        .eq('user_id', userId)
+        .eq('id', firstSessionId);
+
+    // 2. Delete the second session
+    await _supabaseClient
+        .from(_tableName)
+        .delete()
+        .eq('user_id', userId)
+        .eq('id', secondSessionId);
   }
 
   DateTime _parseDateTimeUtc(String dateStr) {

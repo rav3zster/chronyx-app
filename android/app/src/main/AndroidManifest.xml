@@ -54,7 +54,47 @@
             android:value="2" />
 
         <!-- Chronyx Widget Provider -->
-        <receiver android:name=".ChronyxWidgetProvider" android:exported="false">
+        <receiver android:name=".ChronyxWidgetProvider" android:exported="false" android:label="Chronyx Today">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/chronyx_widget_info" />
+        </receiver>
+
+        <!-- Chronyx Important Widget Provider -->
+        <receiver android:name=".ChronyxImportantWidgetProvider" android:exported="false" android:label="Chronyx Important">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/chronyx_widget_info" />
+        </receiver>
+
+        <!-- Chronyx Project Widget Provider -->
+        <receiver android:name=".ChronyxProjectWidgetProvider" android:exported="false" android:label="Chronyx Project">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/chronyx_widget_info" />
+        </receiver>
+
+        <!-- Chronyx Stats Widget Provider -->
+        <receiver android:name=".ChronyxStatsWidgetProvider" android:exported="false" android:label="Chronyx Stats">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/chronyx_widget_info" />
+        </receiver>
+
+        <!-- Chronyx Focus Widget Provider -->
+        <receiver android:name=".ChronyxFocusWidgetProvider" android:exported="false" android:label="Chronyx Focus">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

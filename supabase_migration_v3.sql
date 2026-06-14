@@ -40,4 +40,4 @@ ALTER TABLE time_logs
   DROP CONSTRAINT IF EXISTS chk_time_logs_session_mode_v3;
 ALTER TABLE time_logs 
   ADD CONSTRAINT chk_time_logs_session_mode_v3 
-  CHECK (session_mode IN ('stopwatch', 'timer'));
+  CHECK (session_mode IN ('stopwatch', 'timer', 'pomodoro'));

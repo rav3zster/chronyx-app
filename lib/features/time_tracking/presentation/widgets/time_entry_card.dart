@@ -10,6 +10,7 @@ class TimeEntryCard extends StatefulWidget {
     this.onResumeSession,
     this.onEditSession,
     this.onDeleteSession,
+    this.onMergeWithPrevious,
     super.key,
   });
 
@@ -19,6 +20,7 @@ class TimeEntryCard extends StatefulWidget {
   final VoidCallback? onResumeSession;
   final VoidCallback? onEditSession;
   final VoidCallback? onDeleteSession;
+  final VoidCallback? onMergeWithPrevious;
 
   @override
   State<TimeEntryCard> createState() => _TimeEntryCardState();
@@ -67,7 +69,6 @@ class _TimeEntryCardState extends State<TimeEntryCard>
   }
 
   void _toggle() {
-    if (!widget.entry.isActive) return;
     setState(() => _expanded = !_expanded);
     if (_expanded) {
       _expandCtrl.forward();
@@ -81,264 +82,461 @@ class _TimeEntryCardState extends State<TimeEntryCard>
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final accent = scheme.primary;
-    
-    // Status dot color mapping
-    final dotColor = widget.entry.isActive
-        ? accent
-        : (widget.entry.isPaused
-            ? const Color(0xFFFBBC05) // gold yellow for paused
-            : _colorForCategory(widget.entry.category));
 
-    final String statusLabel;
+    // Status styling
+    final Color statusColor;
+    final String statusText;
     if (widget.entry.isActive) {
-      statusLabel = 'In Progress';
+      statusColor = const Color(0xFF22D3A6); // active neon green
+      statusText = 'ACTIVE';
     } else if (widget.entry.isPaused) {
-      statusLabel = 'Paused';
+      statusColor = const Color(0xFFFBBC05); // gold/amber
+      statusText = 'PAUSED';
+    } else if (widget.entry.status == SessionStatus.cancelled) {
+      statusColor = scheme.error;
+      statusText = 'CANCELLED';
     } else {
-      statusLabel = widget.entry.status.label;
+      statusColor = _colorForCategory(widget.entry.category);
+      statusText = 'COMPLETED';
     }
 
-    final durationToShow = widget.entry.sessionMode == SessionMode.timer && widget.entry.isOngoing
+    final durationToShow = (widget.entry.sessionMode == SessionMode.timer || widget.entry.sessionMode == SessionMode.pomodoro) && widget.entry.isOngoing
         ? widget.entry.remainingTime
         : widget.entry.duration;
 
-    final subtitle = widget.entry.isOngoing
-        ? '${widget.entry.category.label} · $statusLabel'
-        : '${widget.entry.category.label} · $statusLabel · ${_formatDuration(widget.entry.duration)}';
+    final hasNotes = widget.entry.notes != null && widget.entry.notes!.isNotEmpty;
 
-    return GestureDetector(
-      onTap: _toggle,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(20),
-          border: widget.entry.isOngoing
-              ? Border.all(
-                  color: _expanded
-                      ? accent.withValues(alpha: 0.65)
-                      : accent.withValues(alpha: 0.35),
-                  width: _expanded ? 1.5 : 1.0,
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(24),
+        border: widget.entry.isOngoing
+            ? Border.all(
+                color: _expanded
+                    ? accent.withValues(alpha: 0.6)
+                    : accent.withValues(alpha: 0.3),
+                width: _expanded ? 1.5 : 1.0,
+              )
+            : Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.3),
+                width: 1.0,
+              ),
+        boxShadow: _expanded && widget.entry.isOngoing
+            ? [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.1),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
                 )
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Row: always visible ──────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+              ]
+            : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _toggle,
+            borderRadius: BorderRadius.circular(24),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Status dot
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: widget.entry.isActive
-                        ? _PulsingDot(color: dotColor)
-                        : Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: dotColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                  ),
-                  const SizedBox(width: 14),
-                  // Task + meta
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.entry.taskName.isEmpty
-                              ? AppStrings.unknownTask
-                              : widget.entry.taskName,
-                          style: textTheme.titleMedium?.copyWith(
-                            color: scheme.onSurface,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Clock + live badge / chevron
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
+                  // ── Row: Core Session Details ─────────────────────────────
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        _clock(durationToShow),
-                        style: textTheme.titleLarge?.copyWith(
-                          color: scheme.onSurface,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                      // Accent category emoji
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: _colorForCategory(widget.entry.category).withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            widget.entry.category.emoji,
+                            style: const TextStyle(fontSize: 18),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      if (widget.entry.isActive)
-                        AnimatedRotation(
-                          turns: _expanded ? 0.5 : 0.0,
-                          duration: const Duration(milliseconds: 280),
-                          curve: Curves.easeOutCubic,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 2,
+                      const SizedBox(width: 14),
+                      // Task + meta
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.entry.taskName.isEmpty
+                                  ? AppStrings.unknownTask
+                                  : widget.entry.taskName,
+                              style: textTheme.titleMedium?.copyWith(
+                                color: scheme.onSurface,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            decoration: BoxDecoration(
-                              color: accent.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                            const SizedBox(height: 3),
+                            Row(
                               children: [
                                 Text(
-                                  'LIVE',
-                                  style: textTheme.labelSmall?.copyWith(
-                                    color: accent,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.8,
-                                    fontSize: 9,
+                                  widget.entry.category.label,
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const SizedBox(width: 3),
-                                Icon(
-                                  Icons.keyboard_arrow_down_rounded,
-                                  size: 13,
-                                  color: accent,
+                                const SizedBox(width: 6),
+                                Container(
+                                  width: 3,
+                                  height: 3,
+                                  decoration: BoxDecoration(
+                                    color: scheme.onSurfaceVariant.withValues(alpha: 0.4),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    statusText,
+                                    style: textTheme.labelSmall?.copyWith(
+                                      color: statusColor,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 9,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
+                          ],
                         ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Clock / Duration text
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _clock(durationToShow),
+                            style: textTheme.titleLarge?.copyWith(
+                              color: widget.entry.isOngoing ? accent : scheme.onSurface,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 20,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            ),
+                          ),
+                          if (widget.entry.isActive) ...[
+                            const SizedBox(height: 3),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _PulsingDot(color: statusColor),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'LIVE',
+                                  style: textTheme.labelSmall?.copyWith(
+                                    color: statusColor,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 9,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(width: 4),
+                      PopupMenuButton<String>(
+                        icon: Icon(Icons.more_vert, color: scheme.onSurfaceVariant, size: 20),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onSelected: (value) {
+                          switch (value) {
+                            case 'resume':
+                              widget.onResumeSession?.call();
+                              break;
+                            case 'pause':
+                              widget.onPauseSession?.call();
+                              break;
+                            case 'stop':
+                              widget.onStopSession?.call();
+                              break;
+                            case 'edit':
+                              widget.onEditSession?.call();
+                              break;
+                            case 'delete':
+                              widget.onDeleteSession?.call();
+                              break;
+                            case 'merge':
+                              widget.onMergeWithPrevious?.call();
+                              break;
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'resume',
+                            enabled: widget.entry.isPaused || !widget.entry.isOngoing,
+                            child: Row(
+                              children: [
+                                Icon(Icons.play_arrow_rounded, color: scheme.onSurface, size: 20),
+                                const SizedBox(width: 8),
+                                const Text('Resume'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'pause',
+                            enabled: widget.entry.isActive,
+                            child: Row(
+                              children: [
+                                Icon(Icons.pause_rounded, color: scheme.onSurface, size: 20),
+                                const SizedBox(width: 8),
+                                const Text('Pause'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'stop',
+                            enabled: widget.entry.isOngoing,
+                            child: Row(
+                              children: [
+                                Icon(Icons.stop_rounded, color: scheme.onSurface, size: 20),
+                                const SizedBox(width: 8),
+                                const Text('Stop'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_rounded, color: scheme.onSurface, size: 20),
+                                const SizedBox(width: 8),
+                                const Text('Edit Details'),
+                              ],
+                            ),
+                          ),
+                          if (widget.onMergeWithPrevious != null)
+                            PopupMenuItem(
+                              value: 'merge',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.merge_type, color: scheme.onSurface, size: 20),
+                                  const SizedBox(width: 8),
+                                  const Text('Merge with Previous'),
+                                ],
+                              ),
+                            ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_rounded, color: scheme.error, size: 20),
+                                const SizedBox(width: 8),
+                                Text('Delete', style: TextStyle(color: scheme.error)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                  const SizedBox(width: 4),
-                  PopupMenuButton<String>(
-                    icon: Icon(Icons.more_vert, color: scheme.onSurfaceVariant),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'resume':
-                          widget.onResumeSession?.call();
-                          break;
-                        case 'pause':
-                          widget.onPauseSession?.call();
-                          break;
-                        case 'stop':
-                          widget.onStopSession?.call();
-                          break;
-                        case 'edit':
-                          widget.onEditSession?.call();
-                          break;
-                        case 'delete':
-                          widget.onDeleteSession?.call();
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'resume',
-                        enabled: widget.entry.isPaused || !widget.entry.isOngoing,
-                        child: Row(
-                          children: [
-                            Icon(Icons.play_arrow_rounded, color: scheme.onSurface, size: 20),
-                            const SizedBox(width: 8),
-                            const Text('Resume'),
+
+                  // ── Expandable Details Panel ──────────────────────────────
+                  SizeTransition(
+                    sizeFactor: _expandAnim,
+                    alignment: Alignment.topCenter,
+                    child: FadeTransition(
+                      opacity: _fadeAnim,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 14),
+                          Container(
+                            height: 1,
+                            color: scheme.outlineVariant.withValues(alpha: 0.3),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Start and End times
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _DetailItem(
+                                label: 'STARTED AT',
+                                value: _formatDateTime(widget.entry.startedAt),
+                                textTheme: textTheme,
+                                scheme: scheme,
+                              ),
+                              if (widget.entry.endedAt != null)
+                                _DetailItem(
+                                  label: 'ENDED AT',
+                                  value: _formatDateTime(widget.entry.endedAt!),
+                                  textTheme: textTheme,
+                                  scheme: scheme,
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Mode and Completion Rate
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _DetailItem(
+                                label: 'SESSION MODE',
+                                value: widget.entry.sessionMode.label,
+                                textTheme: textTheme,
+                                scheme: scheme,
+                              ),
+                              if (widget.entry.sessionMode != SessionMode.stopwatch && widget.entry.targetDurationMinutes != null)
+                                _DetailItem(
+                                  label: 'COMPLETION',
+                                  value: '${widget.entry.completionPercentage.toStringAsFixed(0)}% of ${widget.entry.targetDurationMinutes}m',
+                                  textTheme: textTheme,
+                                  scheme: scheme,
+                                ),
+                            ],
+                          ),
+
+                          // Completion progress bar (only for timed focus sessions)
+                          if (widget.entry.sessionMode != SessionMode.stopwatch && widget.entry.targetDurationMinutes != null) ...[
+                            const SizedBox(height: 12),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: (widget.entry.completionPercentage / 100.0).clamp(0.0, 1.0),
+                                backgroundColor: scheme.surfaceContainer,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  widget.entry.completionPercentage >= 100.0 ? const Color(0xFF4ADE80) : scheme.primary,
+                                ),
+                                minHeight: 6,
+                              ),
+                            ),
                           ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'pause',
-                        enabled: widget.entry.isActive,
-                        child: Row(
-                          children: [
-                            Icon(Icons.pause_rounded, color: scheme.onSurface, size: 20),
-                            const SizedBox(width: 8),
-                            const Text('Pause'),
+
+                          // Notes Section
+                          if (hasNotes) ...[
+                            const SizedBox(height: 14),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: scheme.surface.withValues(alpha: 0.4),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.2)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.sticky_note_2_outlined, size: 14, color: scheme.onSurfaceVariant),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'NOTES',
+                                        style: textTheme.labelSmall?.copyWith(
+                                          color: scheme.onSurfaceVariant,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    widget.entry.notes!,
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color: scheme.onSurface,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'stop',
-                        enabled: widget.entry.isOngoing,
-                        child: Row(
-                          children: [
-                            Icon(Icons.stop_rounded, color: scheme.onSurface, size: 20),
-                            const SizedBox(width: 8),
-                            const Text('Stop'),
+
+                          // Controls (Play/Pause/Stop) if ongoing
+                          if (widget.entry.isOngoing) ...[
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                if (widget.entry.isActive)
+                                  Expanded(
+                                    child: _SessionControls(
+                                      accent: accent,
+                                      onStop: () {
+                                        _toggle();
+                                        widget.onStopSession?.call();
+                                      },
+                                      onPause: () {
+                                        _toggle();
+                                        widget.onPauseSession?.call();
+                                      },
+                                    ),
+                                  ),
+                                if (widget.entry.isPaused)
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: OutlinedButton.icon(
+                                            style: OutlinedButton.styleFrom(
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                            ),
+                                            onPressed: () {
+                                              _toggle();
+                                              widget.onResumeSession?.call();
+                                            },
+                                            icon: const Icon(Icons.play_arrow_rounded),
+                                            label: const Text('RESUME'),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: ElevatedButton.icon(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: scheme.error,
+                                              foregroundColor: scheme.onError,
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                            ),
+                                            onPressed: () {
+                                              _toggle();
+                                              widget.onStopSession?.call();
+                                            },
+                                            icon: const Icon(Icons.stop_rounded),
+                                            label: const Text('STOP'),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ],
-                        ),
+                        ],
                       ),
-                      PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_rounded, color: scheme.onSurface, size: 20),
-                            const SizedBox(width: 8),
-                            const Text('Edit'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_rounded, color: scheme.error, size: 20),
-                            const SizedBox(width: 8),
-                            Text('Delete', style: TextStyle(color: scheme.error)),
-                          ],
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
             ),
-
-            // ── Expandable controls ──────────────────────────────────────
-            if (widget.entry.isActive)
-              SizeTransition(
-                sizeFactor: _expandAnim,
-                // ignore: deprecated_member_use
-                axisAlignment: -1.0,
-                child: FadeTransition(
-                  opacity: _fadeAnim,
-                  child: _SessionControls(
-                    accent: accent,
-                    onStop: () {
-                      // Collapse first, then trigger stop
-                      setState(() => _expanded = false);
-                      _expandCtrl.reverse();
-                      widget.onStopSession?.call();
-                    },
-                    onPause: () {
-                      // Collapse first, then trigger pause
-                      setState(() => _expanded = false);
-                      _expandCtrl.reverse();
-                      widget.onPauseSession?.call();
-                    },
-                  ),
-                ),
-              ),
-          ],
+          ),
         ),
       ),
     );
@@ -354,20 +552,58 @@ class _TimeEntryCardState extends State<TimeEntryCard>
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
-  String _formatDuration(Duration value) {
-    final int hours = value.inHours;
-    final int minutes = value.inMinutes.remainder(60);
-    final int seconds = value.inSeconds.remainder(60);
-    if (hours > 0) {
-      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-    }
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  String _formatDateTime(DateTime dt) {
+    final local = dt.toLocal();
+    final hour = local.hour > 12 ? local.hour - 12 : (local.hour == 0 ? 12 : local.hour);
+    final period = local.hour >= 12 ? 'PM' : 'AM';
+    final minuteStr = local.minute.toString().padLeft(2, '0');
+    
+    // E.g., "14 Jun, 2:30 PM"
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${local.day} ${months[local.month - 1]}, $hour:$minuteStr $period';
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Expandable controls panel — stop button
-// ─────────────────────────────────────────────────────────────────────────────
+class _DetailItem extends StatelessWidget {
+  const _DetailItem({
+    required this.label,
+    required this.value,
+    required this.textTheme,
+    required this.scheme,
+  });
+
+  final String label;
+  final String value;
+  final TextTheme textTheme;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: textTheme.labelSmall?.copyWith(
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.0,
+            fontSize: 9,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          style: textTheme.bodyMedium?.copyWith(
+            color: scheme.onSurface,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _SessionControls extends StatelessWidget {
   const _SessionControls({
@@ -384,51 +620,26 @@ class _SessionControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-      child: Column(
-        children: [
-          // Divider
-          Container(
-            height: 1,
-            margin: const EdgeInsets.only(bottom: 14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.transparent,
-                  accent.withValues(alpha: 0.25),
-                  Colors.transparent,
-                ],
-              ),
-            ),
+    return Row(
+      children: [
+        Expanded(
+          child: _PauseButton(
+            onPause: onPause,
+            textTheme: textTheme,
           ),
-          Row(
-            children: [
-              Expanded(
-                child: _PauseButton(
-                  onPause: onPause,
-                  textTheme: textTheme,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StopButton(
-                  accent: accent,
-                  onStop: onStop,
-                  textTheme: textTheme,
-                ),
-              ),
-            ],
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StopButton(
+            accent: accent,
+            onStop: onStop,
+            textTheme: textTheme,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Pause button — pulsing amber glow ring + icon + label
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _PauseButton extends StatefulWidget {
   const _PauseButton({
@@ -485,9 +696,9 @@ class _PauseButtonState extends State<_PauseButton>
           animation: _glow,
           builder: (context, _) {
             return Container(
-              height: 52,
+              height: 48,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 gradient: const LinearGradient(
                   colors: [Color(0xFFFFCA28), Color(0xFFF57F17)],
                   begin: Alignment.topLeft,
@@ -496,31 +707,30 @@ class _PauseButtonState extends State<_PauseButton>
                 boxShadow: [
                   BoxShadow(
                     color: _pauseAmber.withValues(alpha: _glow.value),
-                    blurRadius: 18,
+                    blurRadius: 12,
                     spreadRadius: 0,
-                    offset: const Offset(0, 4),
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Pause icon (two vertical bars)
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 4,
-                        height: 14,
+                        width: 3.5,
+                        height: 12,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(1.5),
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 3),
                       Container(
-                        width: 4,
-                        height: 14,
+                        width: 3.5,
+                        height: 12,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(1.5),
@@ -528,14 +738,14 @@ class _PauseButtonState extends State<_PauseButton>
                       ),
                     ],
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Text(
                     'PAUSE',
                     style: widget.textTheme.labelLarge?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 1.4,
-                      fontSize: 13,
+                      letterSpacing: 1.0,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -547,10 +757,6 @@ class _PauseButtonState extends State<_PauseButton>
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Stop button — pulsing glow ring + icon + label
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _StopButton extends StatefulWidget {
   const _StopButton({
@@ -609,9 +815,9 @@ class _StopButtonState extends State<_StopButton>
           animation: _glow,
           builder: (context, _) {
             return Container(
-              height: 52,
+              height: 48,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 gradient: const LinearGradient(
                   colors: [Color(0xFFFF4D6D), Color(0xFFD6194A)],
                   begin: Alignment.topLeft,
@@ -620,32 +826,31 @@ class _StopButtonState extends State<_StopButton>
                 boxShadow: [
                   BoxShadow(
                     color: _stopRed.withValues(alpha: _glow.value),
-                    blurRadius: 18,
+                    blurRadius: 12,
                     spreadRadius: 0,
-                    offset: const Offset(0, 4),
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Square stop icon with rounded corners
                   Container(
-                    width: 16,
-                    height: 16,
+                    width: 12,
+                    height: 12,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Text(
-                    'STOP SESSION',
+                    'STOP',
                     style: widget.textTheme.labelLarge?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 1.4,
-                      fontSize: 13,
+                      letterSpacing: 1.0,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -657,10 +862,6 @@ class _StopButtonState extends State<_StopButton>
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Pulsing dot for active sessions
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _PulsingDot extends StatefulWidget {
   const _PulsingDot({required this.color});
@@ -699,15 +900,15 @@ class _PulsingDotState extends State<_PulsingDot>
     return ScaleTransition(
       scale: _scale,
       child: Container(
-        width: 8,
-        height: 8,
+        width: 6,
+        height: 6,
         decoration: BoxDecoration(
           color: widget.color,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
               color: widget.color.withValues(alpha: 0.5),
-              blurRadius: 6,
+              blurRadius: 4,
             ),
           ],
         ),

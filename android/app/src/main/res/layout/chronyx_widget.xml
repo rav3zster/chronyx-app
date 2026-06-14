@@ -45,6 +45,17 @@
                 android:textSize="11sp"/>
         </LinearLayout>
 
+        <!-- Quick Add Button -->
+        <ImageButton
+            android:id="@+id/widget_add_button"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_add"
+            android:contentDescription="Add task"
+            android:tint="#8B96B8"
+            android:layout_marginEnd="4dp" />
+
         <!-- Refresh Button -->
         <ImageButton
             android:id="@+id/widget_refresh_button"
@@ -97,5 +108,176 @@
         android:textColor="#8B96B8"
         android:textSize="13sp"
         android:visibility="gone"/>
+
+    <!-- Stats View -->
+    <LinearLayout
+        android:id="@+id/widget_stats_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/widget_divider"
+        android:orientation="horizontal"
+        android:weightSum="3"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+        
+        <!-- Deep Work Stat -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            
+            <TextView
+                android:id="@+id/widget_stat_deep_work_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0.0"
+                android:textColor="#5B6EF5"
+                android:textSize="22sp"
+                android:textStyle="bold"/>
+                
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Deep Work hrs"
+                android:textColor="#8B96B8"
+                android:textSize="10sp"
+                android:gravity="center"/>
+        </LinearLayout>
+
+        <!-- Streak Stat -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            
+            <TextView
+                android:id="@+id/widget_stat_streak_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#F59E0B"
+                android:textSize="22sp"
+                android:textStyle="bold"/>
+                
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Weekly Streak"
+                android:textColor="#8B96B8"
+                android:textSize="10sp"
+                android:gravity="center"/>
+        </LinearLayout>
+
+        <!-- Completed Stat -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            
+            <TextView
+                android:id="@+id/widget_stat_completed_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#10B981"
+                android:textSize="22sp"
+                android:textStyle="bold"/>
+                
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Completed"
+                android:textColor="#8B96B8"
+                android:textSize="10sp"
+                android:gravity="center"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Focus View -->
+    <LinearLayout
+        android:id="@+id/widget_focus_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/widget_divider"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone">
+        
+        <TextView
+            android:id="@+id/widget_focus_task_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Study DBMS"
+            android:textColor="#F1F4FF"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:ellipsize="end"
+            android:singleLine="true"/>
+            
+        <TextView
+            android:id="@+id/widget_focus_timer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="24:59"
+            android:textColor="#5B6EF5"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:layout_marginVertical="4dp"/>
+            
+        <!-- Action Buttons -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            
+            <TextView
+                android:id="@+id/widget_focus_pause_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PAUSE"
+                android:textColor="#F59E0B"
+                android:textStyle="bold"
+                android:textSize="11sp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true"/>
+
+            <TextView
+                android:id="@+id/widget_focus_resume_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RESUME"
+                android:textColor="#10B981"
+                android:textStyle="bold"
+                android:textSize="11sp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/widget_focus_stop_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="STOP"
+                android:textColor="#FF5370"
+                android:textStyle="bold"
+                android:textSize="11sp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:clickable="true"
+                android:focusable="true"/>
+        </LinearLayout>
+    </LinearLayout>
 
 </RelativeLayout>

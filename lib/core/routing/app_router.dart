@@ -15,6 +15,7 @@ import 'package:chronyx/features/project_planner/presentation/pages/blueprint_wi
 import 'package:chronyx/features/project_planner/presentation/pages/project_detail_page.dart';
 import 'package:chronyx/features/settings/presentation/pages/settings_page.dart';
 import 'package:chronyx/features/time_tracking/presentation/pages/time_tracking_page.dart';
+import 'package:chronyx/features/todos/presentation/pages/todos_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -154,6 +155,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.authDebug,
         name: 'authDebug',
         builder: (context, state) => const AuthDebugPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.todos,
+        name: 'todos',
+        builder: (context, state) => const TodosPage(),
       ),
     ],
   );

@@ -228,6 +228,12 @@ class _Greeting extends ConsumerWidget {
             ],
           ),
         ),
+        const SizedBox(width: 8),
+        IconButton(
+          icon: Icon(Icons.check_box_outlined, color: scheme.primary, size: 28),
+          tooltip: 'To-Dos',
+          onPressed: () => context.push(AppRoutes.todos),
+        ),
       ],
     );
   }

@@ -226,398 +226,462 @@ class _TodosPageState extends ConsumerState<TodosPage> {
     final textTheme = Theme.of(context).textTheme;
     final allTodosAsync = ref.watch(todosProvider);
 
-    return Column(
-      key: const ValueKey('dashboard_view'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 1. Grid of Folders (Inbox, Today, Important, Upcoming, Completed, All)
-        allTodosAsync.when(
-          data: (todos) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: _kPad),
-              child: _buildFoldersGrid(todos, scheme),
-            );
-          },
-          loading: () => const SizedBox(height: 110),
-          error: (_, __) => const SizedBox(),
-        ),
-        const SizedBox(height: 16),
-
-        // 2. Search Field & Active Filter Banner
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: _kPad),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
+    if (!isCompact) {
+      // Responsive Dual-Column Split Layout for Tablet/Desktop
+      return Row(
+        key: const ValueKey('dashboard_view_desktop'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Left Sidebar (Folders Grid)
+          SizedBox(
+            width: 320,
+            child: allTodosAsync.when(
+              data: (todos) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: _kPad),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        child: Icon(Icons.search, size: 18),
-                      ),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          style: textTheme.bodyMedium,
-                          decoration: const InputDecoration(
-                            hintText: 'Search tasks...',
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.only(bottom: 6),
-                          ),
-                        ),
-                      ),
-                      if (_searchController.text.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 16),
-                          onPressed: () => _searchController.clear(),
-                        ),
+                      _buildFoldersGrid(todos, scheme),
+                      const SizedBox(height: 16),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap: _showFiltersDialog,
-                child: Container(
-                  height: 44,
-                  width: 44,
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
-                  ),
-                  child: Icon(Icons.filter_alt_outlined, color: scheme.onSurfaceVariant, size: 20),
-                ),
-              ),
-            ],
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, __) => const SizedBox(),
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-
-        // Active Folder Heading
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: _kPad),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                ref.watch(todoSelectedViewProvider).label.toUpperCase(),
-                style: textTheme.labelMedium?.copyWith(
-                  color: scheme.primary,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      ref.watch(todoGroupBySectionProvider) 
-                          ? Icons.grid_view_rounded 
-                          : Icons.view_headline_rounded,
-                      size: 20,
-                      color: ref.watch(todoGroupBySectionProvider) ? scheme.primary : scheme.onSurfaceVariant,
-                    ),
-                    tooltip: 'Group by Section',
-                    onPressed: () {
-                      ref.read(soundServiceProvider).buttonPress();
-                      ref.read(hapticServiceProvider).buttonPress();
-                      ref.read(todoGroupBySectionProvider.notifier).update((val) => !val);
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton.icon(
-                    icon: Icon(
-                      ref.watch(todoSelectionModeProvider) 
-                          ? Icons.close_rounded 
-                          : Icons.playlist_add_check_rounded,
-                      size: 18,
-                    ),
-                    label: Text(ref.watch(todoSelectionModeProvider) ? 'Cancel' : 'Select'),
-                    onPressed: () {
-                      ref.read(soundServiceProvider).buttonPress();
-                      ref.read(hapticServiceProvider).buttonPress();
-                      final isMode = ref.read(todoSelectionModeProvider);
-                      ref.read(todoSelectionModeProvider.notifier).state = !isMode;
-                      ref.read(todoSelectedIdsProvider.notifier).state = const {};
-                    },
-                  ),
-                ],
-              ),
-            ],
+          // Vertical Divider
+          VerticalDivider(
+            width: 1,
+            thickness: 1,
+            color: scheme.outlineVariant.withValues(alpha: 0.3),
           ),
-        ),
-        const SizedBox(height: 10),
+          // Right Main Content Workspace
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: _kPad),
+                  child: _buildSearchAndFilters(scheme, textTheme),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: _kPad),
+                  child: _buildFolderHeading(scheme, textTheme),
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: _buildTodoTreeArea(scheme),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else {
+      // Mobile Compact Layout (Single Column)
+      return Column(
+        key: const ValueKey('dashboard_view_mobile'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Grid of Folders
+          allTodosAsync.when(
+            data: (todos) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: _kPad),
+                child: _buildFoldersGrid(todos, scheme),
+              );
+            },
+            loading: () => const SizedBox(height: 110),
+            error: (_, __) => const SizedBox(),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _kPad),
+            child: _buildSearchAndFilters(scheme, textTheme),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _kPad),
+            child: _buildFolderHeading(scheme, textTheme),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: _buildTodoTreeArea(scheme),
+          ),
+        ],
+      );
+    }
+  }
 
-        // 3. To-Do Hierarchy List
+  Widget _buildSearchAndFilters(ColorScheme scheme, TextTheme textTheme) {
+    return Row(
+      children: [
         Expanded(
-          child: Stack(
-            children: [
-              ref.watch(todosProvider).when(
-                data: (_) {
-                  final flatFiltered = ref.watch(filteredTodosProvider);
-                  final treeList = ref.watch(todoTreeProvider(flatFiltered));
-
-                  if (treeList.isEmpty) {
-                    return const Center(child: _NoTodosView());
-                  }
-
-                  final groupBySection = ref.watch(todoGroupBySectionProvider);
-                  if (groupBySection) {
-                    final Map<String, List<Todo>> grouped = {};
-                    for (final item in treeList) {
-                      final cat = item.category?.trim() ?? 'No Section';
-                      grouped.putIfAbsent(cat, () => []).add(item);
-                    }
-                    
-                    final sortedCategories = grouped.keys.toList()..sort((a, b) {
-                      if (a == 'No Section') return 1;
-                      if (b == 'No Section') return -1;
-                      return a.compareTo(b);
-                    });
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(_kPad, 0, _kPad, 100),
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: sortedCategories.length,
-                      itemBuilder: (context, catIdx) {
-                        final cat = sortedCategories[catIdx];
-                        final catTodos = grouped[cat] ?? [];
-                        final isCollapsed = _collapsedSections.contains(cat);
-
-                        return DragTarget<Todo>(
-                          onWillAcceptWithDetails: (details) => details.data.category != cat && !(cat == 'No Section' && details.data.category == null),
-                          onAcceptWithDetails: (details) async {
-                            ref.read(soundServiceProvider).buttonPress();
-                            ref.read(hapticServiceProvider).buttonPress();
-                            final cleanCategory = cat == 'No Section' ? '' : cat;
-                            await ref.read(todosProvider.notifier).updateTodo(
-                              id: details.data.id,
-                              category: cleanCategory,
-                            );
-                          },
-                          builder: (context, candidateData, rejectedData) {
-                            final isOver = candidateData.isNotEmpty;
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 16),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                border: isOver ? Border.all(color: scheme.primary, width: 2) : null,
-                                color: isOver ? scheme.primary.withValues(alpha: 0.05) : Colors.transparent,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  InkWell(
-                                    onTap: () {
-                                      ref.read(soundServiceProvider).buttonPress();
-                                      ref.read(hapticServiceProvider).buttonPress();
-                                      setState(() {
-                                        if (isCollapsed) {
-                                          _collapsedSections.remove(cat);
-                                        } else {
-                                          _collapsedSections.add(cat);
-                                        }
-                                      });
-                                    },
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            isCollapsed 
-                                                ? Icons.keyboard_arrow_right_rounded 
-                                                : Icons.keyboard_arrow_down_rounded,
-                                            size: 20,
-                                            color: scheme.onSurfaceVariant,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            cat.toUpperCase(),
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w900,
-                                              fontSize: 12,
-                                              letterSpacing: 1.0,
-                                              color: scheme.primary,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: scheme.primary.withValues(alpha: 0.1),
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              '${catTodos.length}',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: scheme.primary,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  if (!isCollapsed) ...[
-                                    const SizedBox(height: 8),
-                                    ...catTodos.map((todo) => _buildRecursiveTodo(todo, 0)),
-                                  ],
-                                ],
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(_kPad, 0, _kPad, 100),
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: treeList.length,
-                    itemBuilder: (context, index) {
-                      return _buildRecursiveTodo(treeList[index], 0);
-                    },
-                  );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, _) => AppErrorView(
-                  message: ErrorMessageMapper.fromError(err),
-                  onRetry: () => ref.read(todosProvider.notifier).refreshTodos(),
+          child: Container(
+            height: 44,
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10),
+                  child: Icon(Icons.search, size: 18),
                 ),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    style: textTheme.bodyMedium,
+                    decoration: const InputDecoration(
+                      hintText: 'Search tasks...',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.only(bottom: 6),
+                    ),
+                  ),
+                ),
+                if (_searchController.text.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 16),
+                    onPressed: () => _searchController.clear(),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        GestureDetector(
+          onTap: _showFiltersDialog,
+          child: Container(
+            height: 44,
+            width: 44,
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+            ),
+            child: Icon(Icons.filter_alt_outlined, color: scheme.onSurfaceVariant, size: 20),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFolderHeading(ColorScheme scheme, TextTheme textTheme) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          ref.watch(todoSelectedViewProvider).label.toUpperCase(),
+          style: textTheme.labelMedium?.copyWith(
+            color: scheme.primary,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.5,
+          ),
+        ),
+        Row(
+          children: [
+            IconButton(
+              icon: Icon(
+                ref.watch(todoGroupBySectionProvider) 
+                    ? Icons.grid_view_rounded 
+                    : Icons.view_headline_rounded,
+                size: 20,
+                color: ref.watch(todoGroupBySectionProvider) ? scheme.primary : scheme.onSurfaceVariant,
               ),
+              tooltip: 'Group by Section',
+              onPressed: () {
+                ref.read(soundServiceProvider).buttonPress();
+                ref.read(hapticServiceProvider).buttonPress();
+                ref.read(todoGroupBySectionProvider.notifier).update((val) => !val);
+              },
+            ),
+            const SizedBox(width: 8),
+            TextButton.icon(
+              icon: Icon(
+                ref.watch(todoSelectionModeProvider) 
+                    ? Icons.close_rounded 
+                    : Icons.playlist_add_check_rounded,
+                size: 18,
+              ),
+              label: Text(ref.watch(todoSelectionModeProvider) ? 'Cancel' : 'Select'),
+              onPressed: () {
+                ref.read(soundServiceProvider).buttonPress();
+                ref.read(hapticServiceProvider).buttonPress();
+                final isMode = ref.read(todoSelectionModeProvider);
+                ref.read(todoSelectionModeProvider.notifier).state = !isMode;
+                ref.read(todoSelectedIdsProvider.notifier).state = const {};
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTodoTreeArea(ColorScheme scheme) {
+    return Stack(
+      children: [
+        ref.watch(todosProvider).when(
+          data: (_) {
+            final flatFiltered = ref.watch(filteredTodosProvider);
+            final treeList = ref.watch(todoTreeProvider(flatFiltered));
+
+            if (treeList.isEmpty) {
+              return const Center(child: _NoTodosView());
+            }
+
+            final groupBySection = ref.watch(todoGroupBySectionProvider);
+            if (groupBySection) {
+              final Map<String, List<Todo>> grouped = {};
+              for (final item in treeList) {
+                final cat = item.category?.trim() ?? 'No Section';
+                grouped.putIfAbsent(cat, () => []).add(item);
+              }
               
-              // Move to root level drop target overlay
-              if (_isDraggingTask)
-                Positioned(
-                  left: 8,
-                  right: 8,
-                  bottom: ref.watch(todoSelectionModeProvider) ? 96 : 32,
-                  child: DragTarget<Todo>(
-                    onWillAcceptWithDetails: (details) => details.data.parentId != null,
+              final sortedCategories = grouped.keys.toList()..sort((a, b) {
+                if (a == 'No Section') return 1;
+                if (b == 'No Section') return -1;
+                return a.compareTo(b);
+              });
+
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(_kPad, 0, _kPad, 100),
+                physics: const BouncingScrollPhysics(),
+                itemCount: sortedCategories.length,
+                itemBuilder: (context, catIdx) {
+                  final cat = sortedCategories[catIdx];
+                  final catTodos = grouped[cat] ?? [];
+                  final isCollapsed = _collapsedSections.contains(cat);
+
+                  return DragTarget<Todo>(
+                    onWillAcceptWithDetails: (details) => details.data.category != cat && !(cat == 'No Section' && details.data.category == null),
                     onAcceptWithDetails: (details) async {
                       ref.read(soundServiceProvider).buttonPress();
                       ref.read(hapticServiceProvider).buttonPress();
+                      final cleanCategory = cat == 'No Section' ? '' : cat;
                       await ref.read(todosProvider.notifier).updateTodo(
                         id: details.data.id,
-                        clearParentId: true,
+                        category: cleanCategory,
                       );
                     },
                     builder: (context, candidateData, rejectedData) {
                       final isOver = candidateData.isNotEmpty;
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        height: 54,
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: isOver 
-                              ? Colors.green.withValues(alpha: 0.2) 
-                              : scheme.surfaceContainerHighest.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isOver ? Colors.green : scheme.outlineVariant,
-                            width: 2.0,
-                          ),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
-                          ],
+                          border: isOver ? Border.all(color: scheme.primary, width: 2) : null,
+                          color: isOver ? scheme.primary.withValues(alpha: 0.05) : Colors.transparent,
                         ),
-                        child: Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.unarchive_rounded,
-                                color: isOver ? Colors.green : scheme.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Drag here to move to Root Level',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: isOver ? Colors.green : scheme.onSurfaceVariant,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            InkWell(
+                              onTap: () {
+                                ref.read(soundServiceProvider).buttonPress();
+                                ref.read(hapticServiceProvider).buttonPress();
+                                setState(() {
+                                  if (isCollapsed) {
+                                    _collapsedSections.remove(cat);
+                                  } else {
+                                    _collapsedSections.add(cat);
+                                  }
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isCollapsed 
+                                          ? Icons.keyboard_arrow_right_rounded 
+                                          : Icons.keyboard_arrow_down_rounded,
+                                      size: 20,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      cat.toUpperCase(),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 12,
+                                        letterSpacing: 1.0,
+                                        color: scheme.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: scheme.primary.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${catTodos.length}',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: scheme.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+                            ),
+                            if (!isCollapsed) ...[
+                              const SizedBox(height: 8),
+                              ...catTodos.map((todo) => _buildRecursiveTodo(todo, 0)),
                             ],
-                          ),
+                          ],
                         ),
                       );
                     },
-                  ),
-                ),
+                  );
+                },
+              );
+            }
 
-              // Floating batch actions bar
-              if (ref.watch(todoSelectionModeProvider))
-                Positioned(
-                  left: 8,
-                  right: 8,
-                  bottom: 24,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: scheme.surfaceContainer.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 16,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _BatchActionButton(
-                              icon: Icons.check_circle_outline_rounded,
-                              label: 'Complete',
-                              onTap: _batchComplete,
-                            ),
-                            _BatchActionButton(
-                              icon: Icons.priority_high_rounded,
-                              label: 'Priority',
-                              onTap: _batchChangePriority,
-                            ),
-                            _BatchActionButton(
-                              icon: Icons.category_outlined,
-                              label: 'Category',
-                              onTap: _batchMoveCategory,
-                            ),
-                            _BatchActionButton(
-                              icon: Icons.folder_open_rounded,
-                              label: 'Project',
-                              onTap: _batchMoveProject,
-                            ),
-                            _BatchActionButton(
-                              icon: Icons.delete_outline_rounded,
-                              label: 'Delete',
-                              color: scheme.error,
-                              onTap: _batchDelete,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+            return ListView.builder(
+              padding: const EdgeInsets.fromLTRB(_kPad, 0, _kPad, 100),
+              physics: const BouncingScrollPhysics(),
+              itemCount: treeList.length,
+              itemBuilder: (context, index) {
+                return _buildRecursiveTodo(treeList[index], 0);
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => AppErrorView(
+            message: ErrorMessageMapper.fromError(err),
+            onRetry: () => ref.read(todosProvider.notifier).refreshTodos(),
           ),
         ),
+        
+        // Move to root level drop target overlay
+        if (_isDraggingTask)
+          Positioned(
+            left: 8,
+            right: 8,
+            bottom: ref.watch(todoSelectionModeProvider) ? 96 : 32,
+            child: DragTarget<Todo>(
+              onWillAcceptWithDetails: (details) => details.data.parentId != null,
+              onAcceptWithDetails: (details) async {
+                ref.read(soundServiceProvider).buttonPress();
+                ref.read(hapticServiceProvider).buttonPress();
+                await ref.read(todosProvider.notifier).updateTodo(
+                  id: details.data.id,
+                  clearParentId: true,
+                );
+              },
+              builder: (context, candidateData, rejectedData) {
+                final isOver = candidateData.isNotEmpty;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: isOver 
+                        ? Colors.green.withValues(alpha: 0.2) 
+                        : scheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isOver ? Colors.green : scheme.outlineVariant,
+                      width: 2.0,
+                    ),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
+                    ],
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.unarchive_rounded,
+                          color: isOver ? Colors.green : scheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Drag here to move to Root Level',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isOver ? Colors.green : scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+        // Floating batch actions bar
+        if (ref.watch(todoSelectionModeProvider))
+          Positioned(
+            left: 8,
+            right: 8,
+            bottom: 24,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainer.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 16,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _BatchActionButton(
+                        icon: Icons.check_circle_outline_rounded,
+                        label: 'Complete',
+                        onTap: _batchComplete,
+                      ),
+                      _BatchActionButton(
+                        icon: Icons.priority_high_rounded,
+                        label: 'Priority',
+                        onTap: _batchChangePriority,
+                      ),
+                      _BatchActionButton(
+                        icon: Icons.category_outlined,
+                        label: 'Category',
+                        onTap: _batchMoveCategory,
+                      ),
+                      _BatchActionButton(
+                        icon: Icons.folder_open_rounded,
+                        label: 'Project',
+                        onTap: _batchMoveProject,
+                      ),
+                      _BatchActionButton(
+                        icon: Icons.delete_outline_rounded,
+                        label: 'Delete',
+                        color: scheme.error,
+                        onTap: _batchDelete,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -1296,7 +1360,7 @@ class _TodosPageState extends ConsumerState<TodosPage> {
 
     final weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-    return Column(
+    final monthGridPart = Column(
       children: [
         // Weekday labels
         Padding(
@@ -1412,22 +1476,128 @@ class _TodosPageState extends ConsumerState<TodosPage> {
             },
           ),
         ),
-
-        // Scheduled items for selected day
-        const SizedBox(height: 12),
-        Container(
-          height: 1,
-          color: scheme.outlineVariant.withValues(alpha: 0.3),
-        ),
-        Expanded(
-          child: _buildSelectedDateList(ref.watch(calendarSelectedDateProvider)),
-        ),
       ],
     );
+
+    final selectedDateListPart = _buildSelectedDateList(ref.watch(calendarSelectedDateProvider));
+
+    if (!context.isCompact) {
+      // Side-by-side split screen for tablets/desktop
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 6,
+            child: monthGridPart,
+          ),
+          VerticalDivider(
+            width: 1,
+            thickness: 1,
+            color: scheme.outlineVariant.withValues(alpha: 0.3),
+          ),
+          Expanded(
+            flex: 4,
+            child: selectedDateListPart,
+          ),
+        ],
+      );
+    } else {
+      // Stacking layout for mobile
+      return Column(
+        children: [
+          Expanded(
+            child: monthGridPart,
+          ),
+          const SizedBox(height: 12),
+          Container(
+            height: 1,
+            color: scheme.outlineVariant.withValues(alpha: 0.3),
+          ),
+          Expanded(
+            child: selectedDateListPart,
+          ),
+        ],
+      );
+    }
   }
 
   // ── Week Calendar Grid ─────────────────────────────────────────────────────
   Widget _buildWeekView(ColorScheme scheme) {
+    if (context.isCompact) {
+      // Mobile Week View: Horizontal date strip + vertical list
+      final selectedDate = ref.watch(calendarSelectedDateProvider);
+      final weekday = selectedDate.weekday % 7; // Sunday = 0
+      final startOfWeek = selectedDate.subtract(Duration(days: weekday));
+      final daysOfWeek = List.generate(7, (i) => startOfWeek.add(Duration(days: i)));
+      
+      final dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+      return Column(
+        children: [
+          // Horizontal date strip
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _kPad, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: List.generate(7, (i) {
+                final dayDate = daysOfWeek[i];
+                final isSelected = DateUtils.isSameDay(dayDate, selectedDate);
+                final isToday = DateUtils.isSameDay(dayDate, DateTime.now());
+                
+                return GestureDetector(
+                  onTap: () {
+                    ref.read(soundServiceProvider).buttonPress();
+                    ref.read(hapticServiceProvider).buttonPress();
+                    ref.read(calendarSelectedDateProvider.notifier).state = dayDate;
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected ? scheme.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: isToday ? Border.all(color: scheme.primary, width: 1.5) : null,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          dayLabels[i],
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? scheme.onPrimary : scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${dayDate.day}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: isSelected ? scheme.onPrimary : scheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 1,
+            color: scheme.outlineVariant.withValues(alpha: 0.3),
+          ),
+          // Vertical checklist of tasks for the selected date
+          Expanded(
+            child: _buildSelectedDateList(selectedDate),
+          ),
+        ],
+      );
+    }
+
     final selectedDate = ref.watch(calendarSelectedDateProvider);
     final weekday = selectedDate.weekday % 7; // Sunday = 0
     final startOfWeek = selectedDate.subtract(Duration(days: weekday));
@@ -1464,6 +1634,7 @@ class _TodosPageState extends ConsumerState<TodosPage> {
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
+                          width: double.infinity,
                           decoration: BoxDecoration(
                             color: isSelected ? scheme.primary : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
@@ -1864,19 +2035,49 @@ class _FolderCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return GestureDetector(
+    return PressScale(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected 
-              ? scheme.primary.withValues(alpha: 0.15) 
-              : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    color.withValues(alpha: 0.25),
+                    color.withValues(alpha: 0.1),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : LinearGradient(
+                  colors: [
+                    scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                    scheme.surfaceContainerHighest.withValues(alpha: 0.15),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? scheme.primary : scheme.outlineVariant.withValues(alpha: 0.2),
+            color: isSelected ? color : scheme.outlineVariant.withValues(alpha: 0.2),
             width: isSelected ? 1.5 : 1.0,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.15),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1973,9 +2174,36 @@ class _TodoCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        gradient: LinearGradient(
+          colors: [
+            scheme.surfaceContainerHighest.withValues(alpha: todo.isCompleted ? 0.2 : 0.45),
+            scheme.surfaceContainerHighest.withValues(alpha: todo.isCompleted ? 0.1 : 0.25),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: isSelected 
+              ? scheme.primary.withValues(alpha: 0.5) 
+              : scheme.outlineVariant.withValues(alpha: todo.isCompleted ? 0.08 : 0.2),
+          width: isSelected ? 1.5 : 1.0,
+        ),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: scheme.primary.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.01),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -2051,184 +2279,202 @@ class _TodoCard extends StatelessWidget {
               onTap: selectionMode ? onSelectedToggle : onEdit,
               behavior: HitTestBehavior.opaque,
               child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    todo.title,
-                    style: textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      decoration: todo.isCompleted ? TextDecoration.lineThrough : null,
-                      color: todo.isCompleted 
-                          ? scheme.onSurfaceVariant.withValues(alpha: 0.6) 
-                          : scheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (todo.notes != null && todo.notes!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      todo.notes!,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontSize: 11,
+                      todo.title,
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        decoration: todo.isCompleted ? TextDecoration.lineThrough : null,
+                        color: todo.isCompleted 
+                            ? scheme.onSurfaceVariant.withValues(alpha: 0.6) 
+                            : scheme.onSurface,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ],
-                  if (hasChecklist) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.check_box_outlined, size: 12, color: scheme.primary),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$completedChecklist/$totalChecklist',
-                          style: textTheme.bodySmall?.copyWith(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: scheme.primary,
-                          ),
+                    if (todo.notes != null && todo.notes!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        todo.notes!,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 11,
                         ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: totalChecklist > 0 ? completedChecklist / totalChecklist : 0.0,
-                              minHeight: 4,
-                              backgroundColor: scheme.primary.withValues(alpha: 0.1),
-                              color: scheme.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (todo.tags.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: todo.tags.map((tag) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: scheme.primary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: scheme.primary.withValues(alpha: 0.15)),
-                          ),
-                          child: Text(
-                            '#$tag',
-                            style: textTheme.labelSmall?.copyWith(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: scheme.primary,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                  if (todo.dueDate != null || todo.category != null || todo.recurrence != null || isBlocked || todo.estimatedMinutes > 0 || todo.energyLevel != TodoEnergyLevel.medium) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        if (isBlocked) ...[
-                          Icon(Icons.lock_outline_rounded, size: 11, color: scheme.error),
-                          const SizedBox(width: 2),
-                          Text(
-                            'BLOCKED',
-                            style: textTheme.bodySmall?.copyWith(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: scheme.error,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                        if (todo.estimatedMinutes > 0) ...[
-                          Icon(Icons.timer_outlined, size: 11, color: scheme.onSurfaceVariant),
-                          const SizedBox(width: 2),
-                          Text(
-                            todo.estimatedMinutes >= 60
-                                ? '${(todo.estimatedMinutes / 60).toStringAsFixed(1).replaceAll('.0', '')}h'
-                                : '${todo.estimatedMinutes}m',
-                            style: textTheme.bodySmall?.copyWith(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                        if (todo.energyLevel != TodoEnergyLevel.medium) ...[
-                          Icon(Icons.bolt_rounded, size: 11, color: Colors.orangeAccent),
-                          const SizedBox(width: 2),
-                          Text(
-                            todo.energyLevel.name.toUpperCase(),
-                            style: textTheme.bodySmall?.copyWith(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orangeAccent,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                        if (todo.dueDate != null) ...[
-                          Icon(
-                            Icons.calendar_today_rounded,
-                            size: 10,
-                            color: isOverdue ? scheme.error : scheme.onSurfaceVariant,
-                          ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (hasChecklist) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.check_box_outlined, size: 12, color: scheme.primary),
                           const SizedBox(width: 4),
                           Text(
-                            _formatDueDate(todo.dueDate!),
-                            style: textTheme.bodySmall?.copyWith(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: isOverdue ? scheme.error : scheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                        if (todo.recurrence != null) ...[
-                          Icon(Icons.replay_rounded, size: 11, color: scheme.primary),
-                          const SizedBox(width: 2),
-                          Text(
-                            todo.recurrence!.toUpperCase(),
+                            '$completedChecklist/$totalChecklist',
                             style: textTheme.bodySmall?.copyWith(
                               fontSize: 9,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.bold,
                               color: scheme.primary,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                        ],
-                        if (todo.category != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: scheme.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              todo.category!.toUpperCase(),
-                              style: textTheme.labelSmall?.copyWith(
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: totalChecklist > 0 ? completedChecklist / totalChecklist : 0.0,
+                                minHeight: 4,
+                                backgroundColor: scheme.primary.withValues(alpha: 0.1),
                                 color: scheme.primary,
                               ),
                             ),
                           ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
+                    if (todo.tags.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: todo.tags.map((tag) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: scheme.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: scheme.primary.withValues(alpha: 0.15)),
+                            ),
+                            child: Text(
+                              '#$tag',
+                              style: textTheme.labelSmall?.copyWith(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: scheme.primary,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                    if (todo.dueDate != null || todo.category != null || todo.recurrence != null || isBlocked || todo.estimatedMinutes > 0 || todo.energyLevel != TodoEnergyLevel.medium) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (isBlocked)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.lock_outline_rounded, size: 11, color: scheme.error),
+                                const SizedBox(width: 2),
+                                Text(
+                                  'BLOCKED',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: scheme.error,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          if (todo.estimatedMinutes > 0)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.timer_outlined, size: 11, color: scheme.onSurfaceVariant),
+                                const SizedBox(width: 2),
+                                Text(
+                                  todo.estimatedMinutes >= 60
+                                      ? '${(todo.estimatedMinutes / 60).toStringAsFixed(1).replaceAll('.0', '')}h'
+                                      : '${todo.estimatedMinutes}m',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          if (todo.energyLevel != TodoEnergyLevel.medium)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.bolt_rounded, size: 11, color: Colors.orangeAccent),
+                                const SizedBox(width: 2),
+                                Text(
+                                  todo.energyLevel.name.toUpperCase(),
+                                  style: textTheme.bodySmall?.copyWith(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orangeAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          if (todo.dueDate != null)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 10,
+                                  color: isOverdue ? scheme.error : scheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _formatDueDate(todo.dueDate!),
+                                  style: textTheme.bodySmall?.copyWith(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: isOverdue ? scheme.error : scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          if (todo.recurrence != null)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.replay_rounded, size: 11, color: scheme.primary),
+                                const SizedBox(width: 2),
+                                Text(
+                                  todo.recurrence!.toUpperCase(),
+                                  style: textTheme.bodySmall?.copyWith(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900,
+                                    color: scheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          if (todo.category != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: scheme.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                todo.category!.toUpperCase(),
+                                style: textTheme.labelSmall?.copyWith(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                  color: scheme.primary,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
                 ),
               ),
             ),

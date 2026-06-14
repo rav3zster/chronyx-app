@@ -14,6 +14,7 @@ import 'package:chronyx/features/life_insights/presentation/pages/life_insights_
 import 'package:chronyx/features/project_planner/presentation/pages/blueprint_wizard_page.dart';
 import 'package:chronyx/features/project_planner/presentation/pages/project_detail_page.dart';
 import 'package:chronyx/features/settings/presentation/pages/settings_page.dart';
+import 'package:chronyx/features/time_tracking/presentation/pages/focus_page.dart';
 import 'package:chronyx/features/time_tracking/presentation/pages/time_tracking_page.dart';
 import 'package:chronyx/features/todos/presentation/pages/todos_page.dart';
 import 'package:flutter/material.dart';
@@ -87,6 +88,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             name: 'timeTracking',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: TimeTrackingPage()),
+          ),
+          GoRoute(
+            path: AppRoutes.focus,
+            name: 'focus',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: FocusPage()),
           ),
           GoRoute(
             path: AppRoutes.analytics,
@@ -174,16 +181,18 @@ class _MainShell extends StatelessWidget {
   final Widget child;
 
   int _currentIndex(String location) {
+    if (location.startsWith(AppRoutes.focus)) return 2;
     if (location.startsWith(AppRoutes.timeTracking)) return 1;
-    if (location.startsWith(AppRoutes.analytics)) return 2;
-    if (location.startsWith(AppRoutes.goals)) return 3;
-    if (location.startsWith(AppRoutes.profile)) return 4;
+    if (location.startsWith(AppRoutes.analytics)) return 3;
+    if (location.startsWith(AppRoutes.goals)) return 4;
+    if (location.startsWith(AppRoutes.profile)) return 5;
     return 0; // dashboard
   }
 
   static const _items = <_NavItem>[
     _NavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
-    _NavItem(Icons.timer_outlined, Icons.timer_rounded, 'Track'),
+    _NavItem(Icons.timer_outlined, Icons.timer_rounded, 'Sessions'),
+    _NavItem(Icons.self_improvement_outlined, Icons.self_improvement_rounded, 'Focus'),
     _NavItem(Icons.insights_outlined, Icons.insights_rounded, 'Insights'),
     _NavItem(Icons.flag_outlined, Icons.flag_rounded, 'Goals'),
     _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
@@ -192,9 +201,10 @@ class _MainShell extends StatelessWidget {
   void _onSelect(BuildContext context, int index) {
     final route = switch (index) {
       1 => AppRoutes.timeTracking,
-      2 => AppRoutes.analytics,
-      3 => AppRoutes.goals,
-      4 => AppRoutes.profile,
+      2 => AppRoutes.focus,
+      3 => AppRoutes.analytics,
+      4 => AppRoutes.goals,
+      5 => AppRoutes.profile,
       _ => AppRoutes.dashboard,
     };
     GoRouter.of(context).go(route);

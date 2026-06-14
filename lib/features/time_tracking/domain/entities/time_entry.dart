@@ -103,7 +103,8 @@ enum SessionStatus {
 enum SessionMode {
   stopwatch,
   timer,
-  pomodoro;
+  pomodoro,
+  custom;
 
   String get jsonKey => name;
 
@@ -111,13 +112,50 @@ enum SessionMode {
     SessionMode.stopwatch => 'Stopwatch',
     SessionMode.timer => 'Timer',
     SessionMode.pomodoro => 'Pomodoro',
+    SessionMode.custom => 'Custom',
+  };
+
+  String get icon => switch (this) {
+    SessionMode.stopwatch => '⏱️',
+    SessionMode.timer => '⏳',
+    SessionMode.pomodoro => '🍅',
+    SessionMode.custom => '🔁',
   };
 
   static SessionMode fromJson(String? value) => switch (value) {
     'stopwatch' => SessionMode.stopwatch,
     'timer' => SessionMode.timer,
     'pomodoro' => SessionMode.pomodoro,
+    'custom' => SessionMode.custom,
     _ => SessionMode.stopwatch,
+  };
+}
+
+// ── Energy Level ──────────────────────────────────────────────────────────────
+
+enum EnergyLevel {
+  low,
+  medium,
+  high;
+
+  String get label => switch (this) {
+    EnergyLevel.low => 'Low',
+    EnergyLevel.medium => 'Medium',
+    EnergyLevel.high => 'High',
+  };
+
+  String get emoji => switch (this) {
+    EnergyLevel.low => '🔋',
+    EnergyLevel.medium => '⚡',
+    EnergyLevel.high => '🚀',
+  };
+
+  String get jsonKey => name;
+
+  static EnergyLevel fromJson(String? value) => switch (value) {
+    'low' => EnergyLevel.low,
+    'high' => EnergyLevel.high,
+    _ => EnergyLevel.medium,
   };
 }
 
@@ -138,6 +176,10 @@ class TimeEntry {
     this.sessionMode = SessionMode.stopwatch,
     this.status = SessionStatus.completed,
     this.notes,
+    this.tags = const [],
+    this.interruptions = 0,
+    this.energyLevel = EnergyLevel.medium,
+    this.breakDurationMinutes,
     this.createdAt,
     this.updatedAt,
   });
@@ -157,6 +199,11 @@ class TimeEntry {
   final SessionMode sessionMode;
   final SessionStatus status;
   final String? notes;
+  final List<String> tags;
+  final int interruptions;
+  final EnergyLevel energyLevel;
+  /// For pomodoro/custom: break duration after this work block (minutes)
+  final int? breakDurationMinutes;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 

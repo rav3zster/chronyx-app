@@ -20,5 +20,6 @@ class AppRoutes {
   static const String lifeInsights = '/life-insights';
   static const String authDebug = '/auth-debug';
   static const String todos = '/todos';
+  static const String focus = '/focus';
 }
 

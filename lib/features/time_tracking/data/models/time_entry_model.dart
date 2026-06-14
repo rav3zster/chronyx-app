@@ -18,6 +18,10 @@ class TimeEntryModel {
     this.sessionMode = SessionMode.stopwatch,
     this.status = SessionStatus.completed,
     this.notes,
+    this.tags = const [],
+    this.interruptions = 0,
+    this.energyLevel = EnergyLevel.medium,
+    this.breakDurationMinutes,
     this.createdAt,
     this.updatedAt,
   });
@@ -38,27 +42,30 @@ class TimeEntryModel {
   final SessionMode sessionMode;
   final SessionStatus status;
   final String? notes;
+  final List<String> tags;
+  final int interruptions;
+  final EnergyLevel energyLevel;
+  final int? breakDurationMinutes;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
   static DateTime? _parseDateTime(String? dateStr) {
     if (dateStr == null) return null;
-    final hasTimezone = dateStr.endsWith('Z') || 
-                        (dateStr.length > 10 && (dateStr.contains('+', 10) || dateStr.contains('-', 10)));
+    final hasTimezone = dateStr.endsWith('Z') ||
+        (dateStr.length > 10 &&
+            (dateStr.contains('+', 10) || dateStr.contains('-', 10)));
     return DateTime.parse(hasTimezone ? dateStr : '${dateStr}Z').toLocal();
   }
 
   factory TimeEntryModel.fromJson(Map<String, dynamic> json) {
     final endTimeStr = json['end_time'] as String?;
     final parsedEndTime = _parseDateTime(endTimeStr);
-    
-    // Backward compatibility check for status
+
     final statusStr = json['status'] as String?;
-    final status = statusStr != null 
+    final status = statusStr != null
         ? SessionStatus.fromJson(statusStr)
         : (parsedEndTime == null ? SessionStatus.active : SessionStatus.completed);
 
-    // Support both 'session_mode' and 'mode' names
     final modeStr = json['session_mode'] as String? ?? json['mode'] as String?;
     final sessionMode = SessionMode.fromJson(modeStr);
 
@@ -71,6 +78,15 @@ class TimeEntryModel {
     final updatedAtStr = json['updated_at'] as String?;
     final parsedUpdatedAt = _parseDateTime(updatedAtStr);
 
+    // Parse tags — stored as a JSON array column or null
+    final rawTags = json['tags'];
+    final List<String> parsedTags;
+    if (rawTags is List) {
+      parsedTags = rawTags.map((t) => t.toString()).toList();
+    } else {
+      parsedTags = const [];
+    }
+
     return TimeEntryModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
@@ -81,13 +97,21 @@ class TimeEntryModel {
       projectTaskId: json['project_task_id'] as String?,
       elapsedSeconds: (json['elapsed_seconds'] as num?)?.toInt() ?? 0,
       durationMinutes: (json['duration_minutes'] as num?)?.toInt() ?? 0,
-      targetDurationMinutes: (json['target_duration_minutes'] as num?)?.toInt(),
-      completionPercentage: (json['completion_percentage'] as num?)?.toDouble() ?? 0.0,
-      pausedDurationSeconds: (json['paused_duration_seconds'] as num?)?.toInt() ?? 0,
+      targetDurationMinutes:
+          (json['target_duration_minutes'] as num?)?.toInt(),
+      completionPercentage:
+          (json['completion_percentage'] as num?)?.toDouble() ?? 0.0,
+      pausedDurationSeconds:
+          (json['paused_duration_seconds'] as num?)?.toInt() ?? 0,
       pausedAt: parsedPausedAt,
       sessionMode: sessionMode,
       status: status,
       notes: json['notes'] as String?,
+      tags: parsedTags,
+      interruptions: (json['interruptions'] as num?)?.toInt() ?? 0,
+      energyLevel: EnergyLevel.fromJson(json['energy_level'] as String?),
+      breakDurationMinutes:
+          (json['break_duration_minutes'] as num?)?.toInt(),
       createdAt: parsedCreatedAt,
       updatedAt: parsedUpdatedAt,
     );
@@ -111,6 +135,10 @@ class TimeEntryModel {
       'session_mode': sessionMode.jsonKey,
       'status': status.jsonKey,
       'notes': notes,
+      'tags': tags,
+      'interruptions': interruptions,
+      'energy_level': energyLevel.jsonKey,
+      'break_duration_minutes': breakDurationMinutes,
     };
   }
 
@@ -131,6 +159,10 @@ class TimeEntryModel {
       sessionMode: sessionMode,
       status: status,
       notes: notes,
+      tags: tags,
+      interruptions: interruptions,
+      energyLevel: energyLevel,
+      breakDurationMinutes: breakDurationMinutes,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

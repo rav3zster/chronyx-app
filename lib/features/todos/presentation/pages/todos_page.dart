@@ -1,5 +1,4 @@
 import 'dart:ui';
-import 'package:chronyx/core/constants/app_strings.dart';
 import 'package:chronyx/core/errors/error_message_mapper.dart';
 import 'package:chronyx/core/utils/responsive.dart';
 import 'package:chronyx/core/widgets/app_error_view.dart';
@@ -11,7 +10,6 @@ import 'package:chronyx/features/todos/domain/entities/todo.dart';
 import 'package:chronyx/features/todos/presentation/providers/todos_providers.dart';
 import 'package:chronyx/features/todos/presentation/utils/todo_nli_parser.dart';
 import 'package:chronyx/features/todos/presentation/utils/todo_checklist_parser.dart';
-import 'package:chronyx/features/settings/presentation/providers/settings_provider.dart';
 import 'package:chronyx/core/services/sound_service.dart';
 import 'package:chronyx/core/services/haptic_service.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +32,7 @@ class _TodosPageState extends ConsumerState<TodosPage> {
   final TextEditingController _searchController = TextEditingController();
   final Set<String> _collapsedTodos = {};
   final Set<String> _collapsedSections = {};
+  // ignore: unused_field
   bool _isSaving = false;
   bool _isDraggingTask = false;
 
@@ -89,7 +88,7 @@ class _TodosPageState extends ConsumerState<TodosPage> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedView = ref.watch(todoSelectedViewProvider);
+    ref.watch(todoSelectedViewProvider);
     final isCompact = context.isCompact;
     final scheme = Theme.of(context).colorScheme;
 

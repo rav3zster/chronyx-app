@@ -330,15 +330,38 @@ class NotificationService {
     required SessionStatus status,
     required Duration duration,
     Duration? remaining,
+    double? progressPercent,
   }) async {
     await _ensureChannel();
     final isPaused = status == SessionStatus.paused;
-    final stateText = isPaused ? 'Paused' : 'Running';
+    final stateText = isPaused ? '⏸ Paused' : '🎯 Active';
     final name = taskName.isEmpty ? 'Focus Session' : taskName;
-    
-    final timeText = remaining != null
-        ? 'Remaining: ${_formatDuration(remaining)}'
-        : 'Elapsed: ${_formatDuration(duration)}';
+
+    final elapsedText = _formatDuration(duration);
+    final timeText = remaining != null && remaining > Duration.zero
+        ? '${_formatDuration(remaining)} remaining · $elapsedText elapsed'
+        : 'Elapsed: $elapsedText';
+
+    // Android action buttons
+    const pauseAction = AndroidNotificationAction(
+      'pause_session',
+      'Pause',
+      icon: DrawableResourceAndroidBitmap('@drawable/ic_pause'),
+      showsUserInterface: false,
+    );
+    const resumeAction = AndroidNotificationAction(
+      'resume_session',
+      'Resume',
+      icon: DrawableResourceAndroidBitmap('@drawable/ic_play'),
+      showsUserInterface: false,
+    );
+    const stopAction = AndroidNotificationAction(
+      'stop_session',
+      'Stop',
+      icon: DrawableResourceAndroidBitmap('@drawable/ic_stop'),
+      showsUserInterface: false,
+      cancelNotification: true,
+    );
 
     final androidDetails = AndroidNotificationDetails(
       'chronyx_running_session',
@@ -348,10 +371,13 @@ class NotificationService {
       priority: Priority.low,
       playSound: false,
       enableVibration: false,
-      ongoing: !isPaused, // make ongoing only if active
+      ongoing: !isPaused,
       onlyAlertOnce: true,
       showWhen: false,
       subText: stateText,
+      actions: isPaused
+          ? [resumeAction, stopAction]
+          : [pauseAction, stopAction],
     );
 
     const iosDetails = DarwinNotificationDetails(

@@ -22,8 +22,6 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
       print('[REPO ERROR] PostgrestException in fetchTimeEntries');
       print('  code=${e.code}');
       print('  message=${e.message}');
-      print('  details=${e.details}');
-      print('  hint=${e.hint}');
       print(st);
       throw _mapPostgrest(e);
     } catch (e, st) {
@@ -42,6 +40,9 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
     String? projectTaskId,
     SessionMode sessionMode = SessionMode.stopwatch,
     int? targetDurationMinutes,
+    List<String>? tags,
+    EnergyLevel energyLevel = EnergyLevel.medium,
+    int? breakDurationMinutes,
   }) async {
     try {
       final model = await _remoteDataSource.startSession(
@@ -50,6 +51,9 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
         projectTaskId: projectTaskId,
         sessionMode: sessionMode,
         targetDurationMinutes: targetDurationMinutes,
+        tags: tags,
+        energyLevel: energyLevel,
+        breakDurationMinutes: breakDurationMinutes,
       );
       return model.toEntity();
     } on AppException {
@@ -58,8 +62,6 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
       print('[REPO ERROR] PostgrestException in startSession');
       print('  code=${e.code}');
       print('  message=${e.message}');
-      print('  details=${e.details}');
-      print('  hint=${e.hint}');
       print(st);
       throw _mapPostgrest(e);
     } catch (e, st) {
@@ -86,10 +88,6 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
       rethrow;
     } on PostgrestException catch (e, st) {
       print('[REPO ERROR] PostgrestException in stopSession');
-      print('  code=${e.code}');
-      print('  message=${e.message}');
-      print('  details=${e.details}');
-      print('  hint=${e.hint}');
       print(st);
       throw _mapPostgrest(e);
     } catch (e, st) {
@@ -124,7 +122,8 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
   @override
   Future<TimeEntry> resumeSession({required String sessionId}) async {
     try {
-      final model = await _remoteDataSource.resumeSession(sessionId: sessionId);
+      final model =
+          await _remoteDataSource.resumeSession(sessionId: sessionId);
       return model.toEntity();
     } on AppException {
       rethrow;
@@ -166,6 +165,9 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
     required String taskName,
     required TaskCategory category,
     String? notes,
+    List<String>? tags,
+    EnergyLevel? energyLevel,
+    int? interruptions,
   }) async {
     try {
       final model = await _remoteDataSource.updateSession(
@@ -173,6 +175,9 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
         taskName: taskName,
         category: category,
         notes: notes,
+        tags: tags,
+        energyLevel: energyLevel,
+        interruptions: interruptions,
       );
       return model.toEntity();
     } on AppException {
@@ -191,7 +196,26 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
   }
 
   @override
+  Future<void> incrementInterruption({required String sessionId}) async {
+    try {
+      await _remoteDataSource.incrementInterruption(sessionId: sessionId);
+    } on AppException {
+      rethrow;
+    } on PostgrestException catch (e, st) {
+      print('[REPO ERROR] PostgrestException in incrementInterruption');
+      print(st);
+      throw _mapPostgrest(e);
+    } catch (e, st) {
+      print(
+          '[REPO ERROR] non-Postgrest in incrementInterruption: ${e.runtimeType}');
+      print(e);
+      print(st);
+      if (_isNetworkError(e)) throw const NetworkException();
+      rethrow;
+    }
+  }
 
+  @override
   Future<void> mergeSessions({
     required String firstSessionId,
     required String secondSessionId,
@@ -234,7 +258,6 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-
   AppException _mapPostgrest(PostgrestException e) {
     final code = e.code ?? '';
     final msg = e.message.toLowerCase();
@@ -260,13 +283,11 @@ class TimeTrackingRepositoryImpl implements TimeTrackingRepository {
       return const ServerException('Session expired. Please sign in again.');
     }
     if (code == '23502') {
-      return ServerException(
-        'Missing required field: ${e.message}',
-      );
+      return ServerException('Missing required field: ${e.message}');
     }
     if (code == '23503') {
       return ServerException(
-        'Database FK violation: ${e.message}. Check that user exists in auth.users.',
+        'Database FK violation: ${e.message}.',
       );
     }
     return ServerException(e.message);

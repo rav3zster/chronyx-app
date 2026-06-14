@@ -100,122 +100,244 @@ class _TodosPageState extends ConsumerState<TodosPage> {
       ),
       body: SafeArea(
         bottom: false,
-        child: ResponsiveCenter(
-          maxWidth: Breakpoints.maxDoubleContent,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Header Row ────────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(_kPad, 12, _kPad, 0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                      onPressed: () => context.pop(),
-                    ),
-                    const Expanded(
-                      child: PageHeader(title: 'To-Dos'),
-                    ),
-                    PressScale(
-                      onTap: () => _showCreateDialog(
-                        prefilledDate: _tabIndex == 1
-                            ? ref.read(calendarSelectedDateProvider)
-                            : null,
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: scheme.primary,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: scheme.primary.withValues(alpha: 0.25),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
+        child: Stack(
+          children: [
+            ResponsiveCenter(
+              maxWidth: Breakpoints.maxDoubleContent,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ── Header Row ────────────────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(_kPad, 12, _kPad, 0),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                          onPressed: () => context.pop(),
                         ),
+                        const Expanded(
+                          child: PageHeader(title: 'To-Dos'),
+                        ),
+                        PressScale(
+                          onTap: () => _showCreateDialog(
+                            prefilledDate: _tabIndex == 1
+                                ? ref.read(calendarSelectedDateProvider)
+                                : null,
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: scheme.primary,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: scheme.primary.withValues(alpha: 0.25),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.add_rounded, color: scheme.onPrimary, size: 18),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'ADD TASK',
+                                  style: TextStyle(
+                                    color: scheme.onPrimary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+    
+                  // ── Top Navigation View Switcher ──────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: _kPad),
+                    child: Container(
+                      height: 44,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _SubViewTab(
+                              label: 'Lists & Folders',
+                              icon: Icons.list_rounded,
+                              isSelected: _tabIndex == 0,
+                              onTap: () {
+                                ref.read(soundServiceProvider).buttonPress();
+                                ref.read(hapticServiceProvider).buttonPress();
+                                setState(() => _tabIndex = 0);
+                              },
+                            ),
+                          ),
+                          Expanded(
+                            child: _SubViewTab(
+                              label: 'Calendar',
+                              icon: Icons.date_range_rounded,
+                              isSelected: _tabIndex == 1,
+                              onTap: () {
+                                ref.read(soundServiceProvider).buttonPress();
+                                ref.read(hapticServiceProvider).buttonPress();
+                                setState(() {
+                                  _tabIndex = 1;
+                                  // Default view to Calendar in Providers when clicking Calendar Tab
+                                  ref.read(todoSelectedViewProvider.notifier).state = TodoViewType.calendar;
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+    
+                  // ── Main Content Area ──────────────────────────────────────────
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: _tabIndex == 0 
+                          ? _buildDashboardView(scheme, isCompact) 
+                          : _buildCalendarView(scheme),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Move to root level drop target overlay
+            if (_isDraggingTask)
+              Positioned(
+                left: _kPad,
+                right: _kPad,
+                bottom: ref.watch(todoSelectionModeProvider) ? 96 : 32,
+                child: DragTarget<Todo>(
+                  onWillAcceptWithDetails: (details) => details.data.parentId != null,
+                  onAcceptWithDetails: (details) async {
+                    ref.read(soundServiceProvider).buttonPress();
+                    ref.read(hapticServiceProvider).buttonPress();
+                    await ref.read(todosProvider.notifier).updateTodo(
+                      id: details.data.id,
+                      clearParentId: true,
+                    );
+                  },
+                  builder: (context, candidateData, rejectedData) {
+                    final isOver = candidateData.isNotEmpty;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: isOver 
+                            ? Colors.green.withValues(alpha: 0.2) 
+                            : scheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isOver ? Colors.green : scheme.outlineVariant,
+                          width: 2.0,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
+                        ],
+                      ),
+                      child: Center(
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.add_rounded, color: scheme.onPrimary, size: 18),
-                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.unarchive_rounded,
+                              color: isOver ? Colors.green : scheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 8),
                             Text(
-                              'ADD TASK',
+                              'Drag here to move to Root Level',
                               style: TextStyle(
-                                color: scheme.onPrimary,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                                letterSpacing: 0.5,
+                                color: isOver ? Colors.green : scheme.onSurfaceVariant,
                               ),
                             ),
                           ],
                         ),
                       ),
+                    );
+                  },
+                ),
+              ),
+    
+            // Floating batch actions bar
+            if (ref.watch(todoSelectionModeProvider))
+              Positioned(
+                left: _kPad,
+                right: _kPad,
+                bottom: 24,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainer.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _BatchActionButton(
+                            icon: Icons.check_circle_outline_rounded,
+                            label: 'Complete',
+                            onTap: _batchComplete,
+                          ),
+                          _BatchActionButton(
+                            icon: Icons.priority_high_rounded,
+                            label: 'Priority',
+                            onTap: _batchChangePriority,
+                          ),
+                          _BatchActionButton(
+                            icon: Icons.category_outlined,
+                            label: 'Category',
+                            onTap: _batchMoveCategory,
+                          ),
+                          _BatchActionButton(
+                            icon: Icons.folder_open_rounded,
+                            label: 'Project',
+                            onTap: _batchMoveProject,
+                          ),
+                          _BatchActionButton(
+                            icon: Icons.delete_outline_rounded,
+                            label: 'Delete',
+                            color: scheme.error,
+                            onTap: _batchDelete,
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // ── Top Navigation View Switcher ──────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: _kPad),
-                child: Container(
-                  height: 44,
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _SubViewTab(
-                          label: 'Lists & Folders',
-                          icon: Icons.list_rounded,
-                          isSelected: _tabIndex == 0,
-                          onTap: () {
-                            ref.read(soundServiceProvider).buttonPress();
-                            ref.read(hapticServiceProvider).buttonPress();
-                            setState(() => _tabIndex = 0);
-                          },
-                        ),
-                      ),
-                      Expanded(
-                        child: _SubViewTab(
-                          label: 'Calendar',
-                          icon: Icons.date_range_rounded,
-                          isSelected: _tabIndex == 1,
-                          onTap: () {
-                            ref.read(soundServiceProvider).buttonPress();
-                            ref.read(hapticServiceProvider).buttonPress();
-                            setState(() {
-                              _tabIndex = 1;
-                              // Default view to Calendar in Providers when clicking Calendar Tab
-                              ref.read(todoSelectedViewProvider.notifier).state = TodoViewType.calendar;
-                            });
-                          },
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
-
-              // ── Main Content Area ──────────────────────────────────────────
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: _tabIndex == 0 
-                      ? _buildDashboardView(scheme, isCompact) 
-                      : _buildCalendarView(scheme),
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -282,37 +404,38 @@ class _TodosPageState extends ConsumerState<TodosPage> {
         ],
       );
     } else {
-      // Mobile Compact Layout (Single Column)
-      return Column(
-        key: const ValueKey('dashboard_view_mobile'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Grid of Folders
-          allTodosAsync.when(
-            data: (todos) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: _kPad),
-                child: _buildFoldersGrid(todos, scheme),
-              );
-            },
-            loading: () => const SizedBox(height: 110),
-            error: (_, __) => const SizedBox(),
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: _kPad),
-            child: _buildSearchAndFilters(scheme, textTheme),
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: _kPad),
-            child: _buildFolderHeading(scheme, textTheme),
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: _buildTodoTreeArea(scheme),
-          ),
-        ],
+      // Mobile Compact Layout (Single Column, scrollable as a single page to prevent overflows)
+      return SingleChildScrollView(
+        key: const ValueKey('dashboard_view_mobile_scroll'),
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Grid of Folders
+            allTodosAsync.when(
+              data: (todos) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: _kPad),
+                  child: _buildFoldersGrid(todos, scheme),
+                );
+              },
+              loading: () => const SizedBox(height: 110),
+              error: (_, __) => const SizedBox(),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: _kPad),
+              child: _buildSearchAndFilters(scheme, textTheme),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: _kPad),
+              child: _buildFolderHeading(scheme, textTheme),
+            ),
+            const SizedBox(height: 10),
+            _buildTodoTreeArea(scheme, shrinkWrap: true, physics: const NeverScrollableScrollPhysics()),
+          ],
+        ),
       );
     }
   }
@@ -424,265 +547,145 @@ class _TodosPageState extends ConsumerState<TodosPage> {
     );
   }
 
-  Widget _buildTodoTreeArea(ColorScheme scheme) {
-    return Stack(
-      children: [
-        ref.watch(todosProvider).when(
-          data: (_) {
-            final flatFiltered = ref.watch(filteredTodosProvider);
-            final treeList = ref.watch(todoTreeProvider(flatFiltered));
+  Widget _buildTodoTreeArea(ColorScheme scheme, {bool shrinkWrap = false, ScrollPhysics? physics}) {
+    return ref.watch(todosProvider).when(
+      data: (_) {
+        final flatFiltered = ref.watch(filteredTodosProvider);
+        final treeList = ref.watch(todoTreeProvider(flatFiltered));
 
-            if (treeList.isEmpty) {
-              return const Center(child: _NoTodosView());
-            }
+        if (treeList.isEmpty) {
+          return const Center(child: _NoTodosView());
+        }
 
-            final groupBySection = ref.watch(todoGroupBySectionProvider);
-            if (groupBySection) {
-              final Map<String, List<Todo>> grouped = {};
-              for (final item in treeList) {
-                final cat = item.category?.trim() ?? 'No Section';
-                grouped.putIfAbsent(cat, () => []).add(item);
-              }
-              
-              final sortedCategories = grouped.keys.toList()..sort((a, b) {
-                if (a == 'No Section') return 1;
-                if (b == 'No Section') return -1;
-                return a.compareTo(b);
-              });
+        final groupBySection = ref.watch(todoGroupBySectionProvider);
+        if (groupBySection) {
+          final Map<String, List<Todo>> grouped = {};
+          for (final item in treeList) {
+            final cat = item.category?.trim() ?? 'No Section';
+            grouped.putIfAbsent(cat, () => []).add(item);
+          }
+          
+          final sortedCategories = grouped.keys.toList()..sort((a, b) {
+            if (a == 'No Section') return 1;
+            if (b == 'No Section') return -1;
+            return a.compareTo(b);
+          });
 
-              return ListView.builder(
-                padding: const EdgeInsets.fromLTRB(_kPad, 0, _kPad, 100),
-                physics: const BouncingScrollPhysics(),
-                itemCount: sortedCategories.length,
-                itemBuilder: (context, catIdx) {
-                  final cat = sortedCategories[catIdx];
-                  final catTodos = grouped[cat] ?? [];
-                  final isCollapsed = _collapsedSections.contains(cat);
+          return ListView.builder(
+            padding: shrinkWrap ? EdgeInsets.zero : const EdgeInsets.fromLTRB(_kPad, 0, _kPad, 100),
+            physics: physics ?? const BouncingScrollPhysics(),
+            shrinkWrap: shrinkWrap,
+            itemCount: sortedCategories.length,
+            itemBuilder: (context, catIdx) {
+              final cat = sortedCategories[catIdx];
+              final catTodos = grouped[cat] ?? [];
+              final isCollapsed = _collapsedSections.contains(cat);
 
-                  return DragTarget<Todo>(
-                    onWillAcceptWithDetails: (details) => details.data.category != cat && !(cat == 'No Section' && details.data.category == null),
-                    onAcceptWithDetails: (details) async {
-                      ref.read(soundServiceProvider).buttonPress();
-                      ref.read(hapticServiceProvider).buttonPress();
-                      final cleanCategory = cat == 'No Section' ? '' : cat;
-                      await ref.read(todosProvider.notifier).updateTodo(
-                        id: details.data.id,
-                        category: cleanCategory,
-                      );
-                    },
-                    builder: (context, candidateData, rejectedData) {
-                      final isOver = candidateData.isNotEmpty;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          border: isOver ? Border.all(color: scheme.primary, width: 2) : null,
-                          color: isOver ? scheme.primary.withValues(alpha: 0.05) : Colors.transparent,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            InkWell(
-                              onTap: () {
-                                ref.read(soundServiceProvider).buttonPress();
-                                ref.read(hapticServiceProvider).buttonPress();
-                                setState(() {
-                                  if (isCollapsed) {
-                                    _collapsedSections.remove(cat);
-                                  } else {
-                                    _collapsedSections.add(cat);
-                                  }
-                                });
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      isCollapsed 
-                                          ? Icons.keyboard_arrow_right_rounded 
-                                          : Icons.keyboard_arrow_down_rounded,
-                                      size: 20,
-                                      color: scheme.onSurfaceVariant,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      cat.toUpperCase(),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 12,
-                                        letterSpacing: 1.0,
-                                        color: scheme.primary,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: scheme.primary.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        '${catTodos.length}',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: scheme.primary,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+              return DragTarget<Todo>(
+                onWillAcceptWithDetails: (details) => details.data.category != cat && !(cat == 'No Section' && details.data.category == null),
+                onAcceptWithDetails: (details) async {
+                  ref.read(soundServiceProvider).buttonPress();
+                  ref.read(hapticServiceProvider).buttonPress();
+                  final cleanCategory = cat == 'No Section' ? '' : cat;
+                  await ref.read(todosProvider.notifier).updateTodo(
+                    id: details.data.id,
+                    category: cleanCategory,
+                  );
+                },
+                builder: (context, candidateData, rejectedData) {
+                  final isOver = candidateData.isNotEmpty;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: isOver ? Border.all(color: scheme.primary, width: 2) : null,
+                      color: isOver ? scheme.primary.withValues(alpha: 0.05) : Colors.transparent,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            ref.read(soundServiceProvider).buttonPress();
+                            ref.read(hapticServiceProvider).buttonPress();
+                            setState(() {
+                              if (isCollapsed) {
+                                _collapsedSections.remove(cat);
+                              } else {
+                                _collapsedSections.add(cat);
+                              }
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isCollapsed 
+                                      ? Icons.keyboard_arrow_right_rounded 
+                                      : Icons.keyboard_arrow_down_rounded,
+                                  size: 20,
+                                  color: scheme.onSurfaceVariant,
                                 ),
-                              ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  cat.toUpperCase(),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 12,
+                                    letterSpacing: 1.0,
+                                    color: scheme.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: scheme.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '${catTodos.length}',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: scheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            if (!isCollapsed) ...[
-                              const SizedBox(height: 8),
-                              ...catTodos.map((todo) => _buildRecursiveTodo(todo, 0)),
-                            ],
-                          ],
+                          ),
                         ),
-                      );
-                    },
+                        if (!isCollapsed) ...[
+                          const SizedBox(height: 8),
+                          ...catTodos.map((todo) => _buildRecursiveTodo(todo, 0)),
+                        ],
+                      ],
+                    ),
                   );
                 },
               );
-            }
+            },
+          );
+        }
 
-            return ListView.builder(
-              padding: const EdgeInsets.fromLTRB(_kPad, 0, _kPad, 100),
-              physics: const BouncingScrollPhysics(),
-              itemCount: treeList.length,
-              itemBuilder: (context, index) {
-                return _buildRecursiveTodo(treeList[index], 0);
-              },
-            );
+        return ListView.builder(
+          padding: shrinkWrap ? EdgeInsets.zero : const EdgeInsets.fromLTRB(_kPad, 0, _kPad, 100),
+          physics: physics ?? const BouncingScrollPhysics(),
+          shrinkWrap: shrinkWrap,
+          itemCount: treeList.length,
+          itemBuilder: (context, index) {
+            return _buildRecursiveTodo(treeList[index], 0);
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, _) => AppErrorView(
-            message: ErrorMessageMapper.fromError(err),
-            onRetry: () => ref.read(todosProvider.notifier).refreshTodos(),
-          ),
-        ),
-        
-        // Move to root level drop target overlay
-        if (_isDraggingTask)
-          Positioned(
-            left: 8,
-            right: 8,
-            bottom: ref.watch(todoSelectionModeProvider) ? 96 : 32,
-            child: DragTarget<Todo>(
-              onWillAcceptWithDetails: (details) => details.data.parentId != null,
-              onAcceptWithDetails: (details) async {
-                ref.read(soundServiceProvider).buttonPress();
-                ref.read(hapticServiceProvider).buttonPress();
-                await ref.read(todosProvider.notifier).updateTodo(
-                  id: details.data.id,
-                  clearParentId: true,
-                );
-              },
-              builder: (context, candidateData, rejectedData) {
-                final isOver = candidateData.isNotEmpty;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: isOver 
-                        ? Colors.green.withValues(alpha: 0.2) 
-                        : scheme.surfaceContainerHighest.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isOver ? Colors.green : scheme.outlineVariant,
-                      width: 2.0,
-                    ),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
-                    ],
-                  ),
-                  child: Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.unarchive_rounded,
-                          color: isOver ? Colors.green : scheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Drag here to move to Root Level',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isOver ? Colors.green : scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-        // Floating batch actions bar
-        if (ref.watch(todoSelectionModeProvider))
-          Positioned(
-            left: 8,
-            right: 8,
-            bottom: 24,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainer.withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _BatchActionButton(
-                        icon: Icons.check_circle_outline_rounded,
-                        label: 'Complete',
-                        onTap: _batchComplete,
-                      ),
-                      _BatchActionButton(
-                        icon: Icons.priority_high_rounded,
-                        label: 'Priority',
-                        onTap: _batchChangePriority,
-                      ),
-                      _BatchActionButton(
-                        icon: Icons.category_outlined,
-                        label: 'Category',
-                        onTap: _batchMoveCategory,
-                      ),
-                      _BatchActionButton(
-                        icon: Icons.folder_open_rounded,
-                        label: 'Project',
-                        onTap: _batchMoveProject,
-                      ),
-                      _BatchActionButton(
-                        icon: Icons.delete_outline_rounded,
-                        label: 'Delete',
-                        color: scheme.error,
-                        onTap: _batchDelete,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => AppErrorView(
+        message: ErrorMessageMapper.fromError(err),
+        onRetry: () => ref.read(todosProvider.notifier).refreshTodos(),
+      ),
     );
   }
 
@@ -1273,29 +1276,53 @@ class _TodosPageState extends ConsumerState<TodosPage> {
         // Sub view segmented selector (Day, Week, Month, Agenda)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: _kPad, vertical: 8),
-          child: Row(
-            children: CalendarViewType.values.map((type) {
-              final isSel = calendarType == type;
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ChoiceChip(
-                    label: Text(type.name.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                    selected: isSel,
-                    onSelected: (val) {
-                      if (val) {
-                        ref.read(soundServiceProvider).buttonPress();
-                        ref.read(hapticServiceProvider).buttonPress();
-                        ref.read(calendarViewTypeProvider.notifier).state = type;
-                      }
+          child: Container(
+            height: 38,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: CalendarViewType.values.map((type) {
+                final isSel = calendarType == type;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      ref.read(soundServiceProvider).buttonPress();
+                      ref.read(hapticServiceProvider).buttonPress();
+                      ref.read(calendarViewTypeProvider.notifier).state = type;
                     },
-                    selectedColor: scheme.primary,
-                    backgroundColor: Colors.transparent,
-                    labelStyle: TextStyle(color: isSel ? scheme.onPrimary : scheme.onSurface),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isSel ? scheme.primary : Colors.transparent,
+                        borderRadius: BorderRadius.circular(9),
+                        boxShadow: isSel
+                            ? [
+                                BoxShadow(
+                                  color: scheme.primary.withValues(alpha: 0.2),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Text(
+                        type.name.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: isSel ? scheme.onPrimary : scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              );
-            }).toList(),
+                );
+              }).toList(),
+            ),
           ),
         ),
         const SizedBox(height: 10),
@@ -1523,15 +1550,19 @@ class _TodosPageState extends ConsumerState<TodosPage> {
 
   // ── Week Calendar Grid ─────────────────────────────────────────────────────
   Widget _buildWeekView(ColorScheme scheme) {
-    if (context.isCompact) {
-      // Mobile Week View: Horizontal date strip + vertical list
-      final selectedDate = ref.watch(calendarSelectedDateProvider);
-      final weekday = selectedDate.weekday % 7; // Sunday = 0
-      final startOfWeek = selectedDate.subtract(Duration(days: weekday));
-      final daysOfWeek = List.generate(7, (i) => startOfWeek.add(Duration(days: i)));
-      
-      final dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompact = context.isCompact || screenWidth < 768;
+    
+    final selectedDate = ref.watch(calendarSelectedDateProvider);
+    final weekday = selectedDate.weekday % 7; // Sunday = 0
+    final startOfWeek = selectedDate.subtract(Duration(days: weekday));
+    final daysOfWeek = List.generate(7, (i) => startOfWeek.add(Duration(days: i)));
+    
+    final dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    final allTodos = ref.watch(todosProvider).valueOrNull ?? [];
 
+    if (isCompact) {
+      // Mobile Week View: Horizontal date strip + vertical list
       return Column(
         children: [
           // Horizontal date strip
@@ -1544,6 +1575,26 @@ class _TodosPageState extends ConsumerState<TodosPage> {
                 final isSelected = DateUtils.isSameDay(dayDate, selectedDate);
                 final isToday = DateUtils.isSameDay(dayDate, DateTime.now());
                 
+                // Tasks on this day
+                final dayTodos = allTodos.where((t) => t.dueDate != null && DateUtils.isSameDay(t.dueDate, dayDate)).toList();
+                
+                // Determine dot color based on highest priority
+                Color? dotColor;
+                if (dayTodos.isNotEmpty) {
+                  final hasCritical = dayTodos.any((t) => t.priority == TodoPriority.critical);
+                  final hasHigh = dayTodos.any((t) => t.priority == TodoPriority.high);
+                  final hasMedium = dayTodos.any((t) => t.priority == TodoPriority.medium);
+                  if (hasCritical) {
+                    dotColor = const Color(0xFFFF4D6D);
+                  } else if (hasHigh) {
+                    dotColor = const Color(0xFFFB923C);
+                  } else if (hasMedium) {
+                    dotColor = const Color(0xFFFBBC05);
+                  } else {
+                    dotColor = const Color(0xFF94A3B8);
+                  }
+                }
+
                 return GestureDetector(
                   onTap: () {
                     ref.read(soundServiceProvider).buttonPress();
@@ -1555,8 +1606,10 @@ class _TodosPageState extends ConsumerState<TodosPage> {
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
                     decoration: BoxDecoration(
                       color: isSelected ? scheme.primary : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                      border: isToday ? Border.all(color: scheme.primary, width: 1.5) : null,
+                      borderRadius: BorderRadius.circular(16),
+                      border: isToday && !isSelected
+                          ? Border.all(color: scheme.primary, width: 1.5)
+                          : Border.all(color: Colors.transparent, width: 1.5),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -1578,6 +1631,18 @@ class _TodosPageState extends ConsumerState<TodosPage> {
                             color: isSelected ? scheme.onPrimary : scheme.onSurface,
                           ),
                         ),
+                        const SizedBox(height: 4),
+                        // Premium task count dot indicator
+                        Container(
+                          width: 5,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: dotColor != null
+                                ? (isSelected ? scheme.onPrimary : dotColor)
+                                : Colors.transparent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1597,13 +1662,6 @@ class _TodosPageState extends ConsumerState<TodosPage> {
         ],
       );
     }
-
-    final selectedDate = ref.watch(calendarSelectedDateProvider);
-    final weekday = selectedDate.weekday % 7; // Sunday = 0
-    final startOfWeek = selectedDate.subtract(Duration(days: weekday));
-    
-    final daysOfWeek = List.generate(7, (i) => startOfWeek.add(Duration(days: i)));
-    final allTodos = ref.watch(todosProvider).valueOrNull ?? [];
 
     return PageView.builder(
       itemCount: 1, // static week for simple architecture
@@ -2742,6 +2800,7 @@ class _CreateEditTodoDialogState extends State<_CreateEditTodoDialog> {
 
   bool _isSaving = false;
   ParsedTodoNli? _nliPreview;
+  bool _showAdditionalOptions = false;
 
   @override
   void initState() {
@@ -2881,12 +2940,35 @@ class _CreateEditTodoDialogState extends State<_CreateEditTodoDialog> {
     final allTodos = widget.ref.watch(todosProvider).valueOrNull ?? [];
     final projects = widget.ref.watch(projectsProvider).valueOrNull ?? [];
     final goals = widget.ref.watch(goalsProvider).valueOrNull ?? [];
+    final isCompact = context.isCompact;
 
     // Filter out completed tasks and this task to find potential blockers
     final potentialBlockers = allTodos.where((t) => t.id != widget.todo?.id && t.status != TodoStatus.completed).toList();
 
     // Notes checklist parsing
     final checklistItems = TodoChecklistParser.parse(_notesController.text);
+
+    Widget buildFieldRow({required Widget left, required Widget right}) {
+      if (isCompact) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            left,
+            const SizedBox(height: 14),
+            right,
+          ],
+        );
+      } else {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: left),
+            const SizedBox(width: 12),
+            Expanded(child: right),
+          ],
+        );
+      }
+    }
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -3121,458 +3203,498 @@ class _CreateEditTodoDialogState extends State<_CreateEditTodoDialog> {
             ),
             const SizedBox(height: 14),
 
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('PRIORITY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<TodoPriority>(
-                        initialValue: _priority,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-                        ),
-                        items: TodoPriority.values.map((prio) {
-                          return DropdownMenuItem(value: prio, child: Text(prio.label));
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _priority = val);
-                        },
-                      ),
-                    ],
+            // Core responsive fields (Priority, Status, Due Date, Reminder Time)
+            buildFieldRow(
+              left: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('PRIORITY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<TodoPriority>(
+                    value: _priority,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                    items: TodoPriority.values.map((prio) {
+                      return DropdownMenuItem(value: prio, child: Text(prio.label));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _priority = val);
+                    },
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('STATUS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<TodoStatus>(
-                        initialValue: _status,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-                        ),
-                        items: TodoStatus.values.map((status) {
-                          return DropdownMenuItem(value: status, child: Text(status.label));
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _status = val);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('ENERGY LEVEL', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<TodoEnergyLevel>(
-                        initialValue: _energyLevel,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-                        ),
-                        items: TodoEnergyLevel.values.map((energy) {
-                          return DropdownMenuItem(value: energy, child: Text(energy.label));
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _energyLevel = val);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('RECURRENCE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<String?>(
-                        value: _recurrence,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: null, child: Text('None')),
-                          DropdownMenuItem(value: 'daily', child: Text('Daily')),
-                          DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
-                          DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
-                        ],
-                        onChanged: (val) => setState(() => _recurrence = val),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('DUE DATE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                      const SizedBox(height: 6),
-                      GestureDetector(
-                        onTap: () async {
-                          final date = await showDatePicker(
-                            context: context,
-                            initialDate: _dueDate ?? DateTime.now(),
-                            firstDate: DateTime(2025),
-                            lastDate: DateTime(2035),
-                          );
-                          if (date != null) setState(() => _dueDate = date);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: scheme.outline),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _dueDate == null 
-                                    ? 'Select Date' 
-                                    : '${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}',
-                              ),
-                              if (_dueDate != null)
-                                GestureDetector(
-                                  onTap: () => setState(() => _dueDate = null),
-                                  child: const Icon(Icons.close, size: 16),
-                                )
-                              else
-                                const Icon(Icons.calendar_today, size: 16),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('REMINDER TIME', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                      const SizedBox(height: 6),
-                      GestureDetector(
-                        onTap: () async {
-                          final time = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDay.fromDateTime(_reminderTime ?? DateTime.now()),
-                          );
-                          if (time != null) {
-                            final baseDate = _dueDate ?? DateTime.now();
-                            setState(() {
-                              _reminderTime = DateTime(
-                                baseDate.year,
-                                baseDate.month,
-                                baseDate.day,
-                                time.hour,
-                                time.minute,
-                              );
-                            });
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: scheme.outline),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _reminderTime == null 
-                                    ? 'No Reminder' 
-                                    : '${_reminderTime!.hour.toString().padLeft(2, '0')}:${_reminderTime!.minute.toString().padLeft(2, '0')}',
-                              ),
-                              if (_reminderTime != null)
-                                GestureDetector(
-                                  onTap: () => setState(() => _reminderTime = null),
-                                  child: const Icon(Icons.close, size: 16),
-                                )
-                              else
-                                const Icon(Icons.access_time, size: 16),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            // Multiple Reminders
-            const Text('ADDITIONAL REMINDERS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: _reminderTimes.asMap().entries.map((entry) {
-                final idx = entry.key;
-                final time = entry.value;
-                return Chip(
-                  label: Text('${time.day}/${time.month} at ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'),
-                  onDeleted: () {
-                    setState(() => _reminderTimes.removeAt(idx));
-                  },
-                );
-              }).toList(),
-            ),
-            TextButton.icon(
-              icon: const Icon(Icons.add_alarm_rounded, size: 16),
-              label: const Text('Add Reminder'),
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                minimumSize: Size.zero,
+                ],
               ),
-              onPressed: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: _dueDate ?? DateTime.now(),
-                  firstDate: DateTime.now().subtract(const Duration(days: 1)),
-                  lastDate: DateTime(2035),
-                );
-                if (date == null) return;
-                if (!context.mounted) return;
-                final time = await showTimePicker(
-                  context: context,
-                  initialTime: TimeOfDay.now(),
-                );
-                if (time == null) return;
-                setState(() {
-                  _reminderTimes.add(DateTime(date.year, date.month, date.day, time.hour, time.minute));
-                });
+              right: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('STATUS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<TodoStatus>(
+                    value: _status,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                    items: TodoStatus.values.map((status) {
+                      return DropdownMenuItem(value: status, child: Text(status.label));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _status = val);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            buildFieldRow(
+              left: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('DUE DATE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: _dueDate ?? DateTime.now(),
+                        firstDate: DateTime(2025),
+                        lastDate: DateTime(2035),
+                      );
+                      if (date != null) setState(() => _dueDate = date);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: scheme.outline),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _dueDate == null 
+                                ? 'Select Date' 
+                                : '${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}',
+                          ),
+                          if (_dueDate != null)
+                            GestureDetector(
+                              onTap: () => setState(() => _dueDate = null),
+                              child: const Icon(Icons.close, size: 16),
+                            )
+                          else
+                            const Icon(Icons.calendar_today, size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              right: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('REMINDER TIME', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: () async {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.fromDateTime(_reminderTime ?? DateTime.now()),
+                      );
+                      if (time != null) {
+                        final baseDate = _dueDate ?? DateTime.now();
+                        setState(() {
+                          _reminderTime = DateTime(
+                            baseDate.year,
+                            baseDate.month,
+                            baseDate.day,
+                            time.hour,
+                            time.minute,
+                          );
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: scheme.outline),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _reminderTime == null 
+                                ? 'No Reminder' 
+                                : '${_reminderTime!.hour.toString().padLeft(2, '0')}:${_reminderTime!.minute.toString().padLeft(2, '0')}',
+                          ),
+                          if (_reminderTime != null)
+                            GestureDetector(
+                              onTap: () => setState(() => _reminderTime = null),
+                              child: const Icon(Icons.close, size: 16),
+                            )
+                          else
+                            const Icon(Icons.access_time, size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 8),
+            
+            // Collapsible Additional Inputs Toggle
+            InkWell(
+              onTap: () {
+                widget.ref.read(soundServiceProvider).buttonPress();
+                widget.ref.read(hapticServiceProvider).buttonPress();
+                setState(() => _showAdditionalOptions = !_showAdditionalOptions);
               },
-            ),
-            const SizedBox(height: 14),
-
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('ESTIMATED TIME', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<int>(
-                        value: [0, 15, 30, 45, 60, 120].contains(int.tryParse(_estimatedMinutesController.text) ?? 0)
-                            ? (int.tryParse(_estimatedMinutesController.text) ?? 0)
-                            : -1,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          _showAdditionalOptions ? Icons.tune_rounded : Icons.tune_outlined,
+                          size: 18,
+                          color: scheme.primary,
                         ),
-                        items: const [
-                          DropdownMenuItem(value: 0, child: Text('None')),
-                          DropdownMenuItem(value: 15, child: Text('15 min')),
-                          DropdownMenuItem(value: 30, child: Text('30 min')),
-                          DropdownMenuItem(value: 45, child: Text('45 min')),
-                          DropdownMenuItem(value: 60, child: Text('1 hour')),
-                          DropdownMenuItem(value: 120, child: Text('2 hours')),
-                          DropdownMenuItem(value: -1, child: Text('Custom')),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) {
-                            setState(() {
-                              if (val >= 0) {
-                                _estimatedMinutesController.text = '$val';
-                              }
-                            });
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('CATEGORY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: _categoryController,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          hintText: 'Work, Personal...',
+                        const SizedBox(width: 8),
+                        Text(
+                          'ADDITIONAL DETAILS',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11,
+                            letterSpacing: 1.0,
+                            color: scheme.primary,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (![0, 15, 30, 45, 60, 120].contains(int.tryParse(_estimatedMinutesController.text) ?? 0)) ...[
-              const SizedBox(height: 10),
-              const Text('CUSTOM ESTIMATED MINUTES', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-              const SizedBox(height: 4),
-              TextField(
-                controller: _estimatedMinutesController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  suffixText: 'mins',
+                      ],
+                    ),
+                    Icon(
+                      _showAdditionalOptions
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      size: 20,
+                      color: scheme.primary,
+                    ),
+                  ],
                 ),
               ),
-            ],
-            const SizedBox(height: 14),
-
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('PROJECT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<String?>(
-                        value: _selectedProjectId,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-                        ),
-                        items: [
-                          const DropdownMenuItem(value: null, child: Text('None')),
-                          ...projects.map((p) => DropdownMenuItem(value: p.id, child: Text(p.title))),
-                        ],
-                        onChanged: (val) => setState(() => _selectedProjectId = val),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('LINKED GOAL', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<String?>(
-                        value: _selectedGoalId,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-                        ),
-                        items: [
-                          const DropdownMenuItem(value: null, child: Text('None')),
-                          ...goals.map((g) => DropdownMenuItem(value: g.goal.id, child: Text(g.goal.title))),
-                        ],
-                        onChanged: (val) => setState(() => _selectedGoalId = val),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
 
-            // Blockers section
-            const Text('BLOCKED BY (DEPENDENCIES)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: _blockedByIds.map((id) {
-                final blockerTodo = allTodos.firstWhere((t) => t.id == id, orElse: () => Todo(id: id, userId: '', title: 'Unknown Task'));
-                return Chip(
-                  label: Text(blockerTodo.title, style: const TextStyle(fontSize: 11)),
-                  onDeleted: () {
-                    setState(() => _blockedByIds.remove(id));
-                  },
-                );
-              }).toList(),
-            ),
-            if (potentialBlockers.isNotEmpty) ...[
-              TextButton.icon(
-                icon: const Icon(Icons.link_rounded, size: 16),
-                label: const Text('Add Dependency'),
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  minimumSize: Size.zero,
-                ),
-                onPressed: () async {
-                  final selected = await showDialog<String>(
-                    context: context,
-                    builder: (context) => SimpleDialog(
-                      title: const Text('Select Blocker Task'),
-                      children: potentialBlockers.where((t) => !_blockedByIds.contains(t.id)).map((t) {
-                        return SimpleDialogOption(
-                          onPressed: () => Navigator.pop(context, t.id),
-                          child: Text(t.title),
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 8),
+                  buildFieldRow(
+                    left: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('ENERGY LEVEL', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<TodoEnergyLevel>(
+                          value: _energyLevel,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          items: TodoEnergyLevel.values.map((energy) {
+                            return DropdownMenuItem(value: energy, child: Text(energy.label));
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) setState(() => _energyLevel = val);
+                          },
+                        ),
+                      ],
+                    ),
+                    right: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('RECURRENCE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<String?>(
+                          value: _recurrence,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: null, child: Text('None')),
+                            DropdownMenuItem(value: 'daily', child: Text('Daily')),
+                            DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
+                            DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+                          ],
+                          onChanged: (val) => setState(() => _recurrence = val),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Multiple Reminders
+                  const Text('ADDITIONAL REMINDERS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  const SizedBox(height: 6),
+                  if (_reminderTimes.isNotEmpty) ...[
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _reminderTimes.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final time = entry.value;
+                        return Chip(
+                          label: Text('${time.day}/${time.month} at ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'),
+                          onDeleted: () {
+                            setState(() => _reminderTimes.removeAt(idx));
+                          },
                         );
                       }).toList(),
                     ),
-                  );
-                  if (selected != null) {
-                    setState(() => _blockedByIds.add(selected));
-                  }
-                },
-              ),
-            ],
-            const SizedBox(height: 14),
+                    const SizedBox(height: 6),
+                  ],
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.add_alarm_rounded, size: 16),
+                      label: const Text('Add Reminder'),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        minimumSize: Size.zero,
+                      ),
+                      onPressed: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: _dueDate ?? DateTime.now(),
+                          firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                          lastDate: DateTime(2035),
+                        );
+                        if (date == null) return;
+                        if (!context.mounted) return;
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (time == null) return;
+                        setState(() {
+                          _reminderTimes.add(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 14),
 
-            // Tags section
-            const Text('TAGS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: _tags.map((tag) {
-                return Chip(
-                  label: Text('#$tag', style: const TextStyle(fontSize: 11)),
-                  onDeleted: () {
-                    setState(() => _tags.remove(tag));
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'Type tag and press Enter...',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  buildFieldRow(
+                    left: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('ESTIMATED TIME', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<int>(
+                          value: [0, 15, 30, 45, 60, 120].contains(int.tryParse(_estimatedMinutesController.text) ?? 0)
+                              ? (int.tryParse(_estimatedMinutesController.text) ?? 0)
+                              : -1,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 0, child: Text('None')),
+                            DropdownMenuItem(value: 15, child: Text('15 min')),
+                            DropdownMenuItem(value: 30, child: Text('30 min')),
+                            DropdownMenuItem(value: 45, child: Text('45 min')),
+                            DropdownMenuItem(value: 60, child: Text('1 hour')),
+                            DropdownMenuItem(value: 120, child: Text('2 hours')),
+                            DropdownMenuItem(value: -1, child: Text('Custom')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                if (val >= 0) {
+                                  _estimatedMinutesController.text = '$val';
+                                }
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    right: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('CATEGORY', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _categoryController,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            hintText: 'Work, Personal...',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (![0, 15, 30, 45, 60, 120].contains(int.tryParse(_estimatedMinutesController.text) ?? 0)) ...[
+                    const SizedBox(height: 10),
+                    const Text('CUSTOM ESTIMATED MINUTES', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                    const SizedBox(height: 4),
+                    TextField(
+                      controller: _estimatedMinutesController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        suffixText: 'mins',
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+
+                  buildFieldRow(
+                    left: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('PROJECT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<String?>(
+                          value: _selectedProjectId,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          items: [
+                            const DropdownMenuItem(value: null, child: Text('None')),
+                            ...projects.map((p) => DropdownMenuItem(value: p.id, child: Text(p.title))),
+                          ],
+                          onChanged: (val) => setState(() => _selectedProjectId = val),
+                        ),
+                      ],
+                    ),
+                    right: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('LINKED GOAL', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<String?>(
+                          value: _selectedGoalId,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          items: [
+                            const DropdownMenuItem(value: null, child: Text('None')),
+                            ...goals.map((g) => DropdownMenuItem(value: g.goal.id, child: Text(g.goal.title))),
+                          ],
+                          onChanged: (val) => setState(() => _selectedGoalId = val),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Blockers section
+                  const Text('BLOCKED BY (DEPENDENCIES)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  const SizedBox(height: 6),
+                  if (_blockedByIds.isNotEmpty) ...[
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _blockedByIds.map((id) {
+                        final blockerTodo = allTodos.firstWhere((t) => t.id == id, orElse: () => Todo(id: id, userId: '', title: 'Unknown Task'));
+                        return Chip(
+                          label: Text(blockerTodo.title, style: const TextStyle(fontSize: 11)),
+                          onDeleted: () {
+                            setState(() => _blockedByIds.remove(id));
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
+                  if (potentialBlockers.isNotEmpty) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.link_rounded, size: 16),
+                        label: const Text('Add Dependency'),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          minimumSize: Size.zero,
+                        ),
+                        onPressed: () async {
+                          final selected = await showDialog<String>(
+                            context: context,
+                            builder: (context) => SimpleDialog(
+                              title: const Text('Select Blocker Task'),
+                              children: potentialBlockers.where((t) => !_blockedByIds.contains(t.id)).map((t) {
+                                return SimpleDialogOption(
+                                  onPressed: () => Navigator.pop(context, t.id),
+                                  child: Text(t.title),
+                                );
+                              }).toList(),
+                            ),
+                          );
+                          if (selected != null) {
+                            setState(() => _blockedByIds.add(selected));
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+
+                  // Tags section
+                  const Text('TAGS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  const SizedBox(height: 6),
+                  if (_tags.isNotEmpty) ...[
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _tags.map((tag) {
+                        return Chip(
+                          label: Text('#$tag', style: const TextStyle(fontSize: 11)),
+                          onDeleted: () {
+                            setState(() => _tags.remove(tag));
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Type tag and press Enter...',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    onSubmitted: (val) {
+                      final tag = val.trim().replaceAll('#', '').toLowerCase();
+                      if (tag.isNotEmpty && !_tags.contains(tag)) {
+                        setState(() {
+                          _tags.add(tag);
+                        });
+                      }
+                    },
+                  ),
+                ],
               ),
-              onSubmitted: (val) {
-                final tag = val.trim().replaceAll('#', '').toLowerCase();
-                if (tag.isNotEmpty && !_tags.contains(tag)) {
-                  setState(() {
-                    _tags.add(tag);
-                  });
-                }
-              },
+              crossFadeState: _showAdditionalOptions
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 250),
             ),
           ],
         ),

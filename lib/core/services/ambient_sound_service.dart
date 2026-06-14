@@ -41,7 +41,6 @@ enum AmbientSound {
     AmbientSound.wind => '💨',
   };
 
-  /// Asset path relative to assets/sounds/
   String? get assetPath => switch (this) {
     AmbientSound.none => null,
     AmbientSound.rain => 'sounds/ambient/rain.mp3',
@@ -105,13 +104,18 @@ final ambientSoundServiceProvider =
 
 class AmbientSoundService extends AsyncNotifier<AmbientState> {
   AudioPlayer? _player;
+  Timer? _fadeTimer;
 
   static const _keySound = 'ambient_sound';
   static const _keyVolume = 'ambient_volume';
 
+  // Fade config
+  static const _fadeDuration = Duration(milliseconds: 1200);
+  static const _fadeSteps = 24;
+
   @override
   Future<AmbientState> build() async {
-    ref.onDispose(_disposePlayer);
+    ref.onDispose(_disposeAll);
 
     final prefs = await SharedPreferences.getInstance();
     final sound = AmbientSound.fromJson(prefs.getString(_keySound));
@@ -120,34 +124,54 @@ class AmbientSoundService extends AsyncNotifier<AmbientState> {
     return AmbientState(activeSound: sound, volume: volume, isPlaying: false);
   }
 
+  // ── Public API ─────────────────────────────────────────────────────────────
+
   Future<void> play(AmbientSound sound) async {
     final current = state.valueOrNull ?? const AmbientState();
+
+    // Toggle off if same sound is playing
     if (current.activeSound == sound && current.isPlaying) {
-      // toggle off
-      await stop();
+      await fadeOut();
       return;
     }
 
     final path = sound.assetPath;
     if (path == null || sound == AmbientSound.none) {
-      await stop();
+      await fadeOut();
       return;
     }
 
     try {
-      await _disposePlayer();
+      // Fade out current if playing
+      if (current.isPlaying) {
+        await _fadeOut(stopAfter: true, updateState: false);
+      } else {
+        await _disposePlayer();
+      }
+
       _player = AudioPlayer();
-      await _player!.setVolume(current.volume);
+      await _player!.setVolume(0); // start silent for fade-in
       await _player!.setReleaseMode(ReleaseMode.loop);
       await _player!.play(AssetSource(path));
-      state = AsyncData(current.copyWith(activeSound: sound, isPlaying: true));
+
+      state = AsyncData(
+          current.copyWith(activeSound: sound, isPlaying: true));
+
+      // Fade in to target volume
+      await _fadeIn(current.volume);
       await _persist(sound, current.volume);
     } catch (e) {
       debugPrint('[AMBIENT] play error: $e');
     }
   }
 
+  Future<void> fadeOut() async {
+    await _fadeOut(stopAfter: true, updateState: true);
+  }
+
   Future<void> stop() async {
+    _fadeTimer?.cancel();
+    _fadeTimer = null;
     await _disposePlayer();
     final current = state.valueOrNull ?? const AmbientState();
     state = AsyncData(current.copyWith(isPlaying: false));
@@ -155,8 +179,10 @@ class AmbientSoundService extends AsyncNotifier<AmbientState> {
 
   Future<void> setVolume(double volume) async {
     final v = volume.clamp(0.0, 1.0);
-    await _player?.setVolume(v);
     final current = state.valueOrNull ?? const AmbientState();
+    if (current.isPlaying) {
+      await _player?.setVolume(v);
+    }
     state = AsyncData(current.copyWith(volume: v));
     await _persist(current.activeSound, v);
   }
@@ -173,16 +199,85 @@ class AmbientSoundService extends AsyncNotifier<AmbientState> {
     try {
       await _player?.resume();
       state = AsyncData(current.copyWith(isPlaying: true));
-    } catch (e) {
-      // player may have been disposed; re-play
+    } catch (_) {
       await play(current.activeSound);
     }
+  }
+
+  // ── Fade helpers ───────────────────────────────────────────────────────────
+
+  Future<void> _fadeIn(double targetVolume) async {
+    _fadeTimer?.cancel();
+    final stepDuration =
+        _fadeDuration.inMilliseconds ~/ _fadeSteps;
+    final volumeStep = targetVolume / _fadeSteps;
+
+    var step = 0;
+    final completer = Completer<void>();
+
+    _fadeTimer = Timer.periodic(Duration(milliseconds: stepDuration), (t) async {
+      step++;
+      final v = (volumeStep * step).clamp(0.0, targetVolume);
+      try {
+        await _player?.setVolume(v);
+      } catch (_) {}
+      if (step >= _fadeSteps) {
+        t.cancel();
+        _fadeTimer = null;
+        if (!completer.isCompleted) completer.complete();
+      }
+    });
+
+    return completer.future;
+  }
+
+  Future<void> _fadeOut({
+    required bool stopAfter,
+    required bool updateState,
+  }) async {
+    _fadeTimer?.cancel();
+
+    final current = state.valueOrNull ?? const AmbientState();
+    final startVolume = current.volume;
+    final stepDuration =
+        _fadeDuration.inMilliseconds ~/ _fadeSteps;
+    final volumeStep = startVolume / _fadeSteps;
+
+    var step = 0;
+    final completer = Completer<void>();
+
+    _fadeTimer = Timer.periodic(Duration(milliseconds: stepDuration), (t) async {
+      step++;
+      final v = (startVolume - volumeStep * step).clamp(0.0, startVolume);
+      try {
+        await _player?.setVolume(v);
+      } catch (_) {}
+      if (step >= _fadeSteps) {
+        t.cancel();
+        _fadeTimer = null;
+        if (stopAfter) {
+          await _disposePlayer();
+        }
+        if (updateState) {
+          state = AsyncData(current.copyWith(isPlaying: false));
+        }
+        if (!completer.isCompleted) completer.complete();
+      }
+    });
+
+    return completer.future;
   }
 
   Future<void> _disposePlayer() async {
     await _player?.stop();
     await _player?.dispose();
     _player = null;
+  }
+
+  Future<void> _disposeAll() async {
+    _fadeTimer?.cancel();
+    _fadeTimer = null;
+    await _disposePlayer();
   }
 
   Future<void> _persist(AmbientSound sound, double volume) async {

@@ -80,7 +80,7 @@ class _AppWithServicesState extends ConsumerState<_AppWithServices> {
       await ref.read(notificationServiceProvider).initialize();
       
       // Initialize native home screen widget service
-      WidgetService.initialize(ref);
+      ref.read(widgetServiceProvider);
 
       final settings = ref.read(settingsProvider);
       if (settings.dailyReminder) {

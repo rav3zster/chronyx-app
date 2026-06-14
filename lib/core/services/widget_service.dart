@@ -18,6 +18,10 @@ import 'package:chronyx/features/time_tracking/domain/entities/time_entry.dart';
 import 'package:chronyx/core/routing/app_router.dart';
 import 'package:chronyx/core/routing/app_routes.dart';
 
+final widgetServiceProvider = Provider<void>((ref) {
+  WidgetService.initialize(ref);
+});
+
 class WidgetService {
   WidgetService._();
 
@@ -28,7 +32,7 @@ class WidgetService {
   static Timer? _syncDebounce;
 
   /// Initializes MethodChannel listeners for widget interaction
-  static void initialize(WidgetRef ref) {
+  static void initialize(Ref ref) {
     _channel.setMethodCallHandler((call) async {
       debugPrint('[WidgetService] Received method call: ${call.method}');
       if (call.method == 'toggleTask') {
@@ -79,14 +83,14 @@ class WidgetService {
     scheduleSync(ref);
   }
 
-  static void scheduleSync(WidgetRef ref) {
+  static void scheduleSync(Ref ref) {
     if (_syncDebounce?.isActive ?? false) _syncDebounce!.cancel();
     _syncDebounce = Timer(const Duration(milliseconds: 300), () {
       syncAllWidgets(ref);
     });
   }
 
-  static Future<void> _checkLaunchData(WidgetRef ref) async {
+  static Future<void> _checkLaunchData(Ref ref) async {
     try {
       final data = await _channel.invokeMapMethod<String, dynamic>('getLaunchData');
       if (data != null) {
@@ -113,7 +117,7 @@ class WidgetService {
     }
   }
 
-  static void _handleWidgetLaunch(WidgetRef ref, Map data) {
+  static void _handleWidgetLaunch(Ref ref, Map data) {
     final widgetId = data['widgetId'] as int?;
     final widgetType = data['widgetType'] as String?;
     final action = data['action'] as String?;
@@ -123,7 +127,7 @@ class WidgetService {
     }
   }
 
-  static void _handleQuickAddLaunch(WidgetRef ref) {
+  static void _handleQuickAddLaunch(Ref ref) {
     try {
       final router = ref.read(appRouterProvider);
       router.push('${AppRoutes.todos}?quickAdd=true');
@@ -133,7 +137,7 @@ class WidgetService {
     }
   }
 
-  static Future<void> _handleFocusControl(WidgetRef ref, String action) async {
+  static Future<void> _handleFocusControl(Ref ref, String action) async {
     try {
       final entries = ref.read(timeEntriesProvider).valueOrNull ?? [];
       final activeSession = entries.where((e) => e.isOngoing).firstOrNull;
@@ -158,7 +162,7 @@ class WidgetService {
     }
   }
 
-  static Future<void> _handleToggleTask(WidgetRef ref, String taskId) async {
+  static Future<void> _handleToggleTask(Ref ref, String taskId) async {
     try {
       // 1. Try toggling as To-Do first
       final repoTodo = ref.read(todosRepositoryProvider);
@@ -247,7 +251,7 @@ class WidgetService {
   }
 
   /// Rebuild configurations and states for all active pinned widgets
-  static Future<void> syncAllWidgets(WidgetRef ref) async {
+  static Future<void> syncAllWidgets(Ref ref) async {
     try {
       // 1. Query Android OS for all active widget IDs and their types
       final List<dynamic>? widgetsList = await _channel.invokeMethod<List<dynamic>>('getActiveWidgetIds');
@@ -333,7 +337,7 @@ class WidgetService {
   // State Computation Helpers
   // ---------------------------------------------------------------------------
 
-  static Future<Map<String, dynamic>?> _computeTodayTasks(WidgetRef ref) async {
+  static Future<Map<String, dynamic>?> _computeTodayTasks(Ref ref) async {
     try {
       final roadmap = ref.read(todaysRoadmapProvider).valueOrNull;
       if (roadmap == null) return null;
@@ -348,7 +352,7 @@ class WidgetService {
     }
   }
 
-  static Future<Map<String, dynamic>?> _computeProjectTasks(WidgetRef ref, String? projectId) async {
+  static Future<Map<String, dynamic>?> _computeProjectTasks(Ref ref, String? projectId) async {
     if (projectId == null) return null;
     try {
       final repo = ref.read(projectRepositoryProvider);
@@ -374,7 +378,7 @@ class WidgetService {
     }
   }
 
-  static Future<Map<String, dynamic>?> _computeTodoTasks(WidgetRef ref, String subType) async {
+  static Future<Map<String, dynamic>?> _computeTodoTasks(Ref ref, String subType) async {
     try {
       final allTodos = ref.read(todosProvider).valueOrNull;
       if (allTodos == null) return null;
@@ -440,7 +444,7 @@ class WidgetService {
     }
   }
 
-  static Future<Map<String, dynamic>?> _computeStatsState(WidgetRef ref) async {
+  static Future<Map<String, dynamic>?> _computeStatsState(Ref ref) async {
     try {
       final stats = ref.read(timeTrackingStatsProvider);
       final allTodos = ref.read(todosProvider).valueOrNull ?? [];
@@ -459,7 +463,7 @@ class WidgetService {
     }
   }
 
-  static Future<Map<String, dynamic>?> _computeFocusState(WidgetRef ref) async {
+  static Future<Map<String, dynamic>?> _computeFocusState(Ref ref) async {
     try {
       final entries = ref.read(timeEntriesProvider).valueOrNull ?? [];
       final activeSession = entries.where((e) => e.isOngoing).firstOrNull;
